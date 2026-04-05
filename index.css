@@ -1837,3 +1837,312 @@ img {
     height: 64px;
   }
 }
+
+/* ============================================================
+   18. モード切替タブ
+   ============================================================ */
+.mode-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-primary);
+  border-bottom: 1px solid var(--border-color);
+  transition: background var(--transition-base), border-color var(--transition-base);
+}
+
+[data-theme="dark"] .mode-tabs {
+  background: var(--surface-primary);
+}
+
+[data-theme="sakura"] .mode-tabs {
+  background: #fffbfc;
+  border-bottom-color: rgba(254, 205, 211, 0.5);
+}
+
+.mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.mode-tab:hover {
+  color: var(--text-secondary);
+  background: var(--color-neutral-100);
+}
+
+[data-theme="dark"] .mode-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="sakura"] .mode-tab:hover {
+  background: #fff0f3;
+  color: #8b3a5a;
+}
+
+.mode-tab.active {
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-200);
+}
+
+[data-theme="dark"] .mode-tab.active {
+  color: var(--color-primary-300);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="sakura"] .mode-tab.active {
+  color: #e11d48;
+  background: #fff0f3;
+  border-color: #fecdd3;
+}
+
+.mode-tab svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================================
+   19. カルーセルモード
+   ============================================================ */
+
+/* テンプレートバー */
+.carousel-template-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-4);
+}
+
+[data-theme="dark"] .carousel-template-bar {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="sakura"] .carousel-template-bar {
+  background: #fff0f3;
+  border-color: #fecdd3;
+}
+
+.carousel-template-bar__label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+[data-theme="sakura"] .carousel-template-bar__label {
+  color: #8b3a5a;
+}
+
+/* JSON入力テキストエリア */
+.carousel-json-textarea {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  min-height: 200px;
+}
+
+/* 展開ボタンの微調整 */
+.carousel-expand-btn {
+  margin-top: var(--space-4);
+}
+
+/* スライドプレビューセクション */
+.carousel-preview-section {
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* スライドカード一覧 */
+.carousel-slides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 1枚のスライドカード */
+.carousel-slide-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-fast);
+  animation: fadeInUp 0.3s ease both;
+}
+
+.carousel-slide-card:hover {
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="sakura"] .carousel-slide-card:hover {
+  border-color: #fda4af;
+}
+
+/* ページ番号バッジ */
+.carousel-slide-card__page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(var(--color-primary-500-rgb), 0.3);
+}
+
+[data-theme="sakura"] .carousel-slide-card__page {
+  background: linear-gradient(135deg, #f43f5e, #ec4899);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.3);
+}
+
+/* ロールバッジ */
+.carousel-slide-card__role {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.625rem;
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-1);
+}
+
+.carousel-slide-card__role--cover {
+  color: #7c3aed;
+  background: #ede9fe;
+}
+
+[data-theme="dark"] .carousel-slide-card__role--cover {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.carousel-slide-card__role--body {
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+}
+
+[data-theme="dark"] .carousel-slide-card__role--body {
+  color: var(--color-primary-300);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.carousel-slide-card__role--cta {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+[data-theme="dark"] .carousel-slide-card__role--cta {
+  color: #6ee7b7;
+  background: rgba(5, 150, 105, 0.15);
+}
+
+/* スライド内容 */
+.carousel-slide-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.carousel-slide-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.carousel-slide-card__layout-badge {
+  font-size: 0.625rem;
+  color: var(--text-tertiary);
+  background: var(--color-neutral-100);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+[data-theme="dark"] .carousel-slide-card__layout-badge {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.carousel-slide-card__content {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* スライドカードのアクション */
+.carousel-slide-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* カルーセル出力カード群 */
+#carouselOutputCards .output-card {
+  margin-bottom: var(--space-4);
+}
+
+/* レスポンシブ（カルーセル） */
+@media (max-width: 640px) {
+  .mode-tabs {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+  }
+
+  .mode-tab {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+  }
+
+  .carousel-template-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .carousel-slide-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .carousel-slide-card__page {
+    width: 28px;
+    height: 28px;
+    font-size: var(--text-xs);
+  }
+
+  .carousel-slide-card__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}

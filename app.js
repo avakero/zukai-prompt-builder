@@ -65,8 +65,13 @@
     colorMode: 'auto', // 'auto' | 'preset' | 'custom'
     colorValue: '',
     customColor: '#3b82f6',
-    theme: 'sakura'
+    theme: 'sakura',
+    mode: 'single' // 'single' | 'carousel'
   };
+
+  // カルーセル状態
+  let carouselData = null; // parsed JSON
+  let carouselPrompts = []; // 生成されたプロンプト配列
 
   // キャラクター画像（メモリ内保持、永続化なし）
   // { name: string, dataUrl: string, blob: Blob }
@@ -113,7 +118,25 @@
     pasteQueueCta: $('#pasteQueueCta'),
     pasteQueueHint: $('#pasteQueueHint'),
     pasteQueueClose: $('#pasteQueueClose'),
-    pasteProgressFill: $('#pasteProgressFill')
+    pasteProgressFill: $('#pasteProgressFill'),
+    // モード切替
+    modeTabs: $('#modeTabs'),
+    modeContentSingle: $('#modeContentSingle'),
+    modeContentCarousel: $('#modeContentCarousel'),
+    // カルーセル
+    carouselJsonInput: $('#carouselJsonInput'),
+    expandCarouselBtn: $('#expandCarouselBtn'),
+    copyTemplateBtn: $('#copyTemplateBtn'),
+    carouselBadge: $('#carouselBadge'),
+    carouselPreviewSection: $('#carouselPreviewSection'),
+    carouselSlides: $('#carouselSlides'),
+    carouselSlideCount: $('#carouselSlideCount'),
+    carouselPreviewTitle: $('#carouselPreviewTitle'),
+    carouselGenerateBtn: $('#carouselGenerateBtn'),
+    carouselOutputSection: $('#carouselOutputSection'),
+    carouselOutputCards: $('#carouselOutputCards'),
+    // 単体モード出力
+    modeContentSingleOutput: $('#modeContentSingleOutput')
   };
 
   // ============================================================
@@ -693,6 +716,11 @@ ${layoutDef.desc}
     // バッジ更新
     updateBadges();
     updateCharCount();
+
+    // モード復元
+    if (state.mode && state.mode !== 'single') {
+      switchMode(state.mode);
+    }
   }
 
   // ============================================================
@@ -816,6 +844,455 @@ ${layoutDef.desc}
     els.pasteQueueCta.addEventListener('click', copyNextInQueue);
 
     els.pasteQueueClose.addEventListener('click', closePasteQueue);
+
+    // ===== モード切替 =====
+    if (els.modeTabs) {
+      els.modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          switchMode(tab.dataset.mode);
+        });
+      });
+    }
+
+    // ===== カルーセルイベント =====
+    if (els.expandCarouselBtn) {
+      els.expandCarouselBtn.addEventListener('click', expandCarousel);
+    }
+    if (els.copyTemplateBtn) {
+      els.copyTemplateBtn.addEventListener('click', copyCarouselTemplate);
+    }
+    if (els.carouselGenerateBtn) {
+      els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
+    }
+  }
+
+  // ============================================================
+  // モード切替
+  // ============================================================
+
+  function switchMode(mode) {
+    if (mode !== 'single' && mode !== 'carousel') return;
+    state.mode = mode;
+
+    // タブ UI
+    els.modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === mode);
+    });
+
+    // コンテンツ切替（テキスト入力 / JSON入力）
+    els.modeContentSingle.style.display = mode === 'single' ? '' : 'none';
+    els.modeContentCarousel.style.display = mode === 'carousel' ? '' : 'none';
+
+    // 生成ボタン＋出力の切替
+    if (els.modeContentSingleOutput) {
+      els.modeContentSingleOutput.style.display = mode === 'single' ? '' : 'none';
+    }
+
+    // ペーストキューをクリア
+    closePasteQueue();
+
+    saveState();
+  }
+
+  // ============================================================
+  // カルーセル：AIテンプレートコピー
+  // ============================================================
+
+  const CAROUSEL_TEMPLATE = `以下のJSON形式で、カルーセル投稿用のデータを生成してください。
+そのままコピーして使えるよう、余計な説明は不要で、JSONだけを出力してください。
+
+## JSON仕様
+\`\`\`json
+{
+  "title": "カルーセルのタイトル",
+  "style": "A",
+  "format": "1:1",
+  "color": "auto",
+  "slides": [
+    {
+      "page": 1,
+      "role": "cover",
+      "content": "表紙のテキスト内容"
+    },
+    {
+      "page": 2,
+      "role": "body",
+      "layout": "A",
+      "content": "本文スライドの内容"
+    },
+    {
+      "page": 3,
+      "role": "cta",
+      "content": "まとめ・CTAのテキスト"
+    }
+  ]
+}
+\`\`\`
+
+## フィールド説明
+- **style**: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル)
+- **format**: "1:1"(正方形), "3:4"(縦長), "16:9"(横長)
+- **color**: "auto" or プリセット名(例:"パステルピンク＆水色") or 色コード(例:"#3b82f6")
+- **slides[].role**: "cover"(表紙), "body"(本文), "cta"(まとめ・CTA)
+- **slides[].layout**: A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ)
+
+## 依頼内容
+以下のテーマでカルーセル投稿を作成してください：
+
+【ここにテーマを記入】`;
+
+  async function copyCarouselTemplate() {
+    try {
+      await navigator.clipboard.writeText(CAROUSEL_TEMPLATE);
+      showToast('📋 AIテンプレートをコピーしました！');
+    } catch (err) {
+      const textarea = document.createElement('textarea');
+      textarea.value = CAROUSEL_TEMPLATE;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast('📋 テンプレートをコピーしました！');
+    }
+  }
+
+  // ============================================================
+  // カルーセル：JSON展開
+  // ============================================================
+
+  function expandCarousel() {
+    const raw = els.carouselJsonInput.value.trim();
+    if (!raw) {
+      showToast('JSONを貼り付けてください');
+      els.carouselJsonInput.focus();
+      return;
+    }
+
+    // JSONパース
+    let data;
+    try {
+      // コードブロック(```json ... ```)で囲まれている場合を除去
+      let cleaned = raw;
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      data = JSON.parse(cleaned);
+    } catch (e) {
+      showToast('⚠️ JSONの形式が正しくありません');
+      return;
+    }
+
+    // バリデーション
+    if (!data.slides || !Array.isArray(data.slides) || data.slides.length === 0) {
+      showToast('⚠️ slides配列が必要です');
+      return;
+    }
+
+    if (data.slides.length > 20) {
+      showToast('⚠️ スライドは最大20枚までです');
+      return;
+    }
+
+    carouselData = data;
+    els.carouselBadge.textContent = `${data.slides.length}枚`;
+
+    // JSONの値をUIに反映
+    applyJsonToUI(data);
+
+    renderCarouselPreview();
+    els.carouselPreviewSection.style.display = '';
+
+    setTimeout(() => {
+      els.carouselPreviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    showToast(`✅ ${data.slides.length}枚のスライドを展開しました`);
+  }
+
+  /**
+   * JSONのグローバル設定をUIに反映する
+   */
+  function applyJsonToUI(data) {
+    // スタイル
+    if (data.style && STYLE_DEFS[data.style]) {
+      state.style = data.style;
+      activateCard('style', data.style);
+    }
+
+    // フォーマット
+    if (data.format) {
+      state.format = data.format;
+      activateCard('format', data.format);
+    }
+
+    // 配色
+    if (data.color) {
+      clearColorSelections();
+      if (data.color === 'auto') {
+        state.colorMode = 'auto';
+        state.colorValue = '';
+        els.colorAutoBtn.classList.add('active');
+      } else if (data.color.startsWith('#')) {
+        state.colorMode = 'custom';
+        state.customColor = data.color;
+        els.customColorPicker.value = data.color;
+        els.customColorPicker.classList.add('active');
+      } else {
+        state.colorMode = 'preset';
+        state.colorValue = data.color;
+        const swatch = $(`.color-swatch[data-color="${data.color}"]`);
+        if (swatch) {
+          swatch.classList.add('active');
+          swatch.setAttribute('aria-checked', 'true');
+        }
+      }
+    }
+
+    updateBadges();
+    saveState();
+  }
+
+  // ============================================================
+  // カルーセル：スライドプレビュー描画
+  // ============================================================
+
+  const ROLE_LABELS = {
+    cover: '表紙',
+    body: '本文',
+    cta: 'CTA'
+  };
+
+  function renderCarouselPreview() {
+    if (!carouselData) return;
+
+    els.carouselSlideCount.textContent = `${carouselData.slides.length}枚`;
+    if (carouselData.title) {
+      els.carouselPreviewTitle.textContent = carouselData.title;
+    }
+
+    els.carouselSlides.innerHTML = '';
+    carouselData.slides.forEach((slide, i) => {
+      const role = slide.role || 'body';
+      const roleLabel = ROLE_LABELS[role] || role;
+      const layout = slide.layout || (role === 'body' ? 'G' : '');
+      const layoutDef = layout ? LAYOUT_DEFS[layout] : null;
+      const content = slide.content || '';
+
+      const card = document.createElement('div');
+      card.className = 'carousel-slide-card';
+      card.style.animationDelay = `${i * 0.05}s`;
+
+      card.innerHTML = `
+        <div class="carousel-slide-card__page">${slide.page || i + 1}</div>
+        <div class="carousel-slide-card__body">
+          <div class="carousel-slide-card__meta">
+            <span class="carousel-slide-card__role carousel-slide-card__role--${role}">${roleLabel}</span>
+            ${layoutDef ? `<span class="carousel-slide-card__layout-badge">${layout}: ${layoutDef.label}</span>` : ''}
+          </div>
+          <div class="carousel-slide-card__content">${escapeHtml(content)}</div>
+        </div>
+        <div class="carousel-slide-card__actions">
+          <button class="action-btn action-btn--copy" type="button" data-slide-index="${i}" title="このスライドのプロンプトをコピー">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      `;
+
+      // 個別コピーボタン
+      card.querySelector('.action-btn--copy').addEventListener('click', () => {
+        const prompt = buildSlidePrompt(slide, i);
+        navigator.clipboard.writeText(prompt).then(() => {
+          showToast(`📋 スライド${slide.page || i + 1}をコピーしました`);
+        }).catch(() => {
+          showToast('⚠️ コピーに失敗しました');
+        });
+      });
+
+      els.carouselSlides.appendChild(card);
+    });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ============================================================
+  // カルーセル：スライドプロンプト構築
+  // ============================================================
+
+  function buildSlidePrompt(slide, index) {
+    if (!carouselData) return '';
+
+    // UIの設定値を使用（JSON展開時にUIに反映済み）
+    const globalStyle = state.style;
+    const globalFormat = state.format;
+    const totalSlides = carouselData.slides.length;
+
+    const styleDef = STYLE_DEFS[globalStyle] || STYLE_DEFS['A'];
+    const role = slide.role || 'body';
+    const roleLabel = ROLE_LABELS[role] || role;
+    const layout = slide.layout || (role === 'body' ? state.layout : 'G');
+    const layoutDef = LAYOUT_DEFS[layout] || LAYOUT_DEFS['G'];
+    const content = slide.content || '';
+    const page = slide.page || index + 1;
+
+    // 配色はUIの設定を使用
+    let colorInstruction = 'お任せ（内容に合った最適な配色を選んでください）';
+    if (state.colorMode === 'preset' && state.colorValue) {
+      colorInstruction = state.colorValue;
+    } else if (state.colorMode === 'custom') {
+      colorInstruction = `テーマカラー: ${state.customColor}`;
+    }
+
+    // キャラクター画像の指示
+    let charImageNote = '';
+    if (characterImages.length > 0) {
+      charImageNote = `\n\n### キャラクター画像
+添付したキャラクター画像を図解内に配置してください。
+* キャラクターの外見（髪型・服装・体型）は変えずそのまま使用すること。
+* 図解の内容とマッチしたポーズや表情をつけること。
+* 添付画像${characterImages.length}枚`;
+    }
+
+    return `# 命令書：万能・図解デザイナーAI（Nano Banana Pro専用）
+あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
+
+## ■基本方針
+* ユーザー専属デザイナーとして、丁寧かつ親しみやすく振る舞う。
+* ユーザーの指定した「スタイル」に合わせて画風を完全に切り替える。
+* 不明点があれば確認の質問をする。
+
+## ■スタイル定義
+* **A：手書き風** — 色鉛筆や水彩のタッチ。温かみのあるパステル調。
+* **B：ビジネス風** — フラットデザイン。信頼感のある寒色系。
+* **C：ポップ** — 太い主線、鮮やかな原色。元気な印象。
+* **D：ミニマル** — 線画のみ、最低限の色数。洗練された印象。
+
+## ■レイアウト定義
+* **A：並列リスト**（要点まとめ）
+* **B：比較図**（VS構造、左右対比）
+* **C：ステップ進行**（ロードマップ、手順）
+* **D：4象限マトリクス**（分布、ポジショニング）
+* **E：サイクル図**（循環、ループ）
+* **F：ピラミッド**（階層構造）
+* **G：お任せ** — 最適な構成を自動で組む。
+
+## ■禁止事項
+* 指定されたキャラの外見変更（キャラ使用時）
+* 意味のない英語の羅列
+* 実在ブランドのロゴ描写
+
+## ■カルーセル投稿の注意事項
+* これはカルーセル投稿の **${page}枚目 / 全${totalSlides}枚** です
+* 全スライドで統一感のあるデザインにしてください
+* ページ番号「${page}/${totalSlides}」を右下に小さく入れてください
+* このスライドの役割: **${roleLabel}**
+
+---
+
+## ■今回の依頼内容
+
+以下の内容で図解を作成してください。
+
+### 内容テキスト
+${content}
+
+### スタイル: ${globalStyle} — ${styleDef.label}
+${styleDef.desc}
+
+### レイアウト: ${layout} — ${layoutDef.label}
+${layoutDef.desc}
+
+### フォーマット: ${globalFormat}
+
+### 配色: ${colorInstruction}${charImageNote}`;
+  }
+
+  // ============================================================
+  // カルーセル：全プロンプト生成 → ペーストキュー投入
+  // ============================================================
+
+  function generateCarouselPrompts() {
+    if (!carouselData || !carouselData.slides.length) {
+      showToast('先にJSONを展開してください');
+      return;
+    }
+
+    carouselPrompts = [];
+    pasteQueue = [];
+    pasteQueueIndex = 0;
+
+    // 出力カード描画
+    els.carouselOutputCards.innerHTML = '';
+
+    carouselData.slides.forEach((slide, i) => {
+      const prompt = buildSlidePrompt(slide, i);
+      carouselPrompts.push(prompt);
+
+      // ペーストキューにテキストアイテムとして追加
+      pasteQueue.push({
+        type: 'text',
+        label: `スライド ${slide.page || i + 1}（${ROLE_LABELS[slide.role] || slide.role || '本文'}）`,
+        content: prompt
+      });
+
+      // キャラクター画像がある場合、各スライドのプロンプト直後に画像をキューに追加
+      characterImages.forEach((img, imgIdx) => {
+        pasteQueue.push({
+          type: 'image',
+          label: `スライド${slide.page || i + 1} キャラ画像${imgIdx + 1}`,
+          content: img.blob,
+          dataUrl: img.dataUrl,
+          fileName: img.name
+        });
+      });
+
+      // 出力カードを生成
+      const card = document.createElement('div');
+      card.className = 'output-card';
+      card.innerHTML = `
+        <div class="output-card__header">
+          <span class="output-card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            スライド ${slide.page || i + 1} — ${ROLE_LABELS[slide.role] || '本文'}
+          </span>
+          <div class="output-card__actions">
+            <button class="action-btn action-btn--copy" type="button" data-carousel-copy="${i}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              コピー
+            </button>
+          </div>
+        </div>
+        <div class="output-card__body">
+          <pre class="output-text">${escapeHtml(prompt)}</pre>
+        </div>
+      `;
+
+      // 出力カード内のコピーボタン
+      card.querySelector('[data-carousel-copy]').addEventListener('click', function() {
+        const idx = parseInt(this.dataset.carouselCopy);
+        navigator.clipboard.writeText(carouselPrompts[idx]).then(() => {
+          showToast(`📋 スライド${carouselData.slides[idx].page || idx + 1}をコピーしました`);
+        });
+      });
+
+      els.carouselOutputCards.appendChild(card);
+    });
+
+    // 出力セクション表示
+    els.carouselOutputSection.classList.add('visible');
+
+    // ペーストキュー表示
+    renderPasteQueue();
+    els.pasteQueue.classList.add('visible');
+
+    setTimeout(() => {
+      els.carouselOutputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    showToast(`✨ ${carouselData.slides.length}枚分のプロンプトを生成しました`);
   }
 
   // ============================================================

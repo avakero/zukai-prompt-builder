@@ -46,8 +46,91 @@
   <!-- 桜の花びらコンテナ -->
   <div class="sakura-petals-container" id="sakuraPetalsContainer"></div>
 
+  <!-- ===== モード切替タブ ===== -->
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" data-mode="single" type="button" id="modeSingle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      単体
+    </button>
+    <button class="mode-tab" data-mode="carousel" type="button" id="modeCarousel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="8" height="16" rx="1"/><rect x="14" y="4" width="8" height="16" rx="1"/><line x1="12" y1="6" x2="12" y2="18"/></svg>
+      カルーセル
+    </button>
+  </div>
+
   <!-- ===== メインコンテンツ ===== -->
   <main class="app-container" role="main">
+
+    <!-- ===== カルーセルモード ===== -->
+    <div class="mode-content" id="modeContentCarousel" style="display: none;">
+
+      <!-- JSON入力 -->
+      <section class="section" id="sectionCarouselInput">
+        <div class="section__header">
+          <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <h2 class="section__title">カルーセルJSON入力</h2>
+          <span class="section__badge" id="carouselBadge">未入力</span>
+        </div>
+
+        <!-- AIテンプレートコピー -->
+        <div class="carousel-template-bar">
+          <span class="carousel-template-bar__label">💡 AIにこのテンプレートを渡してJSONを生成させてください</span>
+          <button class="action-btn action-btn--copy" id="copyTemplateBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            テンプレをコピー
+          </button>
+        </div>
+
+        <div class="textarea-wrapper">
+          <label for="carouselJsonInput" class="sr-only">カルーセルJSONを入力</label>
+          <textarea
+            id="carouselJsonInput"
+            class="form-textarea carousel-json-textarea"
+            placeholder='AIが生成したカルーセルJSONをここに貼り付けてください。&#10;&#10;例: {"title": "...", "style": "A", "slides": [...]}'  
+            rows="8"
+          ></textarea>
+        </div>
+
+        <button class="generate-btn carousel-expand-btn" id="expandCarouselBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          スライドに展開する
+        </button>
+      </section>
+
+      <!-- スライドプレビュー -->
+      <section class="section carousel-preview-section" id="carouselPreviewSection" style="display: none;">
+        <div class="section__header">
+          <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <h2 class="section__title" id="carouselPreviewTitle">スライドプレビュー</h2>
+          <span class="section__badge" id="carouselSlideCount">0枚</span>
+        </div>
+
+        <div class="carousel-slides" id="carouselSlides"></div>
+
+        <button class="generate-btn" id="carouselGenerateBtn" type="button" style="margin-top: var(--space-4);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          全スライドのプロンプトを生成
+        </button>
+      </section>
+
+      <!-- カルーセル出力 -->
+      <section class="section output-section" id="carouselOutputSection">
+        <div id="carouselOutputCards"></div>
+      </section>
+
+    </div>
+
+    <!-- ===== 単体モード: テキスト入力 ===== -->
+    <div class="mode-content" id="modeContentSingle">
 
     <!-- 1. テキスト入力 -->
     <section class="section" id="sectionText">
@@ -69,6 +152,10 @@
         <div class="char-count" id="charCount" aria-live="polite">0 文字</div>
       </div>
     </section>
+
+    </div><!-- /modeContentSingle (テキスト入力のみ) -->
+
+    <!-- ===== 共通設定（両モード共通） ===== -->
 
     <!-- 2. スタイル選択 -->
     <section class="section" id="sectionStyle">
@@ -310,6 +397,9 @@
       <div class="image-thumbnails" id="imageThumbnails"></div>
     </section>
 
+    <!-- ===== 単体モード: 生成ボタン＋出力 ===== -->
+    <div class="mode-content" id="modeContentSingleOutput">
+
     <!-- 7. 生成ボタン -->
     <section class="section" id="sectionGenerate">
       <button class="generate-btn" id="generateBtn" type="button">
@@ -342,6 +432,8 @@
       </div>
 
     </section>
+
+    </div><!-- /modeContentSingleOutput -->
 
   </main>
 
