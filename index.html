@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="sakura">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="文章を貼り付けてオプションを選ぶだけで、AI図解生成用の構造化プロンプトを自動作成できるWebツール。Nano Banana Pro専用。">
+  <title>図解プロンプトビルダー | Nano Banana Pro</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<!-- ===== ヘッダー ===== -->
+  <header class="app-header" role="banner">
+    <div class="app-header__brand">
+      <div class="app-header__logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="app-header__title">図解プロンプトビルダー</h1>
+        <span class="app-header__subtitle">Nano Banana Pro 専用</span>
+      </div>
+    </div>
+    <div class="theme-selector" id="themeSelector" role="radiogroup" aria-label="テーマ切り替え">
+      <button class="theme-selector__btn theme-selector__btn--light" data-theme="light" type="button" aria-label="ライトモード" role="radio" aria-checked="false" title="ライト">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+      <button class="theme-selector__btn theme-selector__btn--sakura active" data-theme="sakura" type="button" aria-label="桜モード" role="radio" aria-checked="true" title="🌸 桜">
+        <img id="sakuraIconImg" src="" alt="桜" style="width: 16px; height: 16px;">
+      </button>
+      <button class="theme-selector__btn theme-selector__btn--dark" data-theme="dark" type="button" aria-label="ダークモード" role="radio" aria-checked="false" title="ダーク">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <span class="sakura-limited-badge">🌸 春限定</span>
+    </div>
+  </header>
+
+  <!-- 桜の花びらコンテナ -->
+  <div class="sakura-petals-container" id="sakuraPetalsContainer"></div>
+
+  <!-- ===== メインコンテンツ ===== -->
+  <main class="app-container" role="main">
+
+    <!-- 1. テキスト入力 -->
+    <section class="section" id="sectionText">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        <h2 class="section__title">内容テキスト</h2>
+      </div>
+      <div class="textarea-wrapper">
+        <label for="contentText" class="sr-only">図解にしたい文章を入力</label>
+        <textarea
+          id="contentText"
+          class="form-textarea"
+          placeholder="図解にしたい文章をここに貼り付けてください。&#10;&#10;例: 「PDCAサイクルとは、Plan（計画）→ Do（実行）→ Check（評価）→ Act（改善）の4段階を繰り返すことで…」"
+          rows="6"
+        ></textarea>
+        <div class="char-count" id="charCount" aria-live="polite">0 文字</div>
+      </div>
+    </section>
+
+    <!-- 2. スタイル選択 -->
+    <section class="section" id="sectionStyle">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>
+        </svg>
+        <h2 class="section__title">スタイル</h2>
+        <span class="section__badge" id="styleBadge">A: 手書き風</span>
+      </div>
+      <div class="selection-grid selection-grid--style" role="radiogroup" aria-label="スタイル選択">
+
+        <div class="selection-card active" data-group="style" data-value="A" role="radio" aria-checked="true" tabindex="0" id="styleA">
+          <div class="selection-card__check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </span>
+          <span class="selection-card__label">手書き風</span>
+          <span class="selection-card__desc">アナログ・温かみ</span>
+        </div>
+
+        <div class="selection-card" data-group="style" data-value="B" role="radio" aria-checked="false" tabindex="0" id="styleB">
+          <div class="selection-card__check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </span>
+          <span class="selection-card__label">ビジネス風</span>
+          <span class="selection-card__desc">フラット・信頼感</span>
+        </div>
+
+        <div class="selection-card" data-group="style" data-value="C" role="radio" aria-checked="false" tabindex="0" id="styleC">
+          <div class="selection-card__check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
+          <span class="selection-card__label">ポップ</span>
+          <span class="selection-card__desc">コミック・元気</span>
+        </div>
+
+        <div class="selection-card" data-group="style" data-value="D" role="radio" aria-checked="false" tabindex="0" id="styleD">
+          <div class="selection-card__check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </span>
+          <span class="selection-card__label">ミニマル</span>
+          <span class="selection-card__desc">シンプル・洗練</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. レイアウト選択 -->
+    <section class="section" id="sectionLayout">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        <h2 class="section__title">レイアウト</h2>
+        <span class="section__badge" id="layoutBadge">G: お任せ</span>
+      </div>
+      <div class="selection-grid selection-grid--layout" role="radiogroup" aria-label="レイアウト選択">
+
+        <div class="selection-card" data-group="layout" data-value="A" role="radio" aria-checked="false" tabindex="0" id="layoutA">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </span>
+          <span class="selection-card__label">並列リスト</span>
+          <span class="selection-card__desc">要点まとめ</span>
+        </div>
+
+        <div class="selection-card" data-group="layout" data-value="B" role="radio" aria-checked="false" tabindex="0" id="layoutB">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="8" height="16" rx="1"/><rect x="14" y="4" width="8" height="16" rx="1"/></svg>
+          </span>
+          <span class="selection-card__label">比較図</span>
+          <span class="selection-card__desc">VS・左右対比</span>
+        </div>
+
+        <div class="selection-card" data-group="layout" data-value="C" role="radio" aria-checked="false" tabindex="0" id="layoutC">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </span>
+          <span class="selection-card__label">ステップ</span>
+          <span class="selection-card__desc">手順・進行</span>
+        </div>
+
+        <div class="selection-card" data-group="layout" data-value="D" role="radio" aria-checked="false" tabindex="0" id="layoutD">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+          </span>
+          <span class="selection-card__label">4象限</span>
+          <span class="selection-card__desc">マトリクス</span>
+        </div>
+
+        <div class="selection-card" data-group="layout" data-value="E" role="radio" aria-checked="false" tabindex="0" id="layoutE">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </span>
+          <span class="selection-card__label">サイクル</span>
+          <span class="selection-card__desc">循環・ループ</span>
+        </div>
+
+        <div class="selection-card" data-group="layout" data-value="F" role="radio" aria-checked="false" tabindex="0" id="layoutF">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 22 22 22"/></svg>
+          </span>
+          <span class="selection-card__label">ピラミッド</span>
+          <span class="selection-card__desc">階層構造</span>
+        </div>
+
+        <div class="selection-card active" data-group="layout" data-value="G" role="radio" aria-checked="true" tabindex="0" id="layoutG">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <span class="selection-card__label">お任せ</span>
+          <span class="selection-card__desc">自動で最適化</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. フォーマット選択 -->
+    <section class="section" id="sectionFormat">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/>
+        </svg>
+        <h2 class="section__title">フォーマット</h2>
+        <span class="section__badge" id="formatBadge">1:1</span>
+      </div>
+      <div class="selection-grid selection-grid--format" role="radiogroup" aria-label="フォーマット選択">
+
+        <div class="selection-card active" data-group="format" data-value="1:1" role="radio" aria-checked="true" tabindex="0" id="format1x1">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+          </span>
+          <span class="selection-card__label">1 : 1</span>
+          <span class="selection-card__desc">正方形</span>
+        </div>
+
+        <div class="selection-card" data-group="format" data-value="3:4" role="radio" aria-checked="false" tabindex="0" id="format3x4">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/></svg>
+          </span>
+          <span class="selection-card__label">3 : 4</span>
+          <span class="selection-card__desc">縦長</span>
+        </div>
+
+        <div class="selection-card" data-group="format" data-value="16:9" role="radio" aria-checked="false" tabindex="0" id="format16x9">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+          </span>
+          <span class="selection-card__label">16 : 9</span>
+          <span class="selection-card__desc">横長</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5. 配色 -->
+    <section class="section" id="sectionColor">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+        </svg>
+        <h2 class="section__title">配色</h2>
+        <span class="section__badge" id="colorBadge">お任せ</span>
+      </div>
+      <div class="color-section">
+        <div class="color-presets" role="radiogroup" aria-label="配色選択">
+          <button class="color-swatch" data-color="パステルピンク＆水色" style="background: linear-gradient(135deg, #f9a8d4, #67e8f9);" title="パステルピンク＆水色" aria-label="パステルピンク＆水色" role="radio" aria-checked="false" id="colorPreset1"></button>
+          <button class="color-swatch" data-color="ネイビー＆ゴールド" style="background: linear-gradient(135deg, #1e3a5f, #d4a853);" title="ネイビー＆ゴールド" aria-label="ネイビー＆ゴールド" role="radio" aria-checked="false" id="colorPreset2"></button>
+          <button class="color-swatch" data-color="グリーン＆ナチュラル" style="background: linear-gradient(135deg, #86efac, #fde68a);" title="グリーン＆ナチュラル" aria-label="グリーン＆ナチュラル" role="radio" aria-checked="false" id="colorPreset3"></button>
+          <button class="color-swatch" data-color="モノトーン" style="background: linear-gradient(135deg, #e5e7eb, #374151);" title="モノトーン" aria-label="モノトーン" role="radio" aria-checked="false" id="colorPreset4"></button>
+          <button class="color-swatch" data-color="サンセットオレンジ" style="background: linear-gradient(135deg, #fb923c, #f43f5e);" title="サンセットオレンジ" aria-label="サンセットオレンジ" role="radio" aria-checked="false" id="colorPreset5"></button>
+          <button class="color-swatch" data-color="ラベンダー＆パープル" style="background: linear-gradient(135deg, #c4b5fd, #7c3aed);" title="ラベンダー＆パープル" aria-label="ラベンダー＆パープル" role="radio" aria-checked="false" id="colorPreset6"></button>
+          <button class="color-swatch" data-color="アクアブルー" style="background: linear-gradient(135deg, #38bdf8, #2563eb);" title="アクアブルー" aria-label="アクアブルー" role="radio" aria-checked="false" id="colorPreset7"></button>
+          <button class="color-swatch" data-color="アースカラー" style="background: linear-gradient(135deg, #a3a380, #6b5b3e);" title="アースカラー" aria-label="アースカラー" role="radio" aria-checked="false" id="colorPreset8"></button>
+          <button class="color-swatch" data-color="ベビーピンク＆クリーム" style="background: linear-gradient(135deg, #fbb6ce, #fef3c7);" title="ベビーピンク＆クリーム" aria-label="ベビーピンク＆クリーム" role="radio" aria-checked="false" id="colorPreset9"></button>
+          <button class="color-swatch" data-color="ミント＆コーラル" style="background: linear-gradient(135deg, #99f6e4, #fda4af);" title="ミント＆コーラル" aria-label="ミント＆コーラル" role="radio" aria-checked="false" id="colorPreset10"></button>
+          <button class="color-swatch" data-color="ローズゴールド" style="background: linear-gradient(135deg, #e8b4b8, #daa520);" title="ローズゴールド" aria-label="ローズゴールド" role="radio" aria-checked="false" id="colorPreset11"></button>
+          <button class="color-swatch" data-color="ユニコーンパステル" style="background: linear-gradient(135deg, #c4b5fd, #fbcfe8, #a5f3fc);" title="ユニコーンパステル" aria-label="ユニコーンパステル" role="radio" aria-checked="false" id="colorPreset12"></button>
+          <button class="color-swatch" data-color="シャーベットオレンジ＆ピンク" style="background: linear-gradient(135deg, #fdba74, #f9a8d4);" title="シャーベットオレンジ＆ピンク" aria-label="シャーベットオレンジ＆ピンク" role="radio" aria-checked="false" id="colorPreset13"></button>
+          <button class="color-swatch" data-color="さくら＆抹茶" style="background: linear-gradient(135deg, #f9a8d4, #86efac);" title="さくら＆抹茶" aria-label="さくら＆抹茶" role="radio" aria-checked="false" id="colorPreset14"></button>
+          <button class="color-swatch" data-color="コットンキャンディ" style="background: linear-gradient(135deg, #f0abfc, #93c5fd);" title="コットンキャンディ" aria-label="コットンキャンディ" role="radio" aria-checked="false" id="colorPreset15"></button>
+          <button class="color-swatch" data-color="オーロラグラデーション" style="background: linear-gradient(135deg, #a78bfa, #67e8f9, #86efac);" title="オーロラグラデーション" aria-label="オーロラグラデーション" role="radio" aria-checked="false" id="colorPreset16"></button>
+        </div>
+        <div class="color-custom-group">
+          <div class="color-picker-wrapper">
+            <input type="color" class="color-picker-input" id="customColorPicker" value="#3b82f6" aria-label="カスタムカラー選択">
+            <span class="color-picker-label">カスタム</span>
+          </div>
+          <button class="color-auto-btn active" id="colorAutoBtn" type="button" aria-label="配色をお任せ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            お任せ
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. キャラクター画像 -->
+    <section class="section" id="sectionImages">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <h2 class="section__title">キャラクター画像</h2>
+        <span class="section__badge" id="imageBadge">任意</span>
+      </div>
+      <div class="image-upload-zone" id="imageUploadZone">
+        <input type="file" id="imageFileInput" accept="image/*" multiple aria-label="画像をアップロード">
+        <svg class="image-upload-zone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <div class="image-upload-zone__text">キャラクター画像をドラッグ＆ドロップ</div>
+        <div class="image-upload-zone__hint">またはクリックしてファイルを選択（最大5枚）</div>
+      </div>
+      <div class="image-thumbnails" id="imageThumbnails"></div>
+    </section>
+
+    <!-- 7. 生成ボタン -->
+    <section class="section" id="sectionGenerate">
+      <button class="generate-btn" id="generateBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        プロンプトを生成する
+      </button>
+    </section>
+
+    <!-- 8. 出力エリア -->
+    <section class="section output-section" id="outputSection">
+
+      <div class="output-card" id="promptCard">
+        <div class="output-card__header">
+          <span class="output-card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            図解プロンプト
+          </span>
+          <div class="output-card__actions">
+            <button class="action-btn action-btn--copy" id="copyPromptBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              まとめてコピー
+            </button>
+          </div>
+        </div>
+        <div class="output-card__body">
+          <pre class="output-text" id="promptText"></pre>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ===== フッター ===== -->
+  <footer class="app-footer" role="contentinfo">
+    <p>図解プロンプトビルダー — Nano Banana Pro 専用ツール</p>
+    <button class="app-footer__reset" id="resetAllBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      すべてリセット
+    </button>
+  </footer>
+
+  <!-- ===== ペーストキュー ===== -->
+  <div class="paste-queue" id="pasteQueue">
+    <div class="paste-queue__progress-bar">
+      <div class="paste-queue__progress-fill" id="pasteProgressFill" style="width: 0%"></div>
+    </div>
+    <div class="paste-queue__header">
+      <span class="paste-queue__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        ペーストキュー
+      </span>
+      <span class="paste-queue__progress" id="pasteQueueProgress">0/0</span>
+      <button class="paste-queue__close" id="pasteQueueClose" type="button" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="paste-queue__items" id="pasteQueueItems"></div>
+    <div class="paste-queue__footer">
+      <button class="paste-queue__cta" id="pasteQueueCta" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        次をコピー
+      </button>
+      <div class="paste-queue__hint" id="pasteQueueHint">💡 Geminiに貼り付けたら次をコピーしてください</div>
+    </div>
+  </div>
+
+  <!-- ===== Toast ===== -->
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toastMessage">コピーしました</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
