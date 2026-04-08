@@ -135,8 +135,9 @@
     carouselGenerateBtn: $('#carouselGenerateBtn'),
     carouselOutputSection: $('#carouselOutputSection'),
     carouselOutputCards: $('#carouselOutputCards'),
-    // 単体モード出力
-    modeContentSingleOutput: $('#modeContentSingleOutput')
+    // モード出力
+    modeContentSingleOutput: $('#modeContentSingleOutput'),
+    modeContentCarouselOutput: $('#modeContentCarouselOutput')
   };
 
   // ============================================================
@@ -886,6 +887,9 @@ ${layoutDef.desc}
     // 生成ボタン＋出力の切替
     if (els.modeContentSingleOutput) {
       els.modeContentSingleOutput.style.display = mode === 'single' ? '' : 'none';
+    }
+    if (els.modeContentCarouselOutput) {
+      els.modeContentCarouselOutput.style.display = mode === 'carousel' ? '' : 'none';
     }
 
     // ペーストキューをクリア
