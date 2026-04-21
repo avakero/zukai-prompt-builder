@@ -17,8 +17,8 @@ const js   = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
 const scopedCSS = css
   // :root → .zpb-root
   .replace(/:root\s*\{/g, '.zpb-root {')
-  // [data-theme="dark"] → .zpb-root[data-zpb-theme="dark"]
-  .replace(/\[data-theme="dark"\]/g, '.zpb-root[data-zpb-theme="dark"]')
+  // [data-theme="xxx"] → .zpb-root[data-zpb-theme="xxx"]（全テーマ対応）
+  .replace(/\[data-theme="(\w+)"\]/g, '.zpb-root[data-zpb-theme="$1"]')
   // body, html のグローバルスタイルを除去
   .replace(/^html\s*\{[\s\S]*?\}/m, '')
   .replace(/^body\s*\{[\s\S]*?\}/m, '')
@@ -40,6 +40,7 @@ const scopedCSS = css
 const scopedJS = js
   .replace(/document\.documentElement\.setAttribute\('data-theme'/g, 
     "document.getElementById('zpb-root').setAttribute('data-zpb-theme'")
+  .replace(/dataset\.theme/g, 'dataset.zpbTheme')
   .replace(/data-theme/g, 'data-zpb-theme');
 
 // ============================================================
@@ -69,6 +70,7 @@ const output = `<!--
 -->
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
 /* === WordPress用スコープ化CSS === */

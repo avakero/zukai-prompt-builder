@@ -6,8 +6,74 @@
   <meta name="description" content="文章を貼り付けてオプションを選ぶだけで、AI図解生成用の構造化プロンプトを自動作成できるWebツール。Nano Banana Pro専用。">
   <title>図解プロンプトビルダー | Nano Banana Pro</title>
   <link rel="stylesheet" href="index.css">
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
+
+<!-- ===== LINEログインゲート ===== -->
+<div class="line-login-gate" id="lineLoginGate">
+  <div class="line-login-card">
+    <div class="line-login-card__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    </div>
+
+    <!-- 状態1: ローディング -->
+    <div class="line-login-state active" id="lineStateLoading">
+      <div class="line-login-loading">
+        <div class="line-login-loading__spinner"></div>
+        <div class="line-login-loading__text">認証を確認しています…</div>
+      </div>
+    </div>
+
+    <!-- 状態2: ログインボタン -->
+    <div class="line-login-state" id="lineStateLogin">
+      <h2 class="line-login-card__title">図解プロンプトビルダー</h2>
+      <p class="line-login-card__desc">このツールはLINE公式アカウントの友だち限定です。<br>LINEアカウントでログインしてください。</p>
+      <button class="line-login-btn" id="lineLoginBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+        </svg>
+        LINEでログイン
+      </button>
+    </div>
+
+    <!-- 状態3: 友だちではない -->
+    <div class="line-login-state" id="lineStateNonFriend">
+      <div class="line-login-nonfriend">
+        <div class="line-login-nonfriend__icon">🔒</div>
+        <h2 class="line-login-nonfriend__title">友だち登録が必要です</h2>
+        <p class="line-login-nonfriend__desc">このツールはLINE公式アカウントの友だち限定です。<br>下のボタンから友だち追加してから、再度お試しください。</p>
+        <a class="line-login-nonfriend__add-btn" id="lineAddFriendBtn" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+          </svg>
+          友だち追加する
+        </a>
+        <button class="line-login-nonfriend__retry-btn" id="lineRetryFriendBtn" type="button">
+          友だち追加済みの方はこちら（再確認）
+        </button>
+      </div>
+    </div>
+
+    <!-- 状態4: エラー -->
+    <div class="line-login-state" id="lineStateError">
+      <div class="line-login-error">
+        <div class="line-login-error__icon">⚠️</div>
+        <h2 class="line-login-error__title">エラーが発生しました</h2>
+        <p class="line-login-error__desc" id="lineErrorMessage">認証処理中にエラーが発生しました。<br>もう一度お試しください。</p>
+        <button class="line-login-error__retry-btn" id="lineErrorRetryBtn" type="button">
+          再試行する
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ===== ヘッダー ===== -->
   <header class="app-header" role="banner">
@@ -24,6 +90,15 @@
         <h1 class="app-header__title">図解プロンプトビルダー</h1>
         <span class="app-header__subtitle">Nano Banana Pro 専用</span>
       </div>
+    </div>
+    <!-- LINEユーザープロフィール -->
+    <div class="line-user-profile" id="lineUserProfile" style="display: none;">
+      <span class="line-user-profile__status">ログイン中</span>
+      <button class="line-user-profile__logout" id="lineLogoutBtn" type="button" aria-label="ログアウト" title="ログアウト">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
     </div>
     <div class="theme-selector" id="themeSelector" role="radiogroup" aria-label="テーマ切り替え">
       <button class="theme-selector__btn theme-selector__btn--light" data-theme="light" type="button" aria-label="ライトモード" role="radio" aria-checked="false" title="ライト">

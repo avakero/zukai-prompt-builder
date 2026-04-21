@@ -1393,11 +1393,139 @@ ${layoutDef.desc}
     initEvents();
   }
 
-  // DOM準備完了後に初期化
+  // ============================================================
+  // LINE LIFF 認証
+  // ============================================================
+
+  const LIFF_ID = '2009850086-K3TrYsDF';
+
+  // LINE公式アカウントのID（友だち追加URLに使用）
+  // ※ LINE Official Account Manager で確認できるベーシックID（@xxx）またはプレミアムID
+  const LINE_OA_ID = '@922tidzy';
+
+  // ログインゲートの状態切替
+  function setLoginState(stateId) {
+    document.querySelectorAll('.line-login-state').forEach(el => {
+      el.classList.remove('active');
+    });
+    const target = document.getElementById(stateId);
+    if (target) target.classList.add('active');
+  }
+
+  // ログインゲートを非表示にする
+  function hideLoginGate() {
+    const gate = document.getElementById('lineLoginGate');
+    if (gate) gate.classList.add('hidden');
+  }
+
+  // ヘッダーにログイン状態を表示（個人情報は表示しない）
+  function showUserProfile() {
+    const profileEl = document.getElementById('lineUserProfile');
+    if (profileEl) {
+      profileEl.style.display = 'flex';
+    }
+  }
+
+  // 友だち確認
+  async function checkFriendship() {
+    try {
+      const friendship = await liff.getFriendship();
+      if (friendship.friendFlag) {
+        // 友だち → アプリ表示
+        hideLoginGate();
+        init();
+        showUserProfile();
+      } else {
+        // 友だちではない → 友だち追加画面表示
+        const addBtn = document.getElementById('lineAddFriendBtn');
+        if (addBtn) {
+          addBtn.href = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
+        }
+        setLoginState('lineStateNonFriend');
+      }
+    } catch (e) {
+      console.error('友だち確認エラー:', e);
+      // getFriendship() が失敗した場合（チャネル未リンク等）
+      // フォールバック: ログイン済みならアプリ表示（友だち確認スキップ）
+      console.warn('友だち確認をスキップしてアプリを表示します。LINE公式アカウントのリンク設定を確認してください。');
+      hideLoginGate();
+      init();
+      showUserProfile();
+    }
+  }
+
+  // LIFF初期化＆認証フロー
+  async function initLiff() {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+
+      if (liff.isLoggedIn()) {
+        // ログイン済み → 友だち確認へ
+        setLoginState('lineStateLoading');
+        await checkFriendship();
+      } else {
+        // 未ログイン → ログインボタン表示
+        setLoginState('lineStateLogin');
+      }
+    } catch (e) {
+      console.error('LIFF初期化エラー:', e);
+      setLoginState('lineStateError');
+      const errMsg = document.getElementById('lineErrorMessage');
+      if (errMsg) {
+        errMsg.innerHTML = `認証の初期化に失敗しました。<br>ページを再読み込みしてお試しください。<br><small style="color:var(--text-tertiary)">${e.message || ''}</small>`;
+      }
+    }
+  }
+
+  // ログインゲートのイベントリスナー
+  function initLoginEvents() {
+    // LINEログインボタン
+    const loginBtn = document.getElementById('lineLoginBtn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => {
+        liff.login();
+      });
+    }
+
+    // 友だち追加後の再確認ボタン
+    const retryFriendBtn = document.getElementById('lineRetryFriendBtn');
+    if (retryFriendBtn) {
+      retryFriendBtn.addEventListener('click', async () => {
+        setLoginState('lineStateLoading');
+        await checkFriendship();
+      });
+    }
+
+    // エラー時の再試行ボタン
+    const errorRetryBtn = document.getElementById('lineErrorRetryBtn');
+    if (errorRetryBtn) {
+      errorRetryBtn.addEventListener('click', () => {
+        location.reload();
+      });
+    }
+
+    // ログアウトボタン
+    const logoutBtn = document.getElementById('lineLogoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (liff.isLoggedIn()) {
+          liff.logout();
+          location.reload();
+        }
+      });
+    }
+  }
+
+  // DOM準備完了後にLIFF認証を開始
+  function startApp() {
+    initLoginEvents();
+    initLiff();
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', startApp);
   } else {
-    init();
+    startApp();
   }
 
 })();

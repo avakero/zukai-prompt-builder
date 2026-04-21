@@ -2146,3 +2146,325 @@ img {
     justify-content: flex-end;
   }
 }
+
+/* ============================================================
+   15. LINE ログインゲート
+   ============================================================ */
+
+/* --- オーバーレイ --- */
+.line-login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-secondary);
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.line-login-gate.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* --- カード --- */
+.line-login-card {
+  width: 90%;
+  max-width: 420px;
+  background: var(--surface-card);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-10) var(--space-8);
+  text-align: center;
+  animation: fadeInUp 0.5s ease both;
+}
+
+[data-theme="dark"] .line-login-card {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.line-login-card__icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto var(--space-6);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(var(--color-primary-500-rgb), 0.3);
+}
+
+[data-theme="sakura"] .line-login-card__icon {
+  background: linear-gradient(135deg, #f43f5e, #ec4899);
+  box-shadow: 0 8px 24px rgba(244, 63, 94, 0.3);
+}
+
+.line-login-card__icon svg {
+  width: 36px;
+  height: 36px;
+  color: white;
+}
+
+.line-login-card__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.02em;
+}
+
+.line-login-card__desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-8);
+  line-height: var(--leading-relaxed);
+}
+
+/* --- LINEログインボタン --- */
+.line-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: #ffffff;
+  background: #06C755;
+  border: none;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+  letter-spacing: 0.02em;
+}
+
+.line-login-btn:hover {
+  background: #05b34c;
+  box-shadow: 0 6px 20px rgba(6, 199, 85, 0.45);
+  transform: translateY(-1px);
+}
+
+.line-login-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(6, 199, 85, 0.3);
+}
+
+.line-login-btn svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* --- ローディング状態 --- */
+.line-login-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.line-login-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--color-primary-500);
+  border-radius: 50%;
+  animation: lineSpinnerRotate 0.8s linear infinite;
+}
+
+[data-theme="sakura"] .line-login-loading__spinner {
+  border-top-color: #f43f5e;
+}
+
+@keyframes lineSpinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+.line-login-loading__text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* --- 非友だち画面 --- */
+.line-login-nonfriend {
+  text-align: center;
+}
+
+.line-login-nonfriend__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+}
+
+.line-login-nonfriend__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.line-login-nonfriend__desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  line-height: var(--leading-relaxed);
+}
+
+.line-login-nonfriend__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: #ffffff;
+  background: #06C755;
+  border: none;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+}
+
+.line-login-nonfriend__add-btn:hover {
+  background: #05b34c;
+  box-shadow: 0 6px 20px rgba(6, 199, 85, 0.45);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.line-login-nonfriend__retry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.line-login-nonfriend__retry-btn:hover {
+  border-color: var(--border-color-hover);
+  color: var(--text-primary);
+  background: var(--surface-card-hover);
+}
+
+/* --- エラー画面 --- */
+.line-login-error {
+  text-align: center;
+}
+
+.line-login-error__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+}
+
+.line-login-error__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-error);
+  margin-bottom: var(--space-2);
+}
+
+.line-login-error__desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  line-height: var(--leading-relaxed);
+}
+
+.line-login-error__retry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.line-login-error__retry-btn:hover {
+  border-color: var(--border-color-hover);
+  background: var(--surface-card-hover);
+}
+
+/* --- ログインゲート内 状態切替 --- */
+.line-login-state { display: none; }
+.line-login-state.active { display: block; }
+
+/* --- ヘッダー：ユーザープロフィール --- */
+.line-user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: var(--space-2);
+}
+
+.line-user-profile__status {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: #06C755;
+  background: rgba(6, 199, 85, 0.08);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.line-user-profile__logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.line-user-profile__logout:hover {
+  background: var(--color-neutral-100);
+  color: var(--color-error);
+}
+
+[data-theme="dark"] .line-user-profile__logout:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.line-user-profile__logout svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+
