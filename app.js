@@ -303,57 +303,36 @@
     }
 
     const hasImages = characterImages.length > 0;
-    const imageNote = hasImages
-      ? `\n\n## ■キャラクター画像\n添付した${characterImages.length}枚のキャラクター画像を図解内に登場させてください。\nキャラクターの外見は変更せず、そのままのデザインを維持してください。`
+    const layoutLine = state.layout === 'G'
+      ? `内容に合わせて最適な構成（並列リスト・比較・ステップ・4象限・サイクル・ピラミッド等）を自動で選択`
+      : `${layoutDef.label}（${layoutDef.desc}）`;
+
+    const constraints = [
+      '意味のない英語の羅列は入れない',
+      '実在ブランドのロゴは描かない'
+    ];
+    if (hasImages) constraints.push('添付キャラクター画像の外見（髪型・服装・体型）は変更せず、そのまま使用する');
+
+    const imageSection = hasImages
+      ? `\n\n## キャラクター画像\n添付の${characterImages.length}枚を図解内に登場させる。外見はそのまま維持し、ポーズや表情だけ内容に合わせて調整する。`
       : '';
 
-    // === 統一プロンプト（命令書 + 依頼内容を一体化） ===
-    const prompt = `# 命令書：万能・図解デザイナーAI
-あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
+    // === 統合プロンプト ===
+    const prompt = `# 図解作成依頼
 
-## ■基本方針
-* ユーザー専属デザイナーとして、丁寧かつ親しみやすく振る舞う。
-* ユーザーの指定した「スタイル」に合わせて画風を完全に切り替える。
-* 不明点があれば確認の質問をする。
+あなたはプロの図解デザイナーです。以下の内容を、指定のデザイン仕様で1枚の図解にしてください。
 
-## ■スタイル定義
-* **A：手書き風** — 色鉛筆や水彩のタッチ。温かみのあるパステル調。
-* **B：ビジネス風** — フラットデザイン。信頼感のある寒色系。
-* **C：ポップ** — 太い主線、鮮やかな原色。元気な印象。
-* **D：ミニマル** — 線画のみ、最低限の色数。洗練された印象。
-
-## ■レイアウト定義
-* **A：並列リスト**（要点まとめ）
-* **B：比較図**（VS構造、左右対比）
-* **C：ステップ進行**（ロードマップ、手順）
-* **D：4象限マトリクス**（分布、ポジショニング）
-* **E：サイクル図**（循環、ループ）
-* **F：ピラミッド**（階層構造）
-* **G：お任せ** — 最適な構成を自動で組む。
-
-## ■禁止事項
-* 指定されたキャラの外見変更（キャラ使用時）
-* 意味のない英語の羅列
-* 実在ブランドのロゴ描写
-
----
-
-## ■今回の依頼内容
-
-以下の内容で図解を作成してください。
-
-### 内容テキスト
+## 内容
 ${text}
 
-### スタイル: ${state.style} — ${styleDef.label}
-${styleDef.desc}
+## デザイン仕様
+* **画風**: ${styleDef.label} — ${styleDef.desc}
+* **構成**: ${layoutLine}
+* **アスペクト比**: ${state.format}
+* **配色**: ${colorInstruction}
 
-### レイアウト: ${state.layout} — ${layoutDef.label}
-${layoutDef.desc}
-
-### フォーマット: ${state.format}
-
-### 配色: ${colorInstruction}${imageNote}`;
+## 制約
+${constraints.map(c => `* ${c}`).join('\n')}${imageSection}`;
 
     els.promptText.textContent = prompt;
     els.outputSection.classList.add('visible');
@@ -1146,68 +1125,38 @@ ${layoutDef.desc}
       colorInstruction = `テーマカラー: ${state.customColor}`;
     }
 
-    // キャラクター画像の指示
-    let charImageNote = '';
-    if (characterImages.length > 0) {
-      charImageNote = `\n\n### キャラクター画像
-添付したキャラクター画像を図解内に配置してください。
-* キャラクターの外見（髪型・服装・体型）は変えずそのまま使用すること。
-* 図解の内容とマッチしたポーズや表情をつけること。
-* 添付画像${characterImages.length}枚`;
-    }
+    const hasImages = characterImages.length > 0;
+    const layoutLine = layout === 'G'
+      ? `内容に合わせて最適な構成（並列リスト・比較・ステップ・4象限・サイクル・ピラミッド等）を自動で選択`
+      : `${layoutDef.label}（${layoutDef.desc}）`;
 
-    return `# 命令書：万能・図解デザイナーAI
-あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
+    const constraints = [
+      '全スライドで統一感のあるデザインにする',
+      `右下にページ番号「${page}/${totalSlides}」を小さく入れる`,
+      '意味のない英語の羅列は入れない',
+      '実在ブランドのロゴは描かない'
+    ];
+    if (hasImages) constraints.push('添付キャラクター画像の外見（髪型・服装・体型）は変更せず、そのまま使用する');
 
-## ■基本方針
-* ユーザー専属デザイナーとして、丁寧かつ親しみやすく振る舞う。
-* ユーザーの指定した「スタイル」に合わせて画風を完全に切り替える。
-* 不明点があれば確認の質問をする。
+    const imageSection = hasImages
+      ? `\n\n## キャラクター画像\n添付の${characterImages.length}枚を図解内に登場させる。外見はそのまま維持し、内容に合ったポーズや表情をつける。`
+      : '';
 
-## ■スタイル定義
-* **A：手書き風** — 色鉛筆や水彩のタッチ。温かみのあるパステル調。
-* **B：ビジネス風** — フラットデザイン。信頼感のある寒色系。
-* **C：ポップ** — 太い主線、鮮やかな原色。元気な印象。
-* **D：ミニマル** — 線画のみ、最低限の色数。洗練された印象。
+    return `# カルーセル図解作成依頼（${page}/${totalSlides}枚目・${roleLabel}）
 
-## ■レイアウト定義
-* **A：並列リスト**（要点まとめ）
-* **B：比較図**（VS構造、左右対比）
-* **C：ステップ進行**（ロードマップ、手順）
-* **D：4象限マトリクス**（分布、ポジショニング）
-* **E：サイクル図**（循環、ループ）
-* **F：ピラミッド**（階層構造）
-* **G：お任せ** — 最適な構成を自動で組む。
+あなたはプロの図解デザイナーです。これはカルーセル投稿の${page}枚目（全${totalSlides}枚）で、このスライドの役割は「${roleLabel}」です。以下の内容を、指定のデザイン仕様で1枚の図解にしてください。
 
-## ■禁止事項
-* 指定されたキャラの外見変更（キャラ使用時）
-* 意味のない英語の羅列
-* 実在ブランドのロゴ描写
-
-## ■カルーセル投稿の注意事項
-* これはカルーセル投稿の **${page}枚目 / 全${totalSlides}枚** です
-* 全スライドで統一感のあるデザインにしてください
-* ページ番号「${page}/${totalSlides}」を右下に小さく入れてください
-* このスライドの役割: **${roleLabel}**
-
----
-
-## ■今回の依頼内容
-
-以下の内容で図解を作成してください。
-
-### 内容テキスト
+## 内容
 ${content}
 
-### スタイル: ${globalStyle} — ${styleDef.label}
-${styleDef.desc}
+## デザイン仕様
+* **画風**: ${styleDef.label} — ${styleDef.desc}
+* **構成**: ${layoutLine}
+* **アスペクト比**: ${globalFormat}
+* **配色**: ${colorInstruction}
 
-### レイアウト: ${layout} — ${layoutDef.label}
-${layoutDef.desc}
-
-### フォーマット: ${globalFormat}
-
-### 配色: ${colorInstruction}${charImageNote}`;
+## 制約
+${constraints.map(c => `* ${c}`).join('\n')}${imageSection}`;
   }
 
   // ============================================================
