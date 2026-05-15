@@ -38,10 +38,19 @@ const scopedCSS = css
 // ============================================================
 
 const scopedJS = js
-  .replace(/document\.documentElement\.setAttribute\('data-theme'/g, 
+  .replace(/document\.documentElement\.setAttribute\('data-theme'/g,
     "document.getElementById('zpb-root').setAttribute('data-zpb-theme'")
   .replace(/dataset\.theme/g, 'dataset.zpbTheme')
   .replace(/data-theme/g, 'data-zpb-theme');
+
+// ============================================================
+// JS を base64 エンコード（WordPress/Elementor の文字エスケープ対策）
+// ============================================================
+// インラインJSは WordPress/Elementor/プラグインの各種フィルタで
+// 任意の文字（>, <, &, クォート、空行、ピリオド等）を勝手に変換されるため、
+// JSの中身を base64 文字列にして、ページ側では tiny bootstrap だけ書く。
+// base64 は [A-Za-z0-9+/=] のみで構成されるため、WP はこれを変換しない。
+const jsBase64 = Buffer.from(scopedJS, 'utf8').toString('base64');
 
 // ============================================================
 // HTML body コンテンツ抽出
@@ -56,11 +65,11 @@ const scopedBody = bodyMatch
 // 出力生成
 // ============================================================
 
-const output = `<!-- 
+const output = `<!--
   ===============================================
   図解プロンプトビルダー — WordPress固定ページ用
   ===============================================
-  使い方: 
+  使い方:
   1. WordPress管理画面 → 固定ページ → 新規追加
   2. 「カスタムHTML」ブロックを追加
   3. このファイルの内容をすべて貼り付ける
@@ -93,10 +102,48 @@ ${scopedBody}
 </div>
 
 <script>
-${scopedJS}
+// ===== bootstrap: base64 でJS本体をロード（WP/Elementor のフィルタ回避） =====
+(function(){
+  var b64 = "${jsBase64}";
+  try {
+    // UTF-8 として正しく復号
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var code = new TextDecoder('utf-8').decode(bytes);
+    // Blob URL で外部スクリプトとしてロード
+    var url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = function(){ URL.revokeObjectURL(url); };
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {
+    console.error('[ZPB bootstrap] failed:', e);
+    var gate = document.getElementById('lineLoginGate');
+    if (gate) {
+      var err = document.getElementById('lineStateError');
+      var loading = document.getElementById('lineStateLoading');
+      var msg = document.getElementById('lineErrorMessage');
+      if (loading) loading.classList.remove('active');
+      if (err) err.classList.add('active');
+      if (msg) msg.innerHTML = 'スクリプト初期化に失敗しました。<br><small>' + (e.message || e) + '</small>';
+    }
+  }
+})();
 </script>`;
 
 fs.writeFileSync(path.join(dir, 'wordpress-embed.html'), output, 'utf8');
 
+// 古い別ファイル版が残っていれば削除（混乱防止）
+try {
+  fs.unlinkSync(path.join(dir, 'wordpress-embed.js'));
+  console.log('🧹 旧 wordpress-embed.js を削除しました');
+} catch (e) {
+  // 元から無ければOK
+}
+
 console.log('✅ wordpress-embed.html を生成しました！');
 console.log(`   サイズ: ${(Buffer.byteLength(output) / 1024).toFixed(1)} KB`);
+console.log('');
+console.log('📋 WordPress配置手順:');
+console.log('   wordpress-embed.html の中身をすべて「カスタムHTML」ブロックに貼り付けるだけ');

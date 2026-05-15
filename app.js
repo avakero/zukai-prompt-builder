@@ -13,6 +13,112 @@
   const STORAGE_KEY = 'zukai-prompt-builder';
   const MAX_IMAGES = 5;
 
+  // AI（Gemini / Straico）API 設定
+  const AI_STORAGE_KEY = 'zukai-ai-config';
+  const GEMINI_STORAGE_KEY_LEGACY = 'zukai-gemini-config'; // 旧キー（移行用）
+
+  // Gemini 直接
+  const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+  const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+  const GEMINI_MODELS = [
+    { id: 'gemini-2.5-flash', label: 'gemini-2.5-flash（推奨・高速）' },
+    { id: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite（最速・低コスト）' },
+    { id: 'gemini-2.5-pro', label: 'gemini-2.5-pro（高品質・低速）' }
+  ];
+
+  // Straico（マルチモデル対応プロキシ）
+  const STRAICO_ENDPOINT = 'https://api.straico.com/v1/prompt/completion';
+  const STRAICO_DEFAULT_MODEL = 'openai/gpt-4o-mini';
+  // 内蔵デフォルトキーで利用可能な、フォールバック先として安定しているモデル
+  const STRAICO_FALLBACK_MODEL = 'openai/gpt-4o-mini';
+  // 「Model not found」になったら自動的にフォールバックへ差し替える対象
+  const STRAICO_LEGACY_MODELS = new Set([
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-flash-lite'
+  ]);
+  // 内蔵デフォルトキー（ユーザーが独自キー未設定でもStraicoを利用可能にする）
+  // ※ ブラウザに配信されるため、配布範囲に応じて差し替え・無効化してください
+  const STRAICO_DEFAULT_API_KEY = 'WR-qLuslnqOHBAV3ni7xtagY9FuOpVzm34FH9MTFzZIzDPM95mE';
+  const STRAICO_MODELS = [
+    { id: 'openai/gpt-4o-mini',           label: 'GPT-4o mini（推奨・JSON出力安定）' },
+    { id: 'openai/gpt-4.1-mini',          label: 'GPT-4.1 mini（バランス）' },
+    { id: 'anthropic/claude-haiku-4-5',   label: 'Claude Haiku 4.5（軽量Claude）' },
+    { id: 'google/gemini-2.5-flash',      label: 'Gemini 2.5 Flash（プランによる）' },
+    { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite（プランによる）' }
+  ];
+
+  const PROVIDER_META = {
+    straico: {
+      label: 'Straico',
+      models: STRAICO_MODELS,
+      defaultModel: STRAICO_DEFAULT_MODEL,
+      keyPlaceholder: 'Straicoダッシュボードで取得したAPIキー',
+      helpUrl: 'https://platform.straico.com/user-settings',
+      helpLabel: 'Straico でAPIキーを取得する',
+      desc: 'Straico API は複数のAIモデル（Gemini/GPT/Claude）を統一APIで利用できます。<br>キーはお使いのブラウザ内（localStorage）にのみ保存され、Straico以外には送信されません。'
+    },
+    gemini: {
+      label: 'Gemini 直接',
+      models: GEMINI_MODELS,
+      defaultModel: GEMINI_DEFAULT_MODEL,
+      keyPlaceholder: 'AIzaSy...',
+      helpUrl: 'https://aistudio.google.com/apikey',
+      helpLabel: 'Google AI Studio でAPIキーを取得する',
+      desc: 'Google AI Studio で取得した Gemini API キーを入力してください。<br>キーはお使いのブラウザ内（localStorage）にのみ保存され、Google以外には送信されません。'
+    }
+  };
+
+  // Pickaxe API 設定
+  // 同一インプット仕様の deployment キーを複数登録し、リクエストごとに
+  // ローテーションすることで並列実行を可能にする（各 deployment は単独だと
+  // 同時実行が制限されるため）。
+  const PICKAXE_CONFIG = {
+    api_keys: [
+      'deployment-c28df016-464b-445c-9576-421a36c83d9b',
+      'deployment-031af6c4-5338-4245-91e8-d49c9072c64e',
+      'deployment-4614230c-a147-4585-9092-27e1a50ca2d4',
+      'deployment-949477eb-f5a3-4de5-90c7-696cfcc1ea3c',
+      'deployment-20d3497f-4d6e-4def-beb7-3f64071501c8'
+    ],
+    endpoint: 'https://api.pickaxe.co/v1/completions',
+    input_ids: {
+      model: '57fac2d1-e94a-46b8-8afb-fff18fed82a3',
+      prompt: '18fc7bff-e8e7-4660-9434-0cee04a658fd'
+    }
+  };
+
+  // 画像生成スタイルプリセット定義
+  const IMAGE_GEN_STYLE_PRESETS = {
+    handdrawn: {
+      label: '手書き風イラスト',
+      prompt: '色鉛筆や水彩で描いたような温かみのあるイラスト。パステル調の色使い、手描きのラフなライン。デジタル感を排除し、紙に描かれたような質感。日本語テキストは手書き風フォントで。'
+    },
+    flat: {
+      label: 'フラットビジネス',
+      prompt: 'フラットデザインのビジネス向けイラスト。ベクター調の整った直線的デザイン。信頼感のある寒色系カラー。余白を活かしたクリーンなレイアウト。日本語テキストはゴシック体で明瞭に。'
+    },
+    pop: {
+      label: 'ポップ＆カラフル',
+      prompt: '鮮やかな原色使いのポップなイラスト。太い主線、コミック調の表現。エネルギッシュで元気な印象。吹き出しやエフェクト演出あり。'
+    },
+    minimal: {
+      label: 'ミニマルモノクロ',
+      prompt: 'ミニマルデザインの図解。線画のみまたは最低限の色数。洗練されたシンプルな構成。余白を大きく取り、要素を厳選。モノクロームまたはデュオトーン。'
+    },
+    infographic: {
+      label: 'インフォグラフィック',
+      prompt: 'モダンなインフォグラフィックスタイル。データビジュアライゼーション風のアイコン・チャート・グラフ要素。整理された情報階層、読みやすいタイポグラフィ。鮮やかなアクセントカラー。'
+    },
+    chalkboard: {
+      label: '黒板チョーク風',
+      prompt: '黒板にチョークで描いたような手書き風図解。ダークグリーンまたはダーク背景に白・パステルカラーのチョーク文字と図。レトロで親しみやすい雰囲気。'
+    },
+    custom: {
+      label: 'カスタム',
+      prompt: ''
+    }
+  };
+
   const STYLE_DEFS = {
     A: {
       label: '手書き風（アナログ）',
@@ -82,6 +188,16 @@
   let pasteQueue = [];
   let pasteQueueIndex = 0;
 
+  // 画像生成状態
+  let imageGenState = {
+    selectedPreset: 'handdrawn',
+    customStyle: '',
+    model: 'NanoBanana2',
+    // { slideIndex, imageUrl, stylePrompt, contentPrompt, status: 'loading'|'success'|'error', error? }
+    generatedImages: [],
+    regenSlideIndex: -1
+  };
+
   // ============================================================
   // DOM 参照
   // ============================================================
@@ -137,7 +253,49 @@
     carouselOutputCards: $('#carouselOutputCards'),
     // モード出力
     modeContentSingleOutput: $('#modeContentSingleOutput'),
-    modeContentCarouselOutput: $('#modeContentCarouselOutput')
+    modeContentCarouselOutput: $('#modeContentCarouselOutput'),
+    // 画像生成
+    imageGenPresets: $('#imageGenPresets'),
+    imageGenStyleBadge: $('#imageGenStyleBadge'),
+    imageGenCustomWrapper: $('#imageGenCustomWrapper'),
+    imageGenCustomStyle: $('#imageGenCustomStyle'),
+    modelBadge: $('#modelBadge'),
+    imageGenBtn: $('#imageGenBtn'),
+    imageGridSection: $('#imageGridSection'),
+    imageGrid: $('#imageGrid'),
+    imageGridBadge: $('#imageGridBadge'),
+    // 再生成モーダル
+    regenModalOverlay: $('#regenModalOverlay'),
+    regenModalTitle: $('#regenModalTitle'),
+    regenModalClose: $('#regenModalClose'),
+    regenModalPreview: $('#regenModalPreview'),
+    regenStylePrompt: $('#regenStylePrompt'),
+    regenContentPrompt: $('#regenContentPrompt'),
+    regenModalCancel: $('#regenModalCancel'),
+    regenModalSubmit: $('#regenModalSubmit'),
+    // AI生成（Gemini / Straico）
+    aiThemeInput: $('#aiThemeInput'),
+    aiProvider: $('#aiProvider'),
+    aiSlideCount: $('#aiSlideCount'),
+    aiTone: $('#aiTone'),
+    aiGenerateBtn: $('#aiGenerateBtn'),
+    aiGenerateBtnLabel: $('#aiGenerateBtnLabel'),
+    aiSettingsBtn: $('#aiSettingsBtn'),
+    aiGenBadge: $('#aiGenBadge'),
+    // APIキー設定モーダル
+    apiKeyModalOverlay: $('#apiKeyModalOverlay'),
+    apiKeyModalClose: $('#apiKeyModalClose'),
+    apiKeyModalDesc: $('#apiKeyModalDesc'),
+    apiKeyInput: $('#apiKeyInput'),
+    apiKeyToggleBtn: $('#apiKeyToggleBtn'),
+    apiKeyDefaultNote: $('#apiKeyDefaultNote'),
+    apiModelSelect: $('#apiModelSelect'),
+    apiKeyHelpLink: $('#apiKeyHelpLink'),
+    apiKeyHelpLinkLabel: $('#apiKeyHelpLinkLabel'),
+    apiKeyCancelBtn: $('#apiKeyCancelBtn'),
+    apiKeySaveBtn: $('#apiKeySaveBtn'),
+    apiKeyDeleteBtn: $('#apiKeyDeleteBtn'),
+    providerTabs: $$('.provider-tab')
   };
 
   // ============================================================
@@ -157,7 +315,7 @@
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        state = { ...state, ...parsed };
+        state = Object.assign({}, state, parsed);
       }
     } catch (e) {
       // パースエラーは無視
@@ -165,10 +323,28 @@
   }
 
   // ============================================================
-  // テーマ（ライト・ダーク・桜モード）
+  // テーマ（ライト・ダーク・季節モード）
   // ============================================================
 
-  const THEMES = ['light', 'sakura', 'dark'];
+  // 季節テーマ定義
+  const SEASONAL_THEMES = {
+    sakura:    { icon: '🌸', badge: '🌸 春限定',   months: [3, 4] },
+    shinryoku: { icon: '🌿', badge: '🌿 新緑',     months: [5, 6] },
+    natsu:     { icon: '🌊', badge: '🌊 夏',       months: [7, 8] },
+    kouyou:    { icon: '🍁', badge: '🍁 紅葉',     months: [9, 10, 11] },
+    fuyu:      { icon: '❄️', badge: '❄️ 冬',       months: [12, 1, 2] },
+  };
+
+  function getSeasonalTheme() {
+    const month = new Date().getMonth() + 1;
+    for (const [id, def] of Object.entries(SEASONAL_THEMES)) {
+      if (def.months.includes(month)) return Object.assign({ id: id }, def);
+    }
+    return Object.assign({ id: 'sakura' }, SEASONAL_THEMES.sakura);
+  }
+
+  const currentSeason = getSeasonalTheme();
+  const THEMES = ['light', currentSeason.id, 'dark'];
 
   function applyTheme(theme) {
     state.theme = theme;
@@ -186,8 +362,13 @@
     // 桜の花びらアニメーション 制御
     if (theme === 'sakura') {
       startSakuraPetals();
+      stopSeasonalPetals();
+    } else if (theme === 'shinryoku') {
+      stopSakuraPetals();
+      startSeasonalPetals();
     } else {
       stopSakuraPetals();
+      stopSeasonalPetals();
     }
 
     saveState();
@@ -750,6 +931,10 @@ ${layoutDef.desc}
         if (group === 'style') state.style = value;
         else if (group === 'layout') state.layout = value;
         else if (group === 'format') state.format = value;
+        else if (group === 'model') {
+          imageGenState.model = value;
+          if (els.modelBadge) els.modelBadge.textContent = value;
+        }
 
         activateCard(group, value);
         updateBadges();
@@ -865,6 +1050,122 @@ ${layoutDef.desc}
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
     }
+
+    // ===== AI生成（Gemini） =====
+    if (els.aiGenerateBtn) {
+      els.aiGenerateBtn.addEventListener('click', generateCarouselJsonWithAi);
+    }
+    if (els.aiSettingsBtn) {
+      els.aiSettingsBtn.addEventListener('click', openApiKeyModal);
+    }
+    if (els.apiKeyModalClose) {
+      els.apiKeyModalClose.addEventListener('click', closeApiKeyModal);
+    }
+    if (els.apiKeyCancelBtn) {
+      els.apiKeyCancelBtn.addEventListener('click', closeApiKeyModal);
+    }
+    if (els.apiKeySaveBtn) {
+      els.apiKeySaveBtn.addEventListener('click', saveApiKeyFromModal);
+    }
+    if (els.apiKeyDeleteBtn) {
+      els.apiKeyDeleteBtn.addEventListener('click', deleteApiKeyFromModal);
+    }
+    if (els.apiKeyToggleBtn) {
+      els.apiKeyToggleBtn.addEventListener('click', toggleApiKeyVisibility);
+    }
+    if (els.apiKeyModalOverlay) {
+      els.apiKeyModalOverlay.addEventListener('click', (e) => {
+        if (e.target === els.apiKeyModalOverlay) closeApiKeyModal();
+      });
+    }
+    if (els.aiThemeInput) {
+      els.aiThemeInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          generateCarouselJsonWithAi();
+        }
+      });
+    }
+    if (els.aiProvider) {
+      els.aiProvider.addEventListener('change', onAiProviderChange);
+    }
+    if (els.providerTabs && els.providerTabs.forEach) {
+      els.providerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          switchApiKeyModalProvider(tab.dataset.provider);
+        });
+      });
+    }
+
+    // ===== 画像生成スタイルプリセット =====
+    if (els.imageGenPresets) {
+      els.imageGenPresets.querySelectorAll('.image-gen-preset').forEach(preset => {
+        preset.addEventListener('click', () => {
+          selectImageGenPreset(preset.dataset.preset);
+        });
+        preset.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preset.click(); }
+        });
+      });
+    }
+
+    // ===== 画像一括生成 =====
+    if (els.imageGenBtn) {
+      els.imageGenBtn.addEventListener('click', generateAllImages);
+    }
+
+    // ===== 一括ダウンロード =====
+    const bulkDlBtn = document.getElementById('bulkDownloadBtn');
+    if (bulkDlBtn) {
+      bulkDlBtn.addEventListener('click', downloadAllImages);
+    }
+
+    // ===== ライトボックス =====
+    const lightboxOverlay = document.getElementById('lightboxOverlay');
+    if (lightboxOverlay) {
+      lightboxOverlay.addEventListener('click', (e) => {
+        if (e.target === lightboxOverlay) closeLightbox();
+      });
+    }
+    const lightboxClose = document.getElementById('lightboxClose');
+    if (lightboxClose) {
+      lightboxClose.addEventListener('click', closeLightbox);
+    }
+    const lightboxDownloadBtn = document.getElementById('lightboxDownloadBtn');
+    if (lightboxDownloadBtn) {
+      lightboxDownloadBtn.addEventListener('click', () => {
+        const idx = parseInt(lightboxDownloadBtn.dataset.slideIndex);
+        const imgData = imageGenState.generatedImages[idx];
+        if (imgData && imgData.imageUrl) {
+          downloadImage(imgData.imageUrl, idx);
+        }
+      });
+    }
+    // Escキーでライトボックス閉じる
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('lightboxOverlay');
+        if (overlay && overlay.classList.contains('active')) {
+          closeLightbox();
+        }
+      }
+    });
+
+    // ===== 再生成モーダル =====
+    if (els.regenModalClose) {
+      els.regenModalClose.addEventListener('click', closeRegenModal);
+    }
+    if (els.regenModalCancel) {
+      els.regenModalCancel.addEventListener('click', closeRegenModal);
+    }
+    if (els.regenModalSubmit) {
+      els.regenModalSubmit.addEventListener('click', submitRegeneration);
+    }
+    if (els.regenModalOverlay) {
+      els.regenModalOverlay.addEventListener('click', (e) => {
+        if (e.target === els.regenModalOverlay) closeRegenModal();
+      });
+    }
   }
 
   // ============================================================
@@ -891,6 +1192,15 @@ ${layoutDef.desc}
     if (els.modeContentCarouselOutput) {
       els.modeContentCarouselOutput.style.display = mode === 'carousel' ? '' : 'none';
     }
+
+    // カルーセルモードでは「画像生成スタイル」が新しいスタイル選択を担当するため、
+    // ChatGPT貼り付けプロンプト用の旧スタイル/レイアウト/配色/キャラ画像セクションを隠す
+    // （混乱を避けるため）。フォーマットは両方の生成で共通利用するので残す。
+    const carouselOnlyHidden = ['sectionStyle', 'sectionLayout', 'sectionColor', 'sectionImages'];
+    carouselOnlyHidden.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = mode === 'carousel' ? 'none' : '';
+    });
 
     // ペーストキューをクリア
     closePasteQueue();
@@ -959,6 +1269,460 @@ ${layoutDef.desc}
       document.execCommand('copy');
       document.body.removeChild(textarea);
       showToast('📋 テンプレートをコピーしました！');
+    }
+  }
+
+  // ============================================================
+  // AI（マルチプロバイダ）: 設定管理
+  // ============================================================
+
+  function defaultAiConfig() {
+    return {
+      provider: 'straico',
+      straico: { apiKey: '', model: STRAICO_DEFAULT_MODEL },
+      gemini:  { apiKey: '', model: GEMINI_DEFAULT_MODEL }
+    };
+  }
+
+  function loadAiConfig() {
+    const cfg = defaultAiConfig();
+    try {
+      const saved = localStorage.getItem(AI_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.provider === 'gemini' || parsed.provider === 'straico') {
+          cfg.provider = parsed.provider;
+        }
+        if (parsed.straico) {
+          cfg.straico.apiKey = parsed.straico.apiKey || '';
+          cfg.straico.model = parsed.straico.model || STRAICO_DEFAULT_MODEL;
+          // 内蔵キー利用者が旧デフォルトの Gemini モデルを保存している場合は
+          // 安定モデルへ自動移行（プラン制限で「Model not found」になるため）
+          if (!cfg.straico.apiKey && STRAICO_LEGACY_MODELS.has(cfg.straico.model)) {
+            cfg.straico.model = STRAICO_FALLBACK_MODEL;
+          }
+        }
+        if (parsed.gemini) {
+          cfg.gemini.apiKey = parsed.gemini.apiKey || '';
+          cfg.gemini.model = parsed.gemini.model || GEMINI_DEFAULT_MODEL;
+        }
+        return cfg;
+      }
+      // 旧Gemini設定からのマイグレーション
+      const legacy = localStorage.getItem(GEMINI_STORAGE_KEY_LEGACY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        cfg.gemini.apiKey = parsed.apiKey || '';
+        cfg.gemini.model = parsed.model || GEMINI_DEFAULT_MODEL;
+        // 旧ユーザーはGemini設定済みなのでデフォルトをGeminiに
+        if (cfg.gemini.apiKey) cfg.provider = 'gemini';
+        saveAiConfig(cfg);
+      }
+    } catch (e) {}
+    return cfg;
+  }
+
+  function saveAiConfig(cfg) {
+    try {
+      localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(cfg));
+    } catch (e) {}
+  }
+
+  /**
+   * 指定プロバイダの実効APIキー（ユーザー設定 > 内蔵デフォルト）を返す
+   */
+  function getEffectiveApiKey(provider, cfg) {
+    if (provider === 'straico') {
+      return cfg.straico.apiKey || STRAICO_DEFAULT_API_KEY;
+    }
+    return cfg.gemini.apiKey;
+  }
+
+  // ============================================================
+  // APIキー設定モーダル
+  // ============================================================
+
+  let apiKeyModalActiveProvider = 'straico'; // モーダル内で現在編集中のプロバイダ
+
+  function openApiKeyModal() {
+    const cfg = loadAiConfig();
+    apiKeyModalActiveProvider = cfg.provider;
+    renderApiKeyModalForProvider(apiKeyModalActiveProvider, cfg);
+    els.apiKeyModalOverlay.classList.add('active');
+    setTimeout(() => els.apiKeyInput.focus(), 100);
+  }
+
+  function closeApiKeyModal() {
+    els.apiKeyModalOverlay.classList.remove('active');
+  }
+
+  /**
+   * 指定プロバイダ用にモーダル内のフィールドを再描画
+   */
+  function renderApiKeyModalForProvider(provider, cfg) {
+    const meta = PROVIDER_META[provider];
+    if (!meta) return;
+    const cur = (provider === 'straico') ? cfg.straico : cfg.gemini;
+
+    // タブ active 状態
+    els.providerTabs.forEach(tab => {
+      const isActive = tab.dataset.provider === provider;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    // 説明
+    els.apiKeyModalDesc.innerHTML = meta.desc;
+
+    // APIキー入力
+    els.apiKeyInput.value = cur.apiKey || '';
+    els.apiKeyInput.type = 'password';
+    els.apiKeyInput.placeholder = meta.keyPlaceholder;
+
+    // 内蔵デフォルトキー注記
+    const hasBuiltin = provider === 'straico' && !!STRAICO_DEFAULT_API_KEY;
+    if (els.apiKeyDefaultNote) {
+      els.apiKeyDefaultNote.style.display = hasBuiltin ? '' : 'none';
+    }
+
+    // モデル選択肢を再構築
+    els.apiModelSelect.innerHTML = '';
+    meta.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.label;
+      els.apiModelSelect.appendChild(opt);
+    });
+    els.apiModelSelect.value = cur.model || meta.defaultModel;
+
+    // ヘルプリンク
+    els.apiKeyHelpLink.href = meta.helpUrl;
+    els.apiKeyHelpLinkLabel.textContent = meta.helpLabel;
+  }
+
+  function switchApiKeyModalProvider(provider) {
+    if (provider !== 'straico' && provider !== 'gemini') return;
+    apiKeyModalActiveProvider = provider;
+    renderApiKeyModalForProvider(provider, loadAiConfig());
+  }
+
+  function saveApiKeyFromModal() {
+    const apiKey = els.apiKeyInput.value.trim();
+    const model = els.apiModelSelect.value || PROVIDER_META[apiKeyModalActiveProvider].defaultModel;
+
+    // Straicoは内蔵キーがあればAPIキー空でも保存可
+    const hasBuiltin = apiKeyModalActiveProvider === 'straico' && !!STRAICO_DEFAULT_API_KEY;
+    if (!apiKey && !hasBuiltin) {
+      showToast('⚠️ APIキーを入力してください');
+      els.apiKeyInput.focus();
+      return;
+    }
+
+    const cfg = loadAiConfig();
+    if (apiKeyModalActiveProvider === 'straico') {
+      cfg.straico = { apiKey, model };
+    } else {
+      cfg.gemini = { apiKey, model };
+    }
+    // 保存したプロバイダをアクティブに切替
+    cfg.provider = apiKeyModalActiveProvider;
+    saveAiConfig(cfg);
+
+    // メイン画面のプロバイダ選択も同期
+    if (els.aiProvider) els.aiProvider.value = cfg.provider;
+
+    updateAiBadge();
+    closeApiKeyModal();
+    showToast('✅ APIキーを保存しました');
+  }
+
+  function deleteApiKeyFromModal() {
+    const provider = apiKeyModalActiveProvider;
+    if (!confirm(`${PROVIDER_META[provider].label} の保存済みAPIキーを削除しますか？`)) return;
+    const cfg = loadAiConfig();
+    if (provider === 'straico') {
+      cfg.straico = { apiKey: '', model: STRAICO_DEFAULT_MODEL };
+    } else {
+      cfg.gemini = { apiKey: '', model: GEMINI_DEFAULT_MODEL };
+    }
+    saveAiConfig(cfg);
+    renderApiKeyModalForProvider(provider, cfg);
+    updateAiBadge();
+    showToast('🗑️ APIキーを削除しました');
+  }
+
+  function toggleApiKeyVisibility() {
+    els.apiKeyInput.type = els.apiKeyInput.type === 'password' ? 'text' : 'password';
+  }
+
+  function updateAiBadge() {
+    if (!els.aiGenBadge) return;
+    const cfg = loadAiConfig();
+    const apiKey = getEffectiveApiKey(cfg.provider, cfg);
+    const meta = PROVIDER_META[cfg.provider];
+    if (!apiKey) {
+      els.aiGenBadge.textContent = `${meta.label} (キー未設定)`;
+      return;
+    }
+    const model = cfg.provider === 'straico' ? cfg.straico.model : cfg.gemini.model;
+    const shortModel = model.replace(/^google\//, '').replace(/^openai\//, '').replace(/^anthropic\//, '').replace(/^gemini-/, '');
+    els.aiGenBadge.textContent = `${meta.label} • ${shortModel}`;
+  }
+
+  /**
+   * メイン画面のプロバイダ選択変更時
+   */
+  function onAiProviderChange() {
+    const newProvider = els.aiProvider.value;
+    const cfg = loadAiConfig();
+    cfg.provider = newProvider;
+    saveAiConfig(cfg);
+    updateAiBadge();
+  }
+
+  // ============================================================
+  // Gemini API: カルーセルJSON生成
+  // ============================================================
+
+  const TONE_DESC = {
+    friendly: '親しみやすく、フレンドリーで読みやすい口調',
+    professional: 'プロフェッショナルで信頼感のある、しっかりした口調',
+    casual: 'カジュアルでフランクな、SNSらしい口調',
+    educational: '丁寧に解説する教育的な口調。専門用語には必ず補足を入れる',
+    inspirational: '読者の心を動かす感動的・モチベーショナルな口調'
+  };
+
+  function buildGeminiPrompt(theme, slideCount, tone) {
+    const toneDesc = TONE_DESC[tone] || TONE_DESC.friendly;
+    const slideCountDesc = slideCount === 'auto'
+      ? '内容に応じて適切な枚数（5〜10枚程度推奨）'
+      : `${slideCount}枚（厳守）`;
+
+    return `あなたはInstagramカルーセル投稿の構成専門家です。以下のテーマや元文章から、カルーセル投稿用のJSONを生成してください。
+
+# 出力ルール
+- 必ず指定のJSON形式のみを出力し、説明文やマークダウンのコードブロック記号(\`\`\`)は一切付けないでください
+- 各スライドの content は、画像内に表示するテキストとして読みやすい量・長さに整えてください
+- 表紙(cover)はキャッチーで、思わずスワイプしたくなる訴求にしてください
+- 本文(body)は1枚1メッセージの原則で、情報を整理してください
+- 最後(cta)は読者へのアクション（保存・コメント・フォロー等）を促す内容にしてください
+
+# トーン
+${toneDesc}
+
+# スライド枚数
+${slideCountDesc}
+
+# JSON仕様
+{
+  "title": "カルーセル全体のタイトル（投稿のキャプション用）",
+  "style": "A" | "B" | "C" | "D",
+  "format": "1:1" | "3:4" | "16:9",
+  "color": "auto" or プリセット名,
+  "slides": [
+    { "page": 1, "role": "cover", "content": "表紙テキスト" },
+    { "page": 2, "role": "body", "layout": "A"|"B"|"C"|"D"|"E"|"F"|"G", "content": "本文" },
+    ...
+    { "page": N, "role": "cta", "content": "まとめ・CTA" }
+  ]
+}
+
+# フィールド説明
+- style: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル) — テーマに最適なものを選択
+- format: "1:1"(正方形), "3:4"(縦長), "16:9"(横長) — 通常はInstagram向けに"1:1"推奨
+- color: "auto"(おまかせ) 推奨
+- slides[].layout (bodyのみ): A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ) — 各スライドの内容に最適なものを選択
+
+# テーマ／元文章
+${theme}
+
+---
+上記を踏まえ、JSONのみを出力してください。`;
+  }
+
+  function extractJsonFromText(text) {
+    if (!text) return null;
+    let cleaned = text.trim();
+    // コードブロック記号を除去
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    // 最初の { から最後の } までを抽出
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first === -1 || last === -1 || last < first) return null;
+    const jsonStr = cleaned.slice(first, last + 1);
+    try {
+      return { jsonStr, parsed: JSON.parse(jsonStr) };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function callGeminiApi(apiKey, model, prompt) {
+    const url = `${GEMINI_API_BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const body = {
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.8,
+        topP: 0.95,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json'
+      }
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.error && errJson.error.message) {
+          errMsg = errJson.error.message;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) {
+      throw new Error('APIから空のレスポンスが返されました');
+    }
+    return text;
+  }
+
+  /**
+   * Straico API 呼び出し（複数モデル対応プロキシ）
+   * - models は配列で渡す（仕様）
+   * - レスポンスはネスト深め＋形が揺れるためフォールバックチェーンで取り出す
+   */
+  async function callStraicoApi(apiKey, model, prompt) {
+    const res = await fetch(STRAICO_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        models: [model],
+        message: prompt
+      })
+    });
+
+    if (!res.ok) {
+      let errBody = '';
+      try { errBody = await res.text(); } catch (e) {}
+      console.error('Straico HTTP error:', res.status, errBody.slice(0, 1000));
+      let detail = '';
+      try {
+        const parsed = JSON.parse(errBody);
+        detail = parsed.message || parsed.error || parsed?.error?.message || '';
+      } catch (e) {
+        detail = errBody.slice(0, 200);
+      }
+      const err = new Error(`Straico HTTP ${res.status}${detail ? ': ' + detail : ''}`);
+      err.status = res.status;
+      err.detail = detail;
+      err.modelNotFound = res.status === 422 && /model not found/i.test(detail);
+      throw err;
+    }
+
+    const data = await res.json();
+    const comp = data?.data?.completions?.[model];
+
+    // フォールバックチェーン（モデルごとに形が変わる）
+    const candidates = [
+      comp?.completion?.choices?.[0]?.message?.content,
+      typeof comp?.completion === 'string' ? comp.completion : null,
+      data?.data?.completion?.choices?.[0]?.message?.content,
+      typeof data?.data?.completion === 'string' ? data.data.completion : null,
+      typeof data?.completion === 'string' ? data.completion : null
+    ];
+    for (const c of candidates) {
+      if (c && typeof c === 'string' && c.trim()) return c;
+    }
+
+    console.error('Straico response shape unexpected:', JSON.stringify(data).slice(0, 1000));
+    throw new Error('Straicoから想定外のレスポンス形式が返されました');
+  }
+
+  async function generateCarouselJsonWithAi() {
+    const theme = els.aiThemeInput.value.trim();
+    if (!theme) {
+      showToast('⚠️ テーマや元文章を入力してください');
+      els.aiThemeInput.focus();
+      return;
+    }
+
+    const cfg = loadAiConfig();
+    const provider = cfg.provider;
+    const apiKey = getEffectiveApiKey(provider, cfg);
+    if (!apiKey) {
+      showToast('🔑 まずAPIキーを設定してください');
+      openApiKeyModal();
+      return;
+    }
+
+    const model = provider === 'straico' ? cfg.straico.model : cfg.gemini.model;
+    const slideCount = els.aiSlideCount.value;
+    const tone = els.aiTone.value;
+    const prompt = buildGeminiPrompt(theme, slideCount, tone);
+
+    // ローディング状態
+    els.aiGenerateBtn.disabled = true;
+    els.aiGenerateBtn.classList.add('ai-generate-btn--loading');
+    const originalLabel = els.aiGenerateBtnLabel.textContent;
+    els.aiGenerateBtnLabel.textContent = `${PROVIDER_META[provider].label}が生成中…`;
+
+    try {
+      let text;
+      if (provider === 'straico') {
+        try {
+          text = await callStraicoApi(apiKey, model, prompt);
+        } catch (e) {
+          // モデル未提供（プラン/キーで Gemini など制限）→ 安定モデルで自動再試行
+          if (e && e.modelNotFound && model !== STRAICO_FALLBACK_MODEL) {
+            showToast(`⚠️ ${model} は利用できません。${STRAICO_FALLBACK_MODEL} で再試行します`);
+            text = await callStraicoApi(apiKey, STRAICO_FALLBACK_MODEL, prompt);
+            cfg.straico.model = STRAICO_FALLBACK_MODEL;
+            saveAiConfig(cfg);
+          } else {
+            throw e;
+          }
+        }
+      } else {
+        text = await callGeminiApi(apiKey, model, prompt);
+      }
+
+      const extracted = extractJsonFromText(text);
+      if (!extracted) {
+        throw new Error('生成されたテキストからJSONを抽出できませんでした');
+      }
+      if (!extracted.parsed.slides || !Array.isArray(extracted.parsed.slides) || extracted.parsed.slides.length === 0) {
+        throw new Error('生成されたJSONに有効な slides 配列がありません');
+      }
+
+      // JSON入力欄に整形して挿入
+      els.carouselJsonInput.value = JSON.stringify(extracted.parsed, null, 2);
+
+      showToast(`✨ JSONを生成しました（${extracted.parsed.slides.length}枚）`);
+
+      // そのまま自動展開
+      expandCarousel();
+    } catch (err) {
+      console.error(`${provider} API error:`, err);
+      const msg = err && err.message ? err.message : String(err);
+      showToast(`⚠️ 生成エラー: ${msg}`);
+    } finally {
+      els.aiGenerateBtn.disabled = false;
+      els.aiGenerateBtn.classList.remove('ai-generate-btn--loading');
+      els.aiGenerateBtnLabel.textContent = originalLabel;
     }
   }
 
@@ -1300,6 +2064,652 @@ ${layoutDef.desc}
   }
 
   // ============================================================
+  // 画像生成スタイルプリセット制御
+  // ============================================================
+
+  function selectImageGenPreset(presetId) {
+    imageGenState.selectedPreset = presetId;
+
+    // UI更新
+    if (els.imageGenPresets) {
+      els.imageGenPresets.querySelectorAll('.image-gen-preset').forEach(p => {
+        const isActive = p.dataset.preset === presetId;
+        p.classList.toggle('active', isActive);
+        p.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+    }
+
+    // バッジ更新
+    const presetDef = IMAGE_GEN_STYLE_PRESETS[presetId];
+    if (els.imageGenStyleBadge && presetDef) {
+      els.imageGenStyleBadge.textContent = presetDef.label;
+    }
+
+    // カスタム入力欄の表示切替
+    if (els.imageGenCustomWrapper) {
+      els.imageGenCustomWrapper.style.display = presetId === 'custom' ? '' : 'none';
+    }
+  }
+
+  function getCurrentStylePrompt() {
+    const presetId = imageGenState.selectedPreset;
+    if (presetId === 'custom') {
+      return (els.imageGenCustomStyle ? els.imageGenCustomStyle.value : '') || '';
+    }
+    const preset = IMAGE_GEN_STYLE_PRESETS[presetId];
+    return preset ? preset.prompt : '';
+  }
+
+  // ============================================================
+  // Pickaxe API 呼び出し
+  // ============================================================
+
+  const IMAGE_URL_PATTERN = /https?:\/\/[^\s'"<>)\]]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s'"<>)\]]*)*/gi;
+
+  function extractImageUrlsFromResponse(data) {
+    const urls = [];
+    function scan(obj) {
+      if (typeof obj === 'string') {
+        const matches = obj.match(IMAGE_URL_PATTERN);
+        if (matches) urls.push.apply(urls, matches);
+      } else if (Array.isArray(obj)) {
+        obj.forEach(scan);
+      } else if (obj && typeof obj === 'object') {
+        Object.values(obj).forEach(scan);
+      }
+    }
+    scan(data);
+    return Array.from(new Set(urls));
+  }
+
+  // 同時実行数とリトライ設定
+  // Pickaxe deployment キーは単独だと並列実行に制限があるため、
+  // 複数キーをローテーション利用することで N 並列を実現する。
+  const PICKAXE_CONCURRENCY = PICKAXE_CONFIG.api_keys.length; // = 4
+  const PICKAXE_MAX_RETRIES = 2;
+  const PICKAXE_RETRY_DELAY_MS = 2000;
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey) {
+    const fullPrompt = aspectRatio
+      ? prompt + '\n\nアスペクト比: ' + aspectRatio
+      : prompt;
+
+    const payload = {
+      inputs: {
+        [PICKAXE_CONFIG.input_ids.model]: model,
+        [PICKAXE_CONFIG.input_ids.prompt]: fullPrompt
+      },
+      stream: false
+    };
+
+    const res = await fetch(PICKAXE_CONFIG.endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      const err = new Error(`API Error ${res.status}: ${errText.substring(0, 200)}`);
+      err.status = res.status;
+      throw err;
+    }
+
+    const data = await res.json();
+    const imageUrls = extractImageUrlsFromResponse(data);
+
+    if (imageUrls.length === 0) {
+      throw new Error('画像URLが見つかりませんでした');
+    }
+
+    return imageUrls[0]; // 最初の画像URLを返す
+  }
+
+  function isRetryable(err) {
+    // ネットワークエラー（"Failed to fetch"）と 429/5xx はリトライ対象
+    if (!err) return false;
+    if (err.name === 'TypeError') return true; // fetch network error
+    if (err.status === 429) return true;
+    if (err.status >= 500 && err.status < 600) return true;
+    return false;
+  }
+
+  // APIキーのラウンドロビン割り当て用カウンター
+  let _apiKeyCursor = 0;
+  function nextApiKey() {
+    const keys = PICKAXE_CONFIG.api_keys;
+    const key = keys[_apiKeyCursor % keys.length];
+    _apiKeyCursor++;
+    return key;
+  }
+
+  async function callPickaxeAPI(prompt, model, aspectRatio, preferredKey) {
+    let lastErr;
+    // 初回は割り当てキーを使用、リトライ時は別キーにフォールバック
+    for (let attempt = 0; attempt <= PICKAXE_MAX_RETRIES; attempt++) {
+      const apiKey = attempt === 0 && preferredKey
+        ? preferredKey
+        : nextApiKey();
+      try {
+        return await callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey);
+      } catch (err) {
+        lastErr = err;
+        if (attempt >= PICKAXE_MAX_RETRIES || !isRetryable(err)) break;
+        // 指数バックオフ
+        await sleep(PICKAXE_RETRY_DELAY_MS * Math.pow(2, attempt));
+      }
+    }
+    throw lastErr;
+  }
+
+  // 並列数を制限して非同期タスクを実行
+  async function runWithConcurrency(items, limit, worker) {
+    let cursor = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= items.length) return;
+        await worker(items[idx], idx);
+      }
+    });
+    await Promise.all(runners);
+  }
+
+  // ============================================================
+  // 画像の一括並行生成
+  // ============================================================
+
+  function buildImagePrompt(slideContent, stylePrompt, presetLabel) {
+    // スタイル指示を冒頭・末尾の両方で強調することで、システム側のデフォルト
+    // スタイルバイアスを上書きしやすくする
+    const styleHeader = presetLabel
+      ? `【最優先：画風スタイル＝「${presetLabel}」】\n${stylePrompt}`
+      : `【最優先：画風スタイル】\n${stylePrompt}`;
+
+    return `${styleHeader}\n\n` +
+      `上記の画風スタイルを必ず厳守してください。他のスタイルに勝手に変えないこと。\n\n` +
+      `## コンテンツ\n以下の内容を図解画像として生成してください:\n${slideContent}\n\n` +
+      `## 注意事項\n- 図解内のテキストは日本語で記載すること\n- ページ全体を1枚の画像として完成させること\n- 装飾的な枠線やロゴは不要\n\n` +
+      `## 最終再確認\n画風は必ず「${presetLabel || 'ユーザー指定'}」: ${stylePrompt}`;
+  }
+
+  // 1枚あたりの想定生成時間（秒）。実測でNanoBanana2は約70秒/枚
+  const ESTIMATED_SEC_PER_IMAGE = 70;
+
+  // 生成中に表示するヒント（30秒に1回程度ローテーション）
+  const GENERATION_TIPS = [
+    '💡 各スライドは個別にクリックで再生成できます',
+    '🎨 完成後、お気に入りでないものだけ再生成すれば時間を節約できます',
+    '✨ プロンプトに「日本語テキスト」を強調すると文字崩れが減ります',
+    '🖼️ 生成画像は右クリック→保存でダウンロードできます',
+    '⚙️ スタイルプリセットを切り替えて再生成すると印象が大きく変わります',
+    '📐 スライドのアスペクト比は「フォーマット」で変更可能です'
+  ];
+
+  function estimateRemaining(totalCount, doneCount) {
+    const remaining = totalCount - doneCount;
+    const sec = Math.ceil((remaining / PICKAXE_CONCURRENCY) * ESTIMATED_SEC_PER_IMAGE);
+    if (sec <= 0) return 'まもなく完了';
+    if (sec < 60) return `残り約${sec}秒`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return s > 0 ? `残り約${m}分${s}秒` : `残り約${m}分`;
+  }
+
+  let _progressTimerId = null;
+  let _generationStartTime = 0;
+  let _tipRotateIndex = 0;
+  let _tipTimerId = null;
+
+  function startProgressTicker(total) {
+    _generationStartTime = Date.now();
+    if (_progressTimerId) clearInterval(_progressTimerId);
+    _progressTimerId = setInterval(() => updateProgressUI(total), 500);
+    if (_tipTimerId) clearInterval(_tipTimerId);
+    _tipRotateIndex = 0;
+    rotateTip();
+    _tipTimerId = setInterval(rotateTip, 8000);
+  }
+
+  function stopProgressTicker() {
+    if (_progressTimerId) { clearInterval(_progressTimerId); _progressTimerId = null; }
+    if (_tipTimerId) { clearInterval(_tipTimerId); _tipTimerId = null; }
+  }
+
+  function rotateTip() {
+    const tipEl = document.getElementById('imageGenTip');
+    if (!tipEl) return;
+    tipEl.textContent = GENERATION_TIPS[_tipRotateIndex % GENERATION_TIPS.length];
+    _tipRotateIndex++;
+  }
+
+  function updateProgressUI(total) {
+    const done = imageGenState.generatedImages.filter(g => g.status !== 'loading').length;
+    const success = imageGenState.generatedImages.filter(g => g.status === 'success').length;
+    const errors = imageGenState.generatedImages.filter(g => g.status === 'error').length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const elapsed = Math.round((Date.now() - _generationStartTime) / 1000);
+    const remaining = estimateRemaining(total, done);
+
+    const barFill = document.getElementById('imageGenProgressFill');
+    const pctLabel = document.getElementById('imageGenProgressPct');
+    const countLabel = document.getElementById('imageGenProgressCount');
+    const timeLabel = document.getElementById('imageGenProgressTime');
+
+    if (barFill) barFill.style.width = `${pct}%`;
+    if (pctLabel) pctLabel.textContent = `${pct}%`;
+    if (countLabel) {
+      countLabel.textContent = errors > 0
+        ? `${done} / ${total} 完了（成功 ${success} / 失敗 ${errors}）`
+        : `${done} / ${total} 完了`;
+    }
+    if (timeLabel) timeLabel.textContent = `経過 ${elapsed}秒 ・ ${remaining}`;
+
+    if (els.imageGridBadge) els.imageGridBadge.textContent = `${done} / ${total}`;
+  }
+
+  function ensureProgressBarDOM() {
+    if (document.getElementById('imageGenProgress')) return;
+    const grid = els.imageGrid;
+    if (!grid || !grid.parentNode) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'imageGenProgress';
+    wrap.className = 'image-gen-progress';
+    wrap.innerHTML = `
+      <div class="image-gen-progress__top">
+        <span class="image-gen-progress__count" id="imageGenProgressCount">0 / 0 完了</span>
+        <span class="image-gen-progress__pct" id="imageGenProgressPct">0%</span>
+      </div>
+      <div class="image-gen-progress__bar"><div class="image-gen-progress__fill" id="imageGenProgressFill"></div></div>
+      <div class="image-gen-progress__bottom">
+        <span class="image-gen-progress__time" id="imageGenProgressTime">準備中...</span>
+        <span class="image-gen-progress__tip" id="imageGenTip"></span>
+      </div>
+    `;
+    grid.parentNode.insertBefore(wrap, grid);
+  }
+
+  function showProgressBar() {
+    ensureProgressBarDOM();
+    const el = document.getElementById('imageGenProgress');
+    if (el) el.style.display = '';
+  }
+
+  async function generateAllImages() {
+    if (!carouselData || !carouselData.slides || carouselData.slides.length === 0) {
+      showToast('先にJSONを展開してください');
+      return;
+    }
+
+    const stylePrompt = getCurrentStylePrompt();
+    if (!stylePrompt) {
+      showToast('スタイルプロンプトを入力してください');
+      return;
+    }
+
+    const slides = carouselData.slides;
+    const total = slides.length;
+    const estimatedSec = Math.ceil((total / PICKAXE_CONCURRENCY) * ESTIMATED_SEC_PER_IMAGE);
+    const estimatedLabel = estimatedSec < 60
+      ? `約${estimatedSec}秒`
+      : `約${Math.ceil(estimatedSec / 60)}分`;
+
+    const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
+    const presetLabel = presetDef ? presetDef.label : 'カスタム';
+
+    // 開始通知（即時実行、ブロッキングなし）
+    showToast(`🎨 ${total}枚を「${presetLabel}」で生成開始（${estimatedLabel}）`);
+
+    const model = imageGenState.model;
+    const aspectRatio = state.format;
+
+    // 画像グリッド初期化（全スライドにローディング表示）
+    imageGenState.generatedImages = slides.map((slide, i) => ({
+      slideIndex: i,
+      imageUrl: null,
+      stylePrompt: stylePrompt,
+      contentPrompt: slide.content || '',
+      status: 'loading',
+      error: null
+    }));
+
+    // UI表示＋プログレスバー
+    els.imageGridSection.style.display = '';
+    showProgressBar();
+    renderImageGrid();
+    updateProgressUI(total);
+
+    // スクロール
+    setTimeout(() => {
+      els.imageGridSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    els.imageGenBtn.disabled = true;
+    els.imageGenBtn.innerHTML = `
+      <span class="spinner" aria-hidden="true"></span>
+      生成中...（${estimatedLabel}）
+    `;
+
+    startProgressTicker(total);
+
+    // デバッグ: 送信プロンプトをコンソール出力
+    console.log('[ImageGen] preset:', imageGenState.selectedPreset, '/ label:', presetLabel);
+    console.log('[ImageGen] stylePrompt:', stylePrompt);
+
+    // APIキーカウンターを毎回リセット（毎回キー1から開始）
+    _apiKeyCursor = 0;
+
+    // 各スライドに専用のAPIキーをラウンドロビンで割り当てて並列実行
+    // ※リクエスト開始は1.5秒ずつずらす（HTTP/2 multiplexing と Modal コールド
+    //   スタート時の競合を回避するため）
+    const STAGGER_DELAY_MS = 1500;
+    await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
+      // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
+      const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
+      if (initialDelay > 0) await sleep(initialDelay);
+
+      const content = slide.content || '';
+      const fullPrompt = buildImagePrompt(content, stylePrompt, presetLabel);
+      const assignedKey = PICKAXE_CONFIG.api_keys[i % PICKAXE_CONFIG.api_keys.length];
+      if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
+      console.log(`[ImageGen] slide ${i + 1} -> key #${(i % PICKAXE_CONFIG.api_keys.length) + 1} (start delay: ${initialDelay}ms)`);
+      try {
+        const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKey);
+        imageGenState.generatedImages[i].imageUrl = imageUrl;
+        imageGenState.generatedImages[i].status = 'success';
+        renderImageGrid();
+        updateProgressUI(total);
+      } catch (err) {
+        imageGenState.generatedImages[i].status = 'error';
+        imageGenState.generatedImages[i].error = err.message || String(err);
+        console.error(`[ImageGen] slide ${i + 1} failed:`, err);
+        renderImageGrid();
+        updateProgressUI(total);
+      }
+    });
+
+    stopProgressTicker();
+    updateProgressUI(total);
+
+    // ボタン復元
+    els.imageGenBtn.disabled = false;
+    els.imageGenBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+      </svg>
+      画像を一括生成する（Pickaxe API）
+    `;
+
+    const successCount = imageGenState.generatedImages.filter(g => g.status === 'success').length;
+    showToast(`✨ ${successCount}/${slides.length}枚の画像を生成しました`);
+  }
+
+  // ============================================================
+  // 画像グリッド描画
+  // ============================================================
+
+  function renderImageGrid() {
+    const grid = els.imageGrid;
+    if (!grid) return;
+
+    const images = imageGenState.generatedImages;
+    const total = images.length;
+    const done = images.filter(g => g.status !== 'loading').length;
+    const successCount = images.filter(g => g.status === 'success').length;
+
+    // バッジ更新
+    if (els.imageGridBadge) {
+      els.imageGridBadge.textContent = `${done} / ${total}`;
+    }
+
+    // 一括ダウンロードボタンの表示制御
+    const bulkDlBtn = document.getElementById('bulkDownloadBtn');
+    if (bulkDlBtn) {
+      bulkDlBtn.style.display = successCount >= 2 ? '' : 'none';
+    }
+
+    grid.innerHTML = '';
+    images.forEach((img, i) => {
+      const item = document.createElement('div');
+      item.className = 'image-grid-item';
+
+      if (img.status === 'loading') {
+        item.classList.add('image-grid-item--loading');
+        item.innerHTML = `
+          <div class="image-grid-item__badge">${i + 1}</div>
+          <div class="image-grid-item__skeleton">
+            <svg class="image-grid-item__skeleton-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="image-grid-item__skeleton-text">生成中...</span>
+          </div>
+        `;
+      } else if (img.status === 'error') {
+        item.classList.add('image-grid-item--error');
+        item.innerHTML = `
+          <div class="image-grid-item__badge">${i + 1}</div>
+          <div class="image-grid-item__error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span class="image-grid-item__error-text">${escapeHtml(img.error || 'エラー')}</span>
+          </div>
+        `;
+        item.addEventListener('click', () => openRegenModal(i));
+      } else {
+        item.innerHTML = `
+          <div class="image-grid-item__badge">${i + 1}</div>
+          <img class="image-grid-item__img" src="${img.imageUrl}" alt="スライド ${i + 1}" loading="lazy">
+          <div class="image-grid-item__overlay">
+            <div class="image-grid-item__overlay-actions">
+              <button class="image-grid-item__action-btn" data-action="expand" title="拡大表示">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
+              <button class="image-grid-item__action-btn" data-action="download" title="ダウンロード">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button class="image-grid-item__action-btn" data-action="regen" title="再生成">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+        // 各アクションボタンのイベント
+        item.querySelector('[data-action="expand"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLightbox(i);
+        });
+        item.querySelector('[data-action="download"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadImage(img.imageUrl, i);
+        });
+        item.querySelector('[data-action="regen"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openRegenModal(i);
+        });
+        // 画像本体クリックで拡大
+        item.querySelector('.image-grid-item__img').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLightbox(i);
+        });
+      }
+
+      grid.appendChild(item);
+    });
+  }
+
+  // ============================================================
+  // ライトボックス（拡大表示）
+  // ============================================================
+
+  function openLightbox(slideIndex) {
+    const overlay = document.getElementById('lightboxOverlay');
+    const img = document.getElementById('lightboxImage');
+    const caption = document.getElementById('lightboxCaption');
+    const dlBtn = document.getElementById('lightboxDownloadBtn');
+    if (!overlay || !img) return;
+
+    const imgData = imageGenState.generatedImages[slideIndex];
+    if (!imgData || !imgData.imageUrl) return;
+
+    img.src = imgData.imageUrl;
+    img.alt = `スライド ${slideIndex + 1}`;
+    if (caption) caption.textContent = `スライド ${slideIndex + 1}`;
+
+    // ダウンロードボタンにデータ付与
+    if (dlBtn) {
+      dlBtn.dataset.slideIndex = slideIndex;
+    }
+
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    const overlay = document.getElementById('lightboxOverlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // ============================================================
+  // 画像ダウンロード
+  // ============================================================
+
+  async function downloadImage(url, slideIndex) {
+    try {
+      showToast(`⬇️ スライド ${slideIndex + 1} をダウンロード中...`);
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const ext = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+      const fileName = `slide_${slideIndex + 1}.${ext}`;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showToast(`✅ スライド ${slideIndex + 1} を保存しました`);
+    } catch (err) {
+      console.error('Download failed:', err);
+      // フォールバック：新しいタブで開く
+      window.open(url, '_blank');
+      showToast('⚠️ 直接ダウンロードに失敗しました。新しいタブで開きました');
+    }
+  }
+
+  async function downloadAllImages() {
+    const successImages = imageGenState.generatedImages.filter(g => g.status === 'success');
+    if (successImages.length === 0) {
+      showToast('ダウンロードできる画像がありません');
+      return;
+    }
+
+    showToast(`⬇️ ${successImages.length}枚の画像を一括ダウンロード中...`);
+
+    for (let i = 0; i < successImages.length; i++) {
+      const img = successImages[i];
+      // 連続ダウンロードの間に少し待つ（ブラウザのブロック防止）
+      if (i > 0) await sleep(500);
+      await downloadImage(img.imageUrl, img.slideIndex);
+    }
+
+    showToast(`✅ ${successImages.length}枚の画像をダウンロードしました`);
+  }
+
+  // ============================================================
+  // 再生成モーダル
+  // ============================================================
+
+  function openRegenModal(slideIndex) {
+    const imgData = imageGenState.generatedImages[slideIndex];
+    if (!imgData) return;
+
+    imageGenState.regenSlideIndex = slideIndex;
+
+    // タイトル更新
+    if (els.regenModalTitle) {
+      els.regenModalTitle.textContent = `スライド ${slideIndex + 1} — 再生成`;
+    }
+
+    // プレビュー
+    if (els.regenModalPreview) {
+      if (imgData.imageUrl) {
+        els.regenModalPreview.innerHTML = `<img src="${imgData.imageUrl}" alt="現在の画像">`;
+      } else {
+        els.regenModalPreview.innerHTML = '<span style="color:var(--text-tertiary);padding:var(--space-8)">画像なし</span>';
+      }
+    }
+
+    // プロンプト入力欄
+    if (els.regenStylePrompt) {
+      els.regenStylePrompt.value = imgData.stylePrompt || getCurrentStylePrompt();
+    }
+    if (els.regenContentPrompt) {
+      els.regenContentPrompt.value = imgData.contentPrompt || '';
+    }
+
+    // モーダル表示
+    if (els.regenModalOverlay) {
+      els.regenModalOverlay.classList.add('active');
+    }
+  }
+
+  function closeRegenModal() {
+    if (els.regenModalOverlay) {
+      els.regenModalOverlay.classList.remove('active');
+    }
+    imageGenState.regenSlideIndex = -1;
+  }
+
+  async function submitRegeneration() {
+    const idx = imageGenState.regenSlideIndex;
+    if (idx < 0 || idx >= imageGenState.generatedImages.length) return;
+
+    const stylePrompt = els.regenStylePrompt ? els.regenStylePrompt.value.trim() : '';
+    const contentPrompt = els.regenContentPrompt ? els.regenContentPrompt.value.trim() : '';
+
+    if (!stylePrompt) {
+      showToast('スタイルプロンプトを入力してください');
+      return;
+    }
+
+    // モーダル閉じる
+    closeRegenModal();
+
+    // ローディング表示
+    imageGenState.generatedImages[idx].status = 'loading';
+    imageGenState.generatedImages[idx].stylePrompt = stylePrompt;
+    imageGenState.generatedImages[idx].contentPrompt = contentPrompt;
+    renderImageGrid();
+
+    showToast(`🔄 スライド ${idx + 1} を再生成中...`);
+
+    try {
+      const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
+      const presetLabel = presetDef ? presetDef.label : 'カスタム';
+      const fullPrompt = buildImagePrompt(contentPrompt, stylePrompt, presetLabel);
+      const imageUrl = await callPickaxeAPI(fullPrompt, imageGenState.model, state.format);
+
+      imageGenState.generatedImages[idx].imageUrl = imageUrl;
+      imageGenState.generatedImages[idx].status = 'success';
+      imageGenState.generatedImages[idx].error = null;
+      renderImageGrid();
+      showToast(`✅ スライド ${idx + 1} を再生成しました`);
+    } catch (err) {
+      imageGenState.generatedImages[idx].status = 'error';
+      imageGenState.generatedImages[idx].error = err.message;
+      renderImageGrid();
+      showToast(`⚠️ スライド ${idx + 1} の再生成に失敗しました`);
+    }
+  }
+
+  // ============================================================
   // 初期化
   // ============================================================
 
@@ -1383,21 +2793,131 @@ ${layoutDef.desc}
     }
   }
 
+  // ============================================================
+  // 季節パーティクル（新緑の葉っぱ）
+  // ============================================================
+
+  const LEAF_SVG_SRC = 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40"><path d="M20 2C12 8 4 18 6 30c2-4 6-8 14-10C14 26 10 30 8 34c4-2 10-6 14-14 2 8 1 14 0 18 3-4 6-10 6-18 2 6 4 10 6 12-1-6-2-12-6-18 4 2 8 2 10 2-4-3-8-5-14-6 4-2 8-6 10-8H20z" fill="#22c55e" opacity="0.75"/></svg>`);
+
+  let seasonalAnimationId = null;
+
+  function createSeasonalPetal() {
+    const container = document.getElementById('seasonalPetalsContainer');
+    if (!container) return;
+
+    const petal = document.createElement('img');
+    petal.src = LEAF_SVG_SRC;
+    petal.alt = '';
+    petal.className = 'seasonal-petal';
+    petal.draggable = false;
+
+    const size = 10 + Math.random() * 16;
+    const startX = Math.random() * window.innerWidth;
+    const driftX = (Math.random() - 0.5) * 180;
+    const endDrift = driftX + (Math.random() - 0.5) * 80;
+    const duration = 7 + Math.random() * 9;
+    const delay = Math.random() * 2;
+    const midRotate = 90 + Math.random() * 270;
+    const endRotate = midRotate + 90 + Math.random() * 180;
+    const opacity = 0.35 + Math.random() * 0.45;
+
+    petal.style.setProperty('--petal-size', size + 'px');
+    petal.style.setProperty('--start-x', startX + 'px');
+    petal.style.setProperty('--drift-x', driftX + 'px');
+    petal.style.setProperty('--end-drift', endDrift + 'px');
+    petal.style.setProperty('--mid-rotate', midRotate + 'deg');
+    petal.style.setProperty('--end-rotate', endRotate + 'deg');
+    petal.style.setProperty('--petal-opacity', opacity);
+    petal.style.left = '0px';
+    petal.style.top = '-20px';
+    petal.style.animation = `leafFall ${duration}s ease-in-out ${delay}s forwards`;
+
+    container.appendChild(petal);
+
+    setTimeout(() => {
+      if (petal.parentNode) {
+        petal.parentNode.removeChild(petal);
+      }
+    }, (duration + delay) * 1000 + 100);
+
+    return petal;
+  }
+
+  function startSeasonalPetals() {
+    stopSeasonalPetals();
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => createSeasonalPetal(), i * 400);
+    }
+    seasonalAnimationId = setInterval(() => {
+      const container = document.getElementById('seasonalPetalsContainer');
+      if (container && container.children.length < 20) {
+        createSeasonalPetal();
+      }
+    }, 1000);
+  }
+
+  function stopSeasonalPetals() {
+    if (seasonalAnimationId) {
+      clearInterval(seasonalAnimationId);
+      seasonalAnimationId = null;
+    }
+    const container = document.getElementById('seasonalPetalsContainer');
+    if (container) {
+      container.innerHTML = '';
+    }
+  }
+
   function init() {
-    // 桜アイコンにdata URIを設定
-    const sakuraIcon = document.getElementById('sakuraIconImg');
-    if (sakuraIcon) sakuraIcon.src = SAKURA_PETAL_SRC;
+    // 季節テーマボタンを動的に設定
+    const seasonalBtn = document.getElementById('seasonalThemeBtn');
+    const seasonalIcon = document.getElementById('seasonalThemeIcon');
+    const seasonalBadge = document.getElementById('seasonalBadge');
+
+    if (seasonalBtn) {
+      seasonalBtn.dataset.theme = currentSeason.id;
+      seasonalBtn.title = currentSeason.icon + ' ' + currentSeason.badge.replace(/[^\u3000-\u9FFF\u4E00-\u9FFF\w]/g, '').trim();
+    }
+    if (seasonalIcon) {
+      seasonalIcon.textContent = currentSeason.icon;
+    }
+    if (seasonalBadge) {
+      seasonalBadge.textContent = currentSeason.badge;
+    }
 
     loadState();
+
+    // 保存済みテーマが季節テーマだが現在の季節と異なる場合、今の季節に切替
+    const savedTheme = state.theme;
+    const allSeasonIds = Object.keys(SEASONAL_THEMES);
+    if (allSeasonIds.includes(savedTheme) && savedTheme !== currentSeason.id) {
+      state.theme = currentSeason.id;
+    }
+
     applyUIState();
     initEvents();
+    // AIプロバイダ選択を保存値で初期化
+    const aiCfg = loadAiConfig();
+    if (els.aiProvider) els.aiProvider.value = aiCfg.provider;
+    updateAiBadge();
   }
 
   // ============================================================
   // LINE LIFF 認証
   // ============================================================
 
-  const LIFF_ID = '2009850086-K3TrYsDF';
+  // ページごとに別のLIFFアプリを使い分け
+  // ※ LIFFはエンドポイントURLを1つしか登録できないため、ページごとに別のLIFFアプリを作成
+  const LIFF_IDS = {
+    'pro-max':  '2009850086-ynnPKSBX', // 図解ビルダーPRO MAX用（新規）
+    'default':  '2009850086-K3TrYsDF'  // illustrated-prompt-editor-pro 用（既存）
+  };
+
+  // 現在のページURLからLIFF IDを判定
+  const LIFF_ID = (function () {
+    const path = location.pathname || '';
+    if (path.indexOf('pro-max') !== -1) return LIFF_IDS['pro-max'];
+    return LIFF_IDS['default'];
+  })();
 
   // LINE公式アカウントのID（友だち追加URLに使用）
   // ※ LINE Official Account Manager で確認できるベーシックID（@xxx）またはプレミアムID
@@ -1426,10 +2946,11 @@ ${layoutDef.desc}
     }
   }
 
-  // 友だち確認
+  // 友だち確認（タイムアウト付き）
   async function checkFriendship() {
     try {
-      const friendship = await liff.getFriendship();
+      // getFriendship() が応答しないケースに備えて 8秒タイムアウト
+      const friendship = await withTimeout(liff.getFriendship(), 8000, '友だち確認');
       if (friendship.friendFlag) {
         // 友だち → アプリ表示
         hideLoginGate();
@@ -1445,8 +2966,8 @@ ${layoutDef.desc}
       }
     } catch (e) {
       console.error('友だち確認エラー:', e);
-      // getFriendship() が失敗した場合（チャネル未リンク等）
-      // フォールバック: ログイン済みならアプリ表示（友だち確認スキップ）
+      // getFriendship() が失敗・タイムアウトした場合のフォールバック
+      // ログイン済みでチャネル未リンクなど → アプリを表示してそのまま使わせる
       console.warn('友だち確認をスキップしてアプリを表示します。LINE公式アカウントのリンク設定を確認してください。');
       hideLoginGate();
       init();
@@ -1454,25 +2975,66 @@ ${layoutDef.desc}
     }
   }
 
-  // LIFF初期化＆認証フロー
-  async function initLiff() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
+  // LIFF SDKがロードされるまで待機（最大8秒）
+  function waitForLiffSdk(timeoutMs) {
+    return new Promise((resolve, reject) => {
+      if (typeof liff !== 'undefined') return resolve();
+      const startTs = Date.now();
+      const intervalId = setInterval(() => {
+        if (typeof liff !== 'undefined') {
+          clearInterval(intervalId);
+          resolve();
+        } else if (Date.now() - startTs > timeoutMs) {
+          clearInterval(intervalId);
+          reject(new Error('LIFF SDKの読み込みに失敗しました'));
+        }
+      }, 100);
+    });
+  }
 
-      if (liff.isLoggedIn()) {
+  // Promiseをタイムアウト付きで実行
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}がタイムアウトしました (${ms / 1000}秒)`)), ms))
+    ]);
+  }
+
+  // LIFF初期化＆認証フロー（診断ログ付き）
+  async function initLiff() {
+    console.log('[LIFF] init start. path=', location.pathname, 'href=', location.href);
+    console.log('[LIFF] using LIFF_ID =', LIFF_ID);
+    try {
+      // 1) LIFF SDK の読み込み待ち
+      console.log('[LIFF] step 1: waiting for SDK...');
+      await waitForLiffSdk(8000);
+      console.log('[LIFF] step 1 OK: SDK loaded. liff.id (if any) =', (typeof liff !== 'undefined' && liff.id) || '(none)');
+
+      // 2) LIFF init（10秒タイムアウト）
+      console.log('[LIFF] step 2: calling liff.init({ liffId: ' + LIFF_ID + ' }) ...');
+      await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
+      console.log('[LIFF] step 2 OK: liff.init resolved.');
+
+      const loggedIn = liff.isLoggedIn();
+      console.log('[LIFF] step 3: isLoggedIn() =', loggedIn);
+
+      if (loggedIn) {
         // ログイン済み → 友だち確認へ
         setLoginState('lineStateLoading');
+        console.log('[LIFF] step 4: checkFriendship() ...');
         await checkFriendship();
+        console.log('[LIFF] step 4 done.');
       } else {
         // 未ログイン → ログインボタン表示
+        console.log('[LIFF] not logged in → showing login button');
         setLoginState('lineStateLogin');
       }
     } catch (e) {
-      console.error('LIFF初期化エラー:', e);
+      console.error('[LIFF] init error:', e);
       setLoginState('lineStateError');
       const errMsg = document.getElementById('lineErrorMessage');
       if (errMsg) {
-        errMsg.innerHTML = `認証の初期化に失敗しました。<br>ページを再読み込みしてお試しください。<br><small style="color:var(--text-tertiary)">${e.message || ''}</small>`;
+        errMsg.innerHTML = `認証の初期化に失敗しました。<br>ページを再読み込みしてお試しください。<br><small style="color:var(--text-tertiary)">${e.message || ''}</small><br><small style="color:var(--text-tertiary)">LIFF_ID: ${LIFF_ID}</small>`;
       }
     }
   }
@@ -1516,9 +3078,20 @@ ${layoutDef.desc}
     }
   }
 
+  // ローカル開発時は LIFF をスキップしてアプリ本体を直接起動
+  function isLocalDev() {
+    const h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
+  }
+
   // DOM準備完了後にLIFF認証を開始
   function startApp() {
     initLoginEvents();
+    if (isLocalDev()) {
+      hideLoginGate();
+      init();
+      return;
+    }
     initLiff();
   }
 

@@ -236,6 +236,62 @@ body {
 }
 
 /* ============================================================
+   1d. 新緑モード トークン（5〜6月）
+   ============================================================ */
+[data-theme="shinryoku"] {
+  --color-primary-50:  #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-primary-500-rgb: 34, 197, 94;
+
+  --color-accent-50:  #ecfdf5;
+  --color-accent-100: #d1fae5;
+  --color-accent-200: #a7f3d0;
+  --color-accent-300: #6ee7b7;
+  --color-accent-400: #34d399;
+  --color-accent-500: #10b981;
+  --color-accent-600: #059669;
+  --color-accent-500-rgb: 16, 185, 129;
+
+  --surface-primary:   #fafffe;
+  --surface-secondary: #f0fdf4;
+  --surface-elevated:  #ffffff;
+  --surface-overlay:   rgba(34, 197, 94, 0.1);
+  --surface-card:      #ffffff;
+  --surface-card-hover: #f0fdf4;
+
+  --text-primary:    #14332a;
+  --text-secondary:  #3d6b5a;
+  --text-tertiary:   #72a28e;
+  --text-inverse:    #ffffff;
+  --text-link:       var(--color-primary-500);
+  --text-link-hover: var(--color-primary-600);
+
+  --border-color: #bbf7d0;
+  --border-color-hover: #86efac;
+  --border-color-focus: var(--color-primary-500);
+
+  --shadow-xs:  0 1px 2px rgba(34, 197, 94, 0.06);
+  --shadow-sm:  0 1px 3px rgba(34, 197, 94, 0.08), 0 1px 2px rgba(34, 197, 94, 0.04);
+  --shadow-md:  0 4px 6px rgba(34, 197, 94, 0.08), 0 2px 4px rgba(34, 197, 94, 0.04);
+  --shadow-lg:  0 10px 15px rgba(34, 197, 94, 0.1), 0 4px 6px rgba(34, 197, 94, 0.04);
+  --shadow-xl:  0 20px 25px rgba(34, 197, 94, 0.1), 0 10px 10px rgba(34, 197, 94, 0.04);
+  --shadow-glow: 0 0 20px rgba(34, 197, 94, 0.2);
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error:   #ef4444;
+  --color-info:    #22c55e;
+}
+
+/* ============================================================
    2. CSS Reset & Base Styles
    ============================================================ */
 *, *::before, *::after {
@@ -685,6 +741,229 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .sakura-petals-container {
     display: none !important;
+  }
+}
+
+/* ============================================================
+   4b. 新緑モード コンポーネントオーバーライド
+   ============================================================ */
+[data-theme="shinryoku"] .app-header {
+  background: rgba(240, 253, 244, 0.88);
+  border-bottom-color: rgba(187, 247, 208, 0.6);
+}
+
+[data-theme="shinryoku"] .app-header__logo {
+  background: linear-gradient(135deg, #22c55e, #10b981);
+}
+
+[data-theme="shinryoku"] .generate-btn {
+  background: linear-gradient(135deg, #22c55e, #10b981);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+}
+
+[data-theme="shinryoku"] .generate-btn:hover {
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+[data-theme="shinryoku"] .section__icon {
+  color: #22c55e;
+}
+
+[data-theme="shinryoku"] .section__badge {
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+[data-theme="shinryoku"] .selection-card.active {
+  border-color: #4ade80;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12), var(--shadow-sm);
+}
+
+[data-theme="shinryoku"] .selection-card.active .selection-card__label {
+  color: #16a34a;
+}
+
+[data-theme="shinryoku"] .selection-card__check {
+  background: #22c55e;
+}
+
+[data-theme="shinryoku"] .selection-card__icon svg {
+  color: #22c55e;
+}
+
+[data-theme="shinryoku"] .selection-card:hover {
+  border-color: #86efac;
+}
+
+[data-theme="shinryoku"] .color-auto-btn.active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+[data-theme="shinryoku"] .color-swatch.active {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+[data-theme="shinryoku"] .action-btn--copy {
+  color: #22c55e;
+  border-color: #bbf7d0;
+}
+
+[data-theme="shinryoku"] .action-btn--copy:hover {
+  background: #f0fdf4;
+  border-color: #4ade80;
+}
+
+[data-theme="shinryoku"] .output-step__number {
+  background: linear-gradient(135deg, #22c55e, #10b981);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="shinryoku"] .paste-queue__cta {
+  background: linear-gradient(135deg, #22c55e, #10b981);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+}
+
+[data-theme="shinryoku"] .paste-queue__cta:hover {
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+[data-theme="shinryoku"] .paste-queue__progress-fill {
+  background: linear-gradient(90deg, #22c55e, #10b981);
+}
+
+[data-theme="shinryoku"] .paste-queue__title svg {
+  color: #22c55e;
+}
+
+[data-theme="shinryoku"] .paste-queue__progress {
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+[data-theme="shinryoku"] .paste-queue__item--current {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+[data-theme="shinryoku"] .paste-queue__item--current .paste-queue__item-icon {
+  border-color: #22c55e;
+  background: #22c55e;
+}
+
+[data-theme="shinryoku"] .paste-queue__header {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.06),
+    rgba(16, 185, 129, 0.04));
+}
+
+[data-theme="shinryoku"] .output-card__title svg {
+  color: #22c55e;
+}
+
+[data-theme="shinryoku"] .form-textarea:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+[data-theme="shinryoku"] .image-upload-zone:hover,
+[data-theme="shinryoku"] .image-upload-zone.dragover {
+  border-color: #4ade80;
+  background: #f0fdf4;
+}
+
+[data-theme="shinryoku"] .image-upload-zone:hover .image-upload-zone__icon {
+  color: #22c55e;
+}
+
+[data-theme="shinryoku"] .theme-selector__btn.active {
+  background: white;
+  color: #16a34a;
+  box-shadow: 0 1px 4px rgba(34, 197, 94, 0.15);
+}
+
+/* 新緑モード背景デコレーション */
+[data-theme="shinryoku"]::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  right: -30%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+}
+
+[data-theme="shinryoku"]::after {
+  content: '';
+  position: fixed;
+  bottom: -40%;
+  left: -20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+}
+
+[data-theme="shinryoku"] .app-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* 季節パーティクルコンテナ */
+.seasonal-petals-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: hidden;
+  display: none;
+}
+
+[data-theme="shinryoku"] ~ .seasonal-petals-container,
+[data-theme="shinryoku"] .seasonal-petals-container {
+  display: block;
+}
+
+.seasonal-petal {
+  position: absolute;
+  width: var(--petal-size, 12px);
+  height: var(--petal-size, 12px);
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+  object-fit: contain;
+}
+
+@keyframes leafFall {
+  0% {
+    opacity: 0;
+    transform: translate(var(--start-x, 0), -20px) rotate(0deg) scale(0.8);
+  }
+  5% {
+    opacity: var(--petal-opacity, 0.7);
+  }
+  50% {
+    transform: translate(calc(var(--start-x, 0) + var(--drift-x, 40px)), 50vh)
+               rotate(var(--mid-rotate, 180deg)) scale(1);
+  }
+  90% {
+    opacity: var(--petal-opacity, 0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--start-x, 0) + var(--end-drift, 80px)), calc(100vh + 20px))
+               rotate(var(--end-rotate, 360deg)) scale(0.6);
   }
 }
 
@@ -2466,5 +2745,1151 @@ img {
   height: 14px;
 }
 
+/* ============================================================
+   画像生成スタイルプリセット
+   ============================================================ */
+.image-gen-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
 
+.image-gen-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  user-select: none;
+}
 
+.image-gen-preset:hover {
+  border-color: var(--border-color-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.image-gen-preset.active {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-50);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-500-rgb), 0.12), var(--shadow-sm);
+}
+
+.image-gen-preset__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--color-neutral-100);
+  transition: all var(--transition-fast);
+}
+
+.image-gen-preset__icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.image-gen-preset.active .image-gen-preset__icon {
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+}
+
+.image-gen-preset.active .image-gen-preset__icon svg {
+  color: white;
+}
+
+.image-gen-preset__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.image-gen-preset.active .image-gen-preset__name {
+  color: var(--color-primary-700);
+}
+
+.image-gen-preset__desc {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.image-gen-custom-wrapper {
+  margin-top: var(--space-4);
+  animation: fadeSlideIn 0.3s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.selection-grid--model {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ============================================================
+   画像生成ボタン区切り線
+   ============================================================ */
+.image-gen-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.image-gen-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.image-gen-divider__text {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.generate-btn--image {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.generate-btn--image:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   画像グリッド
+   ============================================================ */
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.image-grid-item {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  background: var(--surface-card);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  aspect-ratio: 1;
+}
+
+.image-grid-item:hover {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+.image-grid-item__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-grid-item__badge {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(4px);
+}
+
+.image-grid-item__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.image-grid-item:hover .image-grid-item__overlay {
+  opacity: 1;
+}
+
+.image-grid-item__overlay-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.image-grid-item__action-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.image-grid-item__action-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.12);
+}
+
+.image-grid-item__action-btn:active {
+  transform: scale(0.95);
+}
+
+.image-grid-item__action-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.image-grid-item__overlay-text {
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.image-grid-item__overlay svg {
+  width: 28px;
+  height: 28px;
+  color: white;
+}
+
+.image-grid-item--loading {
+  pointer-events: none;
+}
+
+.image-grid-item__skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(110deg, var(--color-neutral-100) 8%, var(--color-neutral-200) 18%, var(--color-neutral-100) 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.image-grid-item__skeleton-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-tertiary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.image-grid-item__skeleton-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.image-grid-item--error {
+  border-color: var(--color-error);
+}
+
+.image-grid-item__error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-error);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.image-grid-item__error svg {
+  width: 32px;
+  height: 32px;
+}
+
+.image-grid-item__error-text {
+  font-size: var(--text-xs);
+}
+
+/* ============================================================
+   画像生成プログレスバー
+   ============================================================ */
+.image-gen-progress {
+  background: var(--surface-elevated, #fff);
+  border: 1px solid var(--color-neutral-200, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-4, 16px);
+  margin-bottom: var(--space-4, 16px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.image-gen-progress__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-2, 8px);
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+}
+
+.image-gen-progress__count {
+  font-size: var(--text-sm, 14px);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-primary, #111);
+}
+
+.image-gen-progress__pct {
+  font-size: var(--text-lg, 18px);
+  font-weight: var(--font-bold, 700);
+  color: var(--color-primary, #2563eb);
+  font-variant-numeric: tabular-nums;
+}
+
+.image-gen-progress__bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: var(--color-neutral-100, #f3f4f6);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.image-gen-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa 0%, #2563eb 50%, #60a5fa 100%);
+  background-size: 200% 100%;
+  animation: progressShimmer 2s linear infinite;
+  border-radius: 999px;
+  transition: width 0.4s ease-out;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.image-gen-progress__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-2, 8px);
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+
+.image-gen-progress__time {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary, #4b5563);
+  font-variant-numeric: tabular-nums;
+}
+
+.image-gen-progress__tip {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-tertiary, #6b7280);
+  font-style: italic;
+  text-align: right;
+  flex: 1;
+  min-width: 0;
+  animation: tipFade 0.4s ease-out;
+}
+
+@keyframes tipFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ボタン内スピナー */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinnerRotate 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   再生成モーダル
+   ============================================================ */
+.regen-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-base);
+  padding: var(--space-4);
+}
+
+.regen-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.regen-modal {
+  background: var(--surface-elevated);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(0.9) translateY(20px);
+  transition: transform var(--transition-spring);
+}
+
+.regen-modal-overlay.active .regen-modal {
+  transform: scale(1) translateY(0);
+}
+
+.regen-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.regen-modal__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+.regen-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+}
+
+.regen-modal__close:hover {
+  background: var(--color-neutral-100);
+  color: var(--text-primary);
+}
+
+.regen-modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.regen-modal__body {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.regen-modal__preview {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-neutral-100);
+}
+
+.regen-modal__preview img {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.regen-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-color);
+}
+
+.regen-modal__footer .generate-btn {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   画像グリッドアクション（一括ダウンロード）
+   ============================================================ */
+.image-grid-actions {
+  margin-top: var(--space-5);
+  display: flex;
+  justify-content: center;
+}
+
+.generate-btn--download {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.generate-btn--download:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   ライトボックス（画像拡大表示）
+   ============================================================ */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  padding: var(--space-4);
+}
+
+.lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.lightbox__close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3001;
+  transition: all var(--transition-fast);
+}
+
+.lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.lightbox__close svg {
+  width: 22px;
+  height: 22px;
+}
+
+.lightbox__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 90vw;
+  max-height: 90vh;
+  animation: lightboxFadeIn 0.3s ease;
+}
+
+@keyframes lightboxFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lightbox__image {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+
+.lightbox__bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.lightbox__caption {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.lightbox__download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.lightbox__download-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.lightbox__download-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================================
+   24. AI生成セクション（Gemini Flash 2.5）
+   ============================================================ */
+
+/* セクションヘッダーの設定ボタン */
+.ai-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-settings-btn:hover {
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  border-color: var(--color-primary-300);
+  transform: rotate(60deg);
+}
+
+[data-theme="dark"] .ai-settings-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme="sakura"] .ai-settings-btn:hover {
+  background: #fff0f3;
+  color: #f43f5e;
+  border-color: #fda4af;
+}
+
+.ai-settings-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* AI生成ヒント */
+.ai-gen-hint {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(236, 72, 153, 0.08));
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  margin-bottom: var(--space-4);
+  line-height: var(--leading-relaxed);
+}
+
+[data-theme="dark"] .ai-gen-hint {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(236, 72, 153, 0.12));
+  border-color: rgba(168, 85, 247, 0.25);
+  color: var(--text-primary);
+}
+
+[data-theme="sakura"] .ai-gen-hint {
+  background: linear-gradient(135deg, #fdf2f8, #fff0f3);
+  border-color: #fbcfe8;
+  color: #8b3a5a;
+}
+
+/* コントロール群（スライド枚数・トーン） */
+.ai-gen-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ai-gen-controls--3col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 640px) {
+  .ai-gen-controls--3col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-gen-controls,
+  .ai-gen-controls--3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai-gen-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ai-gen-control-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-gen-select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 16px;
+  padding-right: var(--space-8);
+}
+
+.ai-gen-select:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+}
+
+[data-theme="sakura"] .ai-gen-select:focus {
+  border-color: #f43f5e;
+}
+
+/* AI生成ボタン（紫グラデ） */
+.ai-generate-btn {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-generate-btn:hover {
+  background: linear-gradient(135deg, #9333ea, #db2777);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+}
+
+.ai-generate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+}
+
+.ai-generate-btn--loading {
+  pointer-events: none;
+}
+
+.ai-generate-btn--loading svg {
+  animation: aiSpinner 1s linear infinite;
+}
+
+@keyframes aiSpinner {
+  to { transform: rotate(360deg); }
+}
+
+/* AIバッジ */
+#aiGenBadge {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: white;
+}
+
+/* 折りたたみテンプレ */
+.carousel-template-details {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.carousel-template-details[open] {
+  background: var(--color-bg-subtle, #fafafa);
+}
+
+[data-theme="dark"] .carousel-template-details[open] {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="sakura"] .carousel-template-details[open] {
+  background: #fff8fa;
+}
+
+.carousel-template-details__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.carousel-template-details__summary::-webkit-details-marker {
+  display: none;
+}
+
+.carousel-template-details__summary svg {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--transition-fast);
+}
+
+.carousel-template-details[open] .carousel-template-details__summary svg {
+  transform: rotate(90deg);
+}
+
+.carousel-template-details .carousel-template-bar {
+  margin: 0 var(--space-3) var(--space-3);
+}
+
+/* ============================================================
+   25. APIキー設定モーダル
+   ============================================================ */
+
+.api-key-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9000;
+  padding: var(--space-4);
+  animation: fadeIn 0.2s ease;
+}
+
+.api-key-modal-overlay.active {
+  display: flex;
+}
+
+.api-key-modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface-card);
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: fadeInUp 0.3s ease;
+}
+
+.api-key-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.api-key-modal__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.api-key-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.api-key-modal__close:hover {
+  background: var(--color-bg-subtle, rgba(0,0,0,0.05));
+}
+
+.api-key-modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.api-key-modal__body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* プロバイダタブ */
+.provider-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-bg-subtle, rgba(0,0,0,0.04));
+  border-radius: var(--radius-lg);
+}
+
+[data-theme="dark"] .provider-tabs {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="sakura"] .provider-tabs {
+  background: #fff0f3;
+}
+
+.provider-tab {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.provider-tab:hover {
+  color: var(--text-primary);
+}
+
+.provider-tab.active {
+  background: var(--surface-card);
+  color: var(--color-primary-600);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="sakura"] .provider-tab.active {
+  color: #f43f5e;
+}
+
+[data-theme="dark"] .provider-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #93c5fd;
+}
+
+/* 内蔵デフォルトキー注記 */
+.api-key-default-note {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: #059669;
+  line-height: var(--leading-relaxed);
+}
+
+[data-theme="dark"] .api-key-default-note {
+  color: #6ee7b7;
+}
+
+.api-key-modal__desc {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.api-key-input-wrapper {
+  position: relative;
+}
+
+.api-key-input-wrapper .form-input {
+  padding-right: 44px;
+  font-family: var(--font-mono);
+}
+
+.api-key-toggle-btn {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.api-key-toggle-btn:hover {
+  color: var(--color-primary-600);
+}
+
+.api-key-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.api-key-modal__help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-primary-600);
+  text-decoration: none;
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.api-key-modal__help:hover {
+  text-decoration: underline;
+}
+
+[data-theme="sakura"] .api-key-modal__help {
+  color: #f43f5e;
+}
+
+.api-key-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border-color);
+  background: var(--color-bg-subtle, rgba(0,0,0,0.02));
+}
+
+[data-theme="dark"] .api-key-modal__footer {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="sakura"] .api-key-modal__footer {
+  background: #fff8fa;
+}
+
+.api-key-modal__footer #apiKeyDeleteBtn {
+  margin-right: auto;
+  color: #ef4444;
+}
+
+.api-key-modal__footer #apiKeyDeleteBtn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+[data-theme="dark"] .api-key-modal__footer #apiKeyDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* フォーム入力（モーダル用）— 既存にない場合の保険 */
+.form-input {
+  width: 100%;
+  padding: var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+}
+
+[data-theme="sakura"] .form-input:focus {
+  border-color: #f43f5e;
+}
