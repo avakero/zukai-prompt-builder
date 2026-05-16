@@ -70,7 +70,6 @@ async function verifyAccessToken(token) {
   }
 
   const { client_id: clientId, expires_in: expiresIn } = payload;
-  console.log('[line.verify] payload', { clientId, expiresIn, allowedFirst: allowed[0], allowedCount: allowed.length });
 
   if (typeof expiresIn !== 'number' || expiresIn <= 0) {
     throw new VerificationError('expired_token', 'Access token has expired', 401);
