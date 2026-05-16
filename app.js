@@ -196,7 +196,7 @@
   let imageGenState = {
     selectedPreset: 'handdrawn',
     customStyle: '',
-    model: 'NanoBanana2',
+    model: 'GPT Image2',
     // { slideIndex, imageUrl, stylePrompt, contentPrompt, status: 'loading'|'success'|'error', error? }
     generatedImages: [],
     regenSlideIndex: -1
