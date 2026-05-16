@@ -3426,19 +3426,26 @@ ${layoutDef.desc}
     return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
   }
 
+  // LINE認証不要の公開ページ (/free) かどうか
+  function isOpenAccessRoute() {
+    const path = location.pathname || '';
+    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
+  }
+
   // DOM準備完了後にLIFF認証を開始
   function startApp() {
     initLoginEvents();
-    if (isLocalDev()) {
-      // ローカル開発: LIFFも /api/me もスキップして擬似プロファイルをセット
+    if (isLocalDev() || isOpenAccessRoute()) {
+      // ローカル開発 or /free 公開ページ: LIFFも /api/me もスキップして擬似プロファイルをセット
+      const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
       window.__USER_PROFILE__ = {
-        lineUserId: 'Ulocal-dev',
-        plan: 'pro',
+        lineUserId: isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
+        plan: isOpenAccessRoute() ? 'free' : 'pro',
         status: 'active',
         planExpiresAt: null,
-        tags: ['local-dev'],
+        tags: [source],
         updatedAt: null,
-        source: 'local-dev'
+        source: source
       };
       hideLoginGate();
       init();

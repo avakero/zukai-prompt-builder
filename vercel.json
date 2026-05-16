@@ -7,7 +7,9 @@
   },
   "rewrites": [
     { "source": "/pro-max", "destination": "/index.html" },
-    { "source": "/pro-max/", "destination": "/index.html" }
+    { "source": "/pro-max/", "destination": "/index.html" },
+    { "source": "/free", "destination": "/index.html" },
+    { "source": "/free/", "destination": "/index.html" }
   ],
   "headers": [
     {
