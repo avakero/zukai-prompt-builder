@@ -93,6 +93,12 @@ const output = `<!--
   color: var(--text-primary);
   transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
               color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* 親コンテナの max-width を突破して画面幅いっぱいに背景を広げる */
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  overflow-x: hidden;
 }
 ${scopedCSS}
 </style>
