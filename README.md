@@ -44,6 +44,63 @@ node build-wp.js
 - レスポンシブデザイン対応
 - ダークモード & 桜モード対応
 
+## 🔐 中央認証API (Phase 1)
+
+`/api/me` は Vercel + Supabase で動作し、LIFF access token を検証して LINE userId とプラン情報を返します。
+
+### 環境変数
+
+`.env.example` を `.env.local` にコピーし、Vercel の Project Settings → Environment Variables にも同じものを登録してください。
+
+| キー | 用途 |
+|---|---|
+| `SUPABASE_URL` | Supabase プロジェクト URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role キー（**絶対にコミット禁止 / クライアント露出禁止**） |
+| `LINE_CHANNEL_IDS` | LIFFアプリが紐付く LINEログインチャネルIDをカンマ区切り |
+| `ALLOWED_ORIGINS` | クロスオリジン呼び出しを許可するオリジンをカンマ区切り |
+| `LOG_LEVEL` | `info` / `debug` |
+
+### Supabase スキーマ適用
+
+1. Supabase でプロジェクト作成（リージョン: `ap-northeast-1` 推奨）
+2. SQL Editor で `supabase/migrations/0001_phase1_auth.sql` を実行
+3. Service Role キーを `SUPABASE_SERVICE_ROLE_KEY` に設定
+
+### Vercel デプロイ
+
+```bash
+npm install
+vercel deploy
+```
+
+### 手動でプランを昇格させる
+
+```sql
+-- 'Uxxxx...' の部分は実際の line_user_id (auth_audit_log や subscriptions から確認)
+update subscriptions
+set plan = 'pro',
+    expires_at = '2026-12-31 23:59:59+09'
+where line_user_id = 'Uxxxx...';
+
+-- タグを付ける場合
+insert into user_tags (line_user_id, tag) values ('Uxxxx...', 'beta')
+on conflict (line_user_id, tag) do nothing;
+```
+
+ユーザーがアプリを再読み込みすれば、次回 `/api/me` で新しいプランが返ります。
+
+### ローカル動作確認
+
+```bash
+# Vercel CLI でローカルサーバ起動
+vercel dev
+
+# 別ターミナルで実トークンを使って疎通確認 (LIFFモバイルで liff.getAccessToken() をコンソール出力して取得)
+curl -H "Authorization: Bearer <token>" http://localhost:3000/api/me
+```
+
+`localhost` で `index.html` を直接開いた場合は LIFF と `/api/me` をスキップし、擬似プロファイル (`plan='pro'`) でアプリ本体が起動します。
+
 ## 📝 ライセンス
 
 MIT

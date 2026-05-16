@@ -27,24 +27,28 @@
   ];
 
   // Straico（マルチモデル対応プロキシ）
+  // ※ 実在モデル ID は /v1/models のレスポンス（2026-05 時点）に基づく。
+  //   "google/gemini-2.5-flash" は Straico のラインアップから外れているため要注意。
   const STRAICO_ENDPOINT = 'https://api.straico.com/v1/prompt/completion';
-  const STRAICO_DEFAULT_MODEL = 'openai/gpt-4o-mini';
-  // 内蔵デフォルトキーで利用可能な、フォールバック先として安定しているモデル
+  const STRAICO_DEFAULT_MODEL = 'google/gemini-3-flash-preview';
+  // 「Model not found」検知時のフォールバック（最も汎用的に安定するモデル）
   const STRAICO_FALLBACK_MODEL = 'openai/gpt-4o-mini';
-  // 「Model not found」になったら自動的にフォールバックへ差し替える対象
-  const STRAICO_LEGACY_MODELS = new Set([
-    'google/gemini-2.5-flash',
-    'google/gemini-2.5-flash-lite'
-  ]);
+  // Straico 側で廃止／改名された旧モデル ID → 自動的に置き換える
+  const STRAICO_MODEL_REMAP = {
+    'google/gemini-2.5-flash': 'google/gemini-3-flash-preview',
+    'anthropic/claude-haiku-4-5': 'claude-haiku-4-5-5'
+  };
   // 内蔵デフォルトキー（ユーザーが独自キー未設定でもStraicoを利用可能にする）
   // ※ ブラウザに配信されるため、配布範囲に応じて差し替え・無効化してください
   const STRAICO_DEFAULT_API_KEY = 'WR-qLuslnqOHBAV3ni7xtagY9FuOpVzm34FH9MTFzZIzDPM95mE';
   const STRAICO_MODELS = [
-    { id: 'openai/gpt-4o-mini',           label: 'GPT-4o mini（推奨・JSON出力安定）' },
-    { id: 'openai/gpt-4.1-mini',          label: 'GPT-4.1 mini（バランス）' },
-    { id: 'anthropic/claude-haiku-4-5',   label: 'Claude Haiku 4.5（軽量Claude）' },
-    { id: 'google/gemini-2.5-flash',      label: 'Gemini 2.5 Flash（プランによる）' },
-    { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite（プランによる）' }
+    { id: 'google/gemini-3-flash-preview',  label: 'Gemini 3 Flash Preview（推奨・高速）' },
+    { id: 'google/gemini-2.5-flash-lite',   label: 'Gemini 2.5 Flash Lite（最速・最安）' },
+    { id: 'google/gemini-3.1-pro-preview',  label: 'Gemini 3.1 Pro Preview（高品質）' },
+    { id: 'openai/gpt-4o-mini',             label: 'GPT-4o mini（JSON出力安定）' },
+    { id: 'openai/gpt-4.1-mini',            label: 'GPT-4.1 mini（バランス）' },
+    { id: 'openai/gpt-5-mini',              label: 'GPT-5 mini（新世代）' },
+    { id: 'claude-haiku-4-5-5',             label: 'Claude Haiku 4.5（軽量Claude）' }
   ];
 
   const PROVIDER_META = {
@@ -393,21 +397,27 @@
   }
 
   function updateBadges() {
-    const styleDef = STYLE_DEFS[state.style];
-    els.styleBadge.textContent = `${state.style}: ${styleDef.label.split('（')[0]}`;
+    if (els.styleBadge) {
+      const styleDef = STYLE_DEFS[state.style];
+      els.styleBadge.textContent = `${state.style}: ${styleDef.label.split('（')[0]}`;
+    }
 
-    const layoutDef = LAYOUT_DEFS[state.layout];
-    const layoutLabel = state.layout === 'G' ? 'お任せ' : layoutDef.label;
-    els.layoutBadge.textContent = `${state.layout}: ${layoutLabel}`;
+    if (els.layoutBadge) {
+      const layoutDef = LAYOUT_DEFS[state.layout];
+      const layoutLabel = state.layout === 'G' ? 'お任せ' : layoutDef.label;
+      els.layoutBadge.textContent = `${state.layout}: ${layoutLabel}`;
+    }
 
-    els.formatBadge.textContent = state.format;
+    if (els.formatBadge) els.formatBadge.textContent = state.format;
 
-    if (state.colorMode === 'auto') {
-      els.colorBadge.textContent = 'お任せ';
-    } else if (state.colorMode === 'custom') {
-      els.colorBadge.textContent = `カスタム (${state.customColor})`;
-    } else {
-      els.colorBadge.textContent = state.colorValue;
+    if (els.colorBadge) {
+      if (state.colorMode === 'auto') {
+        els.colorBadge.textContent = 'お任せ';
+      } else if (state.colorMode === 'custom') {
+        els.colorBadge.textContent = `カスタム (${state.customColor})`;
+      } else {
+        els.colorBadge.textContent = state.colorValue;
+      }
     }
   }
 
@@ -697,10 +707,14 @@ ${layoutDef.desc}
   }
 
   function updateImageBadge() {
+    if (!els.imageBadge) return;
     if (characterImages.length === 0) {
       els.imageBadge.textContent = '任意';
+      els.imageBadge.classList.remove('section__badge--success', 'section__badge--active');
     } else {
       els.imageBadge.textContent = `${characterImages.length}枚`;
+      els.imageBadge.classList.remove('section__badge--active');
+      els.imageBadge.classList.add('section__badge--success');
     }
   }
 
@@ -1050,6 +1064,20 @@ ${layoutDef.desc}
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
     }
+    if (els.carouselJsonInput && els.carouselBadge) {
+      els.carouselJsonInput.addEventListener('input', () => {
+        const hasValue = els.carouselJsonInput.value.trim().length > 0;
+        // 既に「success（X枚）」状態なら触らない
+        if (els.carouselBadge.classList.contains('section__badge--success')) return;
+        if (hasValue) {
+          els.carouselBadge.textContent = '入力中';
+          els.carouselBadge.classList.add('section__badge--active');
+        } else {
+          els.carouselBadge.textContent = '未入力';
+          els.carouselBadge.classList.remove('section__badge--active');
+        }
+      });
+    }
 
     // ===== AI生成（Gemini） =====
     if (els.aiGenerateBtn) {
@@ -1296,10 +1324,9 @@ ${layoutDef.desc}
         if (parsed.straico) {
           cfg.straico.apiKey = parsed.straico.apiKey || '';
           cfg.straico.model = parsed.straico.model || STRAICO_DEFAULT_MODEL;
-          // 内蔵キー利用者が旧デフォルトの Gemini モデルを保存している場合は
-          // 安定モデルへ自動移行（プラン制限で「Model not found」になるため）
-          if (!cfg.straico.apiKey && STRAICO_LEGACY_MODELS.has(cfg.straico.model)) {
-            cfg.straico.model = STRAICO_FALLBACK_MODEL;
+          // Straico 側で廃止／改名された旧モデル ID は読込時に新 ID へ自動移行
+          if (Object.prototype.hasOwnProperty.call(STRAICO_MODEL_REMAP, cfg.straico.model)) {
+            cfg.straico.model = STRAICO_MODEL_REMAP[cfg.straico.model];
           }
         }
         if (parsed.gemini) {
@@ -1505,7 +1532,8 @@ ${layoutDef.desc}
 - 各スライドの content は、画像内に表示するテキストとして読みやすい量・長さに整えてください
 - 表紙(cover)はキャッチーで、思わずスワイプしたくなる訴求にしてください
 - 本文(body)は1枚1メッセージの原則で、情報を整理してください
-- 最後(cta)は読者へのアクション（保存・コメント・フォロー等）を促す内容にしてください
+- 最後(cta)は内容のまとめや読後感を残す締めくくりにしてください
+- ❌ CTAで「保存」「コメント」「いいね」「フォロー」などSNS上のアクションを促す表現は使わないでください（読者が自然に内容を持ち帰れる締め方にする）
 
 # トーン
 ${toneDesc}
@@ -1763,6 +1791,8 @@ ${theme}
 
     carouselData = data;
     els.carouselBadge.textContent = `${data.slides.length}枚`;
+    els.carouselBadge.classList.remove('section__badge--active');
+    els.carouselBadge.classList.add('section__badge--success');
 
     // JSONの値をUIに反映
     applyJsonToUI(data);
@@ -1840,44 +1870,130 @@ ${theme}
 
     els.carouselSlides.innerHTML = '';
     carouselData.slides.forEach((slide, i) => {
-      const role = slide.role || 'body';
-      const roleLabel = ROLE_LABELS[role] || role;
-      const layout = slide.layout || (role === 'body' ? 'G' : '');
-      const layoutDef = layout ? LAYOUT_DEFS[layout] : null;
-      const content = slide.content || '';
-
-      const card = document.createElement('div');
-      card.className = 'carousel-slide-card';
-      card.style.animationDelay = `${i * 0.05}s`;
-
-      card.innerHTML = `
-        <div class="carousel-slide-card__page">${slide.page || i + 1}</div>
-        <div class="carousel-slide-card__body">
-          <div class="carousel-slide-card__meta">
-            <span class="carousel-slide-card__role carousel-slide-card__role--${role}">${roleLabel}</span>
-            ${layoutDef ? `<span class="carousel-slide-card__layout-badge">${layout}: ${layoutDef.label}</span>` : ''}
-          </div>
-          <div class="carousel-slide-card__content">${escapeHtml(content)}</div>
-        </div>
-        <div class="carousel-slide-card__actions">
-          <button class="action-btn action-btn--copy" type="button" data-slide-index="${i}" title="このスライドのプロンプトをコピー">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
-        </div>
-      `;
-
-      // 個別コピーボタン
-      card.querySelector('.action-btn--copy').addEventListener('click', () => {
-        const prompt = buildSlidePrompt(slide, i);
-        navigator.clipboard.writeText(prompt).then(() => {
-          showToast(`📋 スライド${slide.page || i + 1}をコピーしました`);
-        }).catch(() => {
-          showToast('⚠️ コピーに失敗しました');
-        });
-      });
-
+      const card = buildCarouselSlideCard(slide, i);
       els.carouselSlides.appendChild(card);
     });
+  }
+
+  function buildCarouselSlideCard(slide, i) {
+    const role = slide.role || 'body';
+    const roleLabel = ROLE_LABELS[role] || role;
+    const layout = slide.layout || (role === 'body' ? 'G' : '');
+    const layoutDef = layout ? LAYOUT_DEFS[layout] : null;
+    const content = slide.content || '';
+
+    const card = document.createElement('div');
+    card.className = 'carousel-slide-card';
+    card.style.animationDelay = `${i * 0.05}s`;
+    if (slide._edited) card.classList.add('carousel-slide-card--edited');
+
+    card.innerHTML = `
+      <div class="carousel-slide-card__page">${slide.page || i + 1}</div>
+      <div class="carousel-slide-card__body">
+        <div class="carousel-slide-card__meta">
+          <span class="carousel-slide-card__role carousel-slide-card__role--${role}">${roleLabel}</span>
+          ${layoutDef ? `<span class="carousel-slide-card__layout-badge">${layout}: ${layoutDef.label}</span>` : ''}
+          <span class="carousel-slide-card__edited-badge" data-edited-badge title="この本文は編集されています" ${slide._edited ? '' : 'hidden'}>編集済み</span>
+        </div>
+        <div class="carousel-slide-card__content" data-view>${escapeHtml(content)}</div>
+        <textarea class="carousel-slide-card__editor" data-editor rows="4" hidden></textarea>
+        <div class="carousel-slide-card__edit-hint" data-edit-hint hidden>Ctrl/⌘+Enter で保存 / Esc でキャンセル</div>
+      </div>
+      <div class="carousel-slide-card__actions" data-actions-view>
+        <button class="action-btn action-btn--edit" type="button" title="本文を編集">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </button>
+        <button class="action-btn action-btn--copy" type="button" title="このスライドのプロンプトをコピー">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+      <div class="carousel-slide-card__actions" data-actions-edit hidden>
+        <button class="action-btn action-btn--save" type="button" title="保存（Ctrl/⌘+Enter）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <button class="action-btn action-btn--cancel" type="button" title="キャンセル（Esc）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+
+    const viewEl = card.querySelector('[data-view]');
+    const editorEl = card.querySelector('[data-editor]');
+    const hintEl = card.querySelector('[data-edit-hint]');
+    const actionsView = card.querySelector('[data-actions-view]');
+    const actionsEdit = card.querySelector('[data-actions-edit]');
+    const editedBadge = card.querySelector('[data-edited-badge]');
+
+    const autoSize = () => {
+      editorEl.style.height = 'auto';
+      editorEl.style.height = `${Math.max(editorEl.scrollHeight, 80)}px`;
+    };
+
+    const enterEditMode = () => {
+      editorEl.value = slide.content || '';
+      viewEl.hidden = true;
+      editorEl.hidden = false;
+      hintEl.hidden = false;
+      actionsView.hidden = true;
+      actionsEdit.hidden = false;
+      autoSize();
+      editorEl.focus();
+      const len = editorEl.value.length;
+      editorEl.setSelectionRange(len, len);
+    };
+
+    const exitEditMode = () => {
+      viewEl.hidden = false;
+      editorEl.hidden = true;
+      hintEl.hidden = true;
+      actionsView.hidden = false;
+      actionsEdit.hidden = true;
+    };
+
+    const saveEdit = () => {
+      const newContent = editorEl.value;
+      const originalContent = slide.content || '';
+      if (newContent === originalContent) {
+        exitEditMode();
+        return;
+      }
+      slide.content = newContent;
+      slide._edited = true;
+      viewEl.textContent = newContent;
+      editedBadge.hidden = false;
+      card.classList.add('carousel-slide-card--edited');
+      exitEditMode();
+      if (carouselPrompts.length > 0) {
+        showToast('💾 本文を更新しました（「全プロンプト生成」を押し直すと反映されます）');
+      } else {
+        showToast('💾 本文を更新しました');
+      }
+    };
+
+    card.querySelector('.action-btn--edit').addEventListener('click', enterEditMode);
+    card.querySelector('.action-btn--save').addEventListener('click', saveEdit);
+    card.querySelector('.action-btn--cancel').addEventListener('click', exitEditMode);
+    editorEl.addEventListener('input', autoSize);
+    editorEl.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        exitEditMode();
+      }
+    });
+
+    card.querySelector('.action-btn--copy').addEventListener('click', () => {
+      const prompt = buildSlidePrompt(slide, i);
+      navigator.clipboard.writeText(prompt).then(() => {
+        showToast(`📋 スライド${slide.page || i + 1}をコピーしました`);
+      }).catch(() => {
+        showToast('⚠️ コピーに失敗しました');
+      });
+    });
+
+    return card;
   }
 
   function escapeHtml(text) {
@@ -2128,6 +2244,9 @@ ${layoutDef.desc}
   const PICKAXE_CONCURRENCY = PICKAXE_CONFIG.api_keys.length; // = 4
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
+  // 1試行あたりのタイムアウト（ミリ秒）。実測70秒/枚に対し約2.5倍の余裕。
+  // これを超えたらサーバー無応答とみなしてリトライ（または失敗確定）させる。
+  const PICKAXE_REQUEST_TIMEOUT_MS = 180_000;
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -2146,14 +2265,31 @@ ${layoutDef.desc}
       stream: false
     };
 
-    const res = await fetch(PICKAXE_CONFIG.endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PICKAXE_REQUEST_TIMEOUT_MS);
+
+    let res;
+    try {
+      res = await fetch(PICKAXE_CONFIG.endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        const e = new Error(`タイムアウト（${Math.round(PICKAXE_REQUEST_TIMEOUT_MS / 1000)}秒以内に応答なし）`);
+        e.status = 0;
+        e.isTimeout = true;
+        throw e;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) {
       const errText = await res.text();
@@ -2173,8 +2309,9 @@ ${layoutDef.desc}
   }
 
   function isRetryable(err) {
-    // ネットワークエラー（"Failed to fetch"）と 429/5xx はリトライ対象
+    // ネットワークエラー（"Failed to fetch"）、タイムアウト、429/5xx はリトライ対象
     if (!err) return false;
+    if (err.isTimeout) return true; // AbortControllerによるタイムアウト
     if (err.name === 'TypeError') return true; // fetch network error
     if (err.status === 429) return true;
     if (err.status >= 500 && err.status < 600) return true;
@@ -2291,12 +2428,13 @@ ${layoutDef.desc}
   }
 
   function updateProgressUI(total) {
-    const done = imageGenState.generatedImages.filter(g => g.status !== 'loading').length;
+    const settled = imageGenState.generatedImages.filter(g => g.status !== 'loading').length;
     const success = imageGenState.generatedImages.filter(g => g.status === 'success').length;
     const errors = imageGenState.generatedImages.filter(g => g.status === 'error').length;
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    // ゲージは「成功」だけを進行とみなす。失敗は完了扱いにしない。
+    const pct = total > 0 ? Math.round((success / total) * 100) : 0;
     const elapsed = Math.round((Date.now() - _generationStartTime) / 1000);
-    const remaining = estimateRemaining(total, done);
+    const remaining = estimateRemaining(total, settled);
 
     const barFill = document.getElementById('imageGenProgressFill');
     const pctLabel = document.getElementById('imageGenProgressPct');
@@ -2307,12 +2445,12 @@ ${layoutDef.desc}
     if (pctLabel) pctLabel.textContent = `${pct}%`;
     if (countLabel) {
       countLabel.textContent = errors > 0
-        ? `${done} / ${total} 完了（成功 ${success} / 失敗 ${errors}）`
-        : `${done} / ${total} 完了`;
+        ? `${success} / ${total} 成功（失敗 ${errors}）`
+        : `${success} / ${total} 完了`;
     }
     if (timeLabel) timeLabel.textContent = `経過 ${elapsed}秒 ・ ${remaining}`;
 
-    if (els.imageGridBadge) els.imageGridBadge.textContent = `${done} / ${total}`;
+    if (els.imageGridBadge) els.imageGridBadge.textContent = `${success} / ${total}`;
   }
 
   function ensureProgressBarDOM() {
@@ -2461,12 +2599,11 @@ ${layoutDef.desc}
 
     const images = imageGenState.generatedImages;
     const total = images.length;
-    const done = images.filter(g => g.status !== 'loading').length;
     const successCount = images.filter(g => g.status === 'success').length;
 
-    // バッジ更新
+    // バッジ更新（成功した枚数のみカウント。失敗は完了扱いにしない）
     if (els.imageGridBadge) {
-      els.imageGridBadge.textContent = `${done} / ${total}`;
+      els.imageGridBadge.textContent = `${successCount} / ${total}`;
     }
 
     // 一括ダウンロードボタンの表示制御
@@ -2902,8 +3039,17 @@ ${layoutDef.desc}
   }
 
   // ============================================================
-  // LINE LIFF 認証
+  // LINE LIFF 認証 + /api/me プラン情報取得
   // ============================================================
+
+  // /api/me で取得したプラン情報のシングルソース
+  // 形 : { lineUserId, plan, status, planExpiresAt, tags: string[], updatedAt, source: 'api'|'local-dev'|'fallback' }
+  window.__USER_PROFILE__ = null;
+
+  // 機能ゲートの口 (Phase 2 で plan → feature マッピングを実装する差し込み点)
+  window.hasFeature = function hasFeature(_featureKey) {
+    return true;
+  };
 
   // ページごとに別のLIFFアプリを使い分け
   // ※ LIFFはエンドポイントURLを1つしか登録できないため、ページごとに別のLIFFアプリを作成
@@ -2943,6 +3089,42 @@ ${layoutDef.desc}
     const profileEl = document.getElementById('lineUserProfile');
     if (profileEl) {
       profileEl.style.display = 'flex';
+    }
+  }
+
+  // /api/me を叩いてプラン情報を取得する (失敗しても非ブロッキング)
+  async function fetchUserProfile() {
+    try {
+      const token = liff.getAccessToken();
+      if (!token) {
+        console.warn('[api/me] no access token available; skipping');
+        window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
+        return;
+      }
+      const res = await withTimeout(
+        fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } }),
+        8000,
+        '/api/me'
+      );
+      if (!res.ok) {
+        console.warn('[api/me] non-200 response:', res.status);
+        window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
+        return;
+      }
+      const data = await res.json();
+      window.__USER_PROFILE__ = {
+        lineUserId:    data.lineUserId,
+        plan:          data.plan,
+        status:        data.status,
+        planExpiresAt: data.planExpiresAt,
+        tags:          Array.isArray(data.tags) ? data.tags : [],
+        updatedAt:     data.updatedAt,
+        source:        'api'
+      };
+      console.log('[api/me] loaded profile:', { plan: data.plan, tags: data.tags });
+    } catch (e) {
+      console.warn('[api/me] failed:', e && e.message);
+      window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
     }
   }
 
@@ -3019,11 +3201,14 @@ ${layoutDef.desc}
       console.log('[LIFF] step 3: isLoggedIn() =', loggedIn);
 
       if (loggedIn) {
-        // ログイン済み → 友だち確認へ
+        // ログイン済み → /api/me でプラン取得 → 友だち確認
         setLoginState('lineStateLoading');
-        console.log('[LIFF] step 4: checkFriendship() ...');
+        console.log('[LIFF] step 4a: fetchUserProfile() ...');
+        await fetchUserProfile();
+        console.log('[LIFF] step 4a done.');
+        console.log('[LIFF] step 4b: checkFriendship() ...');
         await checkFriendship();
-        console.log('[LIFF] step 4 done.');
+        console.log('[LIFF] step 4b done.');
       } else {
         // 未ログイン → ログインボタン表示
         console.log('[LIFF] not logged in → showing login button');
@@ -3088,6 +3273,16 @@ ${layoutDef.desc}
   function startApp() {
     initLoginEvents();
     if (isLocalDev()) {
+      // ローカル開発: LIFFも /api/me もスキップして擬似プロファイルをセット
+      window.__USER_PROFILE__ = {
+        lineUserId: 'Ulocal-dev',
+        plan: 'pro',
+        status: 'active',
+        planExpiresAt: null,
+        tags: ['local-dev'],
+        updatedAt: null,
+        source: 'local-dev'
+      };
       hideLoginGate();
       init();
       return;
