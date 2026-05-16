@@ -5,6 +5,10 @@
       "maxDuration": 10
     }
   },
+  "rewrites": [
+    { "source": "/pro-max", "destination": "/index.html" },
+    { "source": "/pro-max/", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
