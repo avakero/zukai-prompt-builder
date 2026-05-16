@@ -78,11 +78,19 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'method_not_allowed' });
   }
 
+  const authHeader = req.headers.authorization;
+  console.log('[api/me] request', {
+    hasAuth: !!authHeader,
+    authPrefix: authHeader ? authHeader.slice(0, 14) : null,
+    ua: req.headers['user-agent']
+  });
+
   let auth;
   try {
-    auth = await authenticateFromAuthorizationHeader(req.headers.authorization);
+    auth = await authenticateFromAuthorizationHeader(authHeader);
   } catch (e) {
     if (e instanceof VerificationError) {
+      console.warn('[api/me] auth failed', { code: e.code, httpStatus: e.httpStatus });
       res.statusCode = e.httpStatus;
       return res.json({ error: e.code });
     }

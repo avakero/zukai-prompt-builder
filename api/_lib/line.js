@@ -55,6 +55,7 @@ async function verifyAccessToken(token) {
   const res = await fetchWithTimeout(`${VERIFY_URL}?access_token=${encodeURIComponent(token)}`);
 
   if (res.status === 400 || res.status === 401) {
+    console.warn('[line.verify] LINE rejected token', { httpStatus: res.status, tokenPrefix: token.slice(0, 8) });
     throw new VerificationError('invalid_token', 'Token rejected by LINE verify', 401);
   }
   if (!res.ok) {
@@ -69,10 +70,13 @@ async function verifyAccessToken(token) {
   }
 
   const { client_id: clientId, expires_in: expiresIn } = payload;
+  console.log('[line.verify] payload', { clientId, expiresIn, allowedFirst: allowed[0], allowedCount: allowed.length });
+
   if (typeof expiresIn !== 'number' || expiresIn <= 0) {
     throw new VerificationError('expired_token', 'Access token has expired', 401);
   }
   if (!clientId || !allowed.includes(String(clientId))) {
+    console.warn('[line.verify] audience_mismatch', { actualClientId: clientId, allowed });
     throw new VerificationError('audience_mismatch', 'Token is for a different LINE channel', 401);
   }
 
