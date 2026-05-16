@@ -252,6 +252,16 @@
     carouselSlides: $('#carouselSlides'),
     carouselSlideCount: $('#carouselSlideCount'),
     carouselPreviewTitle: $('#carouselPreviewTitle'),
+    // 投稿キャプション
+    postCaption: $('#postCaption'),
+    postCaptionBodyBlock: $('#postCaptionBodyBlock'),
+    postCaptionBody: $('#postCaptionBody'),
+    postCaptionTagsBlock: $('#postCaptionTagsBlock'),
+    postCaptionTags: $('#postCaptionTags'),
+    postCaptionTagCount: $('#postCaptionTagCount'),
+    copyCaptionAllBtn: $('#copyCaptionAllBtn'),
+    copyCaptionBodyBtn: $('#copyCaptionBodyBtn'),
+    copyCaptionTagsBtn: $('#copyCaptionTagsBtn'),
     carouselGenerateBtn: $('#carouselGenerateBtn'),
     carouselOutputSection: $('#carouselOutputSection'),
     carouselOutputCards: $('#carouselOutputCards'),
@@ -1064,6 +1074,15 @@ ${layoutDef.desc}
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
     }
+    if (els.copyCaptionAllBtn) {
+      els.copyCaptionAllBtn.addEventListener('click', copyCaptionAll);
+    }
+    if (els.copyCaptionBodyBtn) {
+      els.copyCaptionBodyBtn.addEventListener('click', copyCaptionBody);
+    }
+    if (els.copyCaptionTagsBtn) {
+      els.copyCaptionTagsBtn.addEventListener('click', copyCaptionTags);
+    }
     if (els.carouselJsonInput && els.carouselBadge) {
       els.carouselJsonInput.addEventListener('input', () => {
         const hasValue = els.carouselJsonInput.value.trim().length > 0;
@@ -1534,6 +1553,8 @@ ${layoutDef.desc}
 - 本文(body)は1枚1メッセージの原則で、情報を整理してください
 - 最後(cta)は内容のまとめや読後感を残す締めくくりにしてください
 - ❌ CTAで「保存」「コメント」「いいね」「フォロー」などSNS上のアクションを促す表現は使わないでください（読者が自然に内容を持ち帰れる締め方にする）
+- 投稿キャプション(caption)はInstagramの本文として使用します。冒頭1〜2行で続きを読みたくなる引きを作り、その後にスライド内容を補足／深掘りする本文を続け、最後に読後感を残す締めくくりを置いてください（保存やフォローを直接促す表現は禁止）。改行は \\n を使い、絵文字も自然に活用して構いません。300〜600文字を目安にしてください。
+- ハッシュタグ(hashtags)はテーマと関連性の高いものを10〜15個、日本語・英語を織り交ぜて配列で返してください。"#" を必ず含め、半角スペースや句読点は含めないでください。
 
 # トーン
 ${toneDesc}
@@ -1543,7 +1564,9 @@ ${slideCountDesc}
 
 # JSON仕様
 {
-  "title": "カルーセル全体のタイトル（投稿のキャプション用）",
+  "title": "カルーセル全体のタイトル（保存用の短い見出し）",
+  "caption": "Instagram投稿のキャプション本文（改行は \\n、複数段落OK）",
+  "hashtags": ["#タグ1", "#タグ2", "..."],
   "style": "A" | "B" | "C" | "D",
   "format": "1:1" | "3:4" | "16:9",
   "color": "auto" or プリセット名,
@@ -1556,6 +1579,9 @@ ${slideCountDesc}
 }
 
 # フィールド説明
+- title: カルーセルを一言で表す短い見出し（30文字以内目安）
+- caption: Instagramの投稿本文。フック → 本編 → 締めの3部構成。スライド本文と同じことを繰り返さず、補足や具体例・体験談を交えて深掘りする
+- hashtags: 投稿で使うハッシュタグの配列。10〜15個、重複なし、"#" 必須
 - style: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル) — テーマに最適なものを選択
 - format: "1:1"(正方形), "3:4"(縦長), "16:9"(横長) — 通常はInstagram向けに"1:1"推奨
 - color: "auto"(おまかせ) 推奨
@@ -1739,7 +1765,13 @@ ${theme}
       // JSON入力欄に整形して挿入
       els.carouselJsonInput.value = JSON.stringify(extracted.parsed, null, 2);
 
-      showToast(`✨ JSONを生成しました（${extracted.parsed.slides.length}枚）`);
+      const hasCaption = typeof extracted.parsed.caption === 'string' && extracted.parsed.caption.trim();
+      const tagCount = Array.isArray(extracted.parsed.hashtags) ? extracted.parsed.hashtags.length : 0;
+      const extras = [];
+      if (hasCaption) extras.push('キャプション');
+      if (tagCount) extras.push(`#タグ${tagCount}`);
+      const extraLabel = extras.length ? ` + ${extras.join(' / ')}` : '';
+      showToast(`✨ JSONを生成しました（${extracted.parsed.slides.length}枚${extraLabel}）`);
 
       // そのまま自動展開
       expandCarousel();
@@ -1868,11 +1900,136 @@ ${theme}
       els.carouselPreviewTitle.textContent = carouselData.title;
     }
 
+    renderPostCaption(carouselData);
+
     els.carouselSlides.innerHTML = '';
     carouselData.slides.forEach((slide, i) => {
       const card = buildCarouselSlideCard(slide, i);
       els.carouselSlides.appendChild(card);
     });
+  }
+
+  function normalizeHashtag(raw) {
+    if (raw == null) return '';
+    let tag = String(raw).trim();
+    if (!tag) return '';
+    tag = tag.replace(/\s+/g, '');
+    if (!tag.startsWith('#')) tag = '#' + tag;
+    return tag.length > 1 ? tag : '';
+  }
+
+  function renderPostCaption(data) {
+    if (!els.postCaption) return;
+
+    const caption = typeof data.caption === 'string' ? data.caption.trim() : '';
+    const rawTags = Array.isArray(data.hashtags) ? data.hashtags : [];
+    const tags = [];
+    const seen = new Set();
+    rawTags.forEach((t) => {
+      const n = normalizeHashtag(t);
+      if (n && !seen.has(n)) {
+        seen.add(n);
+        tags.push(n);
+      }
+    });
+
+    const hasCaption = !!caption;
+    const hasTags = tags.length > 0;
+
+    els.postCaption.hidden = !(hasCaption || hasTags);
+
+    if (els.postCaptionBodyBlock) els.postCaptionBodyBlock.hidden = !hasCaption;
+    if (els.postCaptionTagsBlock) els.postCaptionTagsBlock.hidden = !hasTags;
+
+    if (hasCaption && els.postCaptionBody) {
+      els.postCaptionBody.value = caption;
+      autoSizeCaption();
+    }
+
+    if (hasTags) {
+      if (els.postCaptionTagCount) els.postCaptionTagCount.textContent = `（${tags.length}個）`;
+      els.postCaptionTags.innerHTML = '';
+      tags.forEach((tag) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'post-caption__tag';
+        btn.textContent = tag;
+        btn.title = 'クリックで個別コピー';
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(tag).then(() => {
+            showToast(`📋 ${tag} をコピーしました`);
+          }).catch(() => showToast('⚠️ コピーに失敗しました'));
+        });
+        els.postCaptionTags.appendChild(btn);
+      });
+    }
+
+    // 編集内容を carouselData に反映（コピーやエクスポート時の整合性のため）
+    if (hasCaption && els.postCaptionBody && !els.postCaptionBody._bound) {
+      els.postCaptionBody.addEventListener('input', () => {
+        if (carouselData) carouselData.caption = els.postCaptionBody.value;
+        autoSizeCaption();
+      });
+      els.postCaptionBody._bound = true;
+    }
+  }
+
+  function autoSizeCaption() {
+    if (!els.postCaptionBody) return;
+    els.postCaptionBody.style.height = 'auto';
+    els.postCaptionBody.style.height = `${Math.max(els.postCaptionBody.scrollHeight, 160)}px`;
+  }
+
+  function getCurrentHashtags() {
+    if (!carouselData || !Array.isArray(carouselData.hashtags)) return [];
+    const tags = [];
+    const seen = new Set();
+    carouselData.hashtags.forEach((t) => {
+      const n = normalizeHashtag(t);
+      if (n && !seen.has(n)) {
+        seen.add(n);
+        tags.push(n);
+      }
+    });
+    return tags;
+  }
+
+  function copyCaptionBody() {
+    const text = (els.postCaptionBody?.value || '').trim();
+    if (!text) {
+      showToast('⚠️ コピーする本文がありません');
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('📋 本文をコピーしました'))
+      .catch(() => showToast('⚠️ コピーに失敗しました'));
+  }
+
+  function copyCaptionTags() {
+    const tags = getCurrentHashtags();
+    if (!tags.length) {
+      showToast('⚠️ コピーするハッシュタグがありません');
+      return;
+    }
+    navigator.clipboard.writeText(tags.join(' '))
+      .then(() => showToast(`📋 ハッシュタグ ${tags.length} 個をコピーしました`))
+      .catch(() => showToast('⚠️ コピーに失敗しました'));
+  }
+
+  function copyCaptionAll() {
+    const body = (els.postCaptionBody?.value || '').trim();
+    const tags = getCurrentHashtags();
+    if (!body && !tags.length) {
+      showToast('⚠️ コピーする内容がありません');
+      return;
+    }
+    const parts = [];
+    if (body) parts.push(body);
+    if (tags.length) parts.push(tags.join(' '));
+    const combined = parts.join('\n\n');
+    navigator.clipboard.writeText(combined)
+      .then(() => showToast('📋 投稿キャプションをまとめてコピーしました'))
+      .catch(() => showToast('⚠️ コピーに失敗しました'));
   }
 
   function buildCarouselSlideCard(slide, i) {
