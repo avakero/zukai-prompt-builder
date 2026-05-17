@@ -3031,12 +3031,71 @@ img {
 .line-login-state { display: none; }
 .line-login-state.active { display: block; }
 
+/* --- ヘッダー：匿名ユーザー向けログイン CTA --- */
+.line-login-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: var(--space-2);
+  padding: 5px 12px;
+  background: #06C755;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.line-login-cta:hover {
+  background: #05a847;
+  transform: translateY(-1px);
+}
+
+.line-login-cta:active {
+  transform: translateY(0);
+}
+
+.line-login-cta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.line-login-cta[hidden] {
+  display: none;
+}
+
 /* --- ヘッダー：ユーザープロフィール --- */
 .line-user-profile {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-right: var(--space-2);
+}
+
+.line-user-profile__plan {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: #06C755;
+  background: rgba(6, 199, 85, 0.08);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.line-user-profile__plan--pro,
+.line-user-profile__plan--lifetime {
+  color: #b8860b;
+  background: rgba(255, 215, 0, 0.15);
+}
+
+.line-user-profile__plan--standard {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .line-user-profile__status {
