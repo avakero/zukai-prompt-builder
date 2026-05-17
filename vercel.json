@@ -1,11 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/**/*.js": {
+    "api/me.js": {
+      "maxDuration": 10
+    },
+    "api/upload-character-image.js": {
       "maxDuration": 10
     },
     "api/pickaxe-proxy.js": {
-      "maxDuration": 120
+      "maxDuration": 60
     }
   },
   "rewrites": [

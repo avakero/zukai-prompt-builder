@@ -21,7 +21,10 @@ const ALLOW_METHODS = 'POST, OPTIONS';
 const PICKAXE_ENDPOINT = 'https://api.pickaxe.co/v1/completions';
 const MODEL_INPUT_ID = '57fac2d1-e94a-46b8-8afb-fff18fed82a3';
 const PROMPT_INPUT_ID = '18fc7bff-e8e7-4660-9434-0cee04a658fd';
-const REQUEST_TIMEOUT_MS = 110_000; // Vercel maxDuration 120s 直前で切る
+// Vercel Hobby プランの maxDuration 上限は 60s。
+// それを超えるとプラットフォーム側に強制終了されるので、内部タイムアウトは
+// 55s に設定して、上流の中断より先に AbortError を返す。
+const REQUEST_TIMEOUT_MS = 55_000;
 
 const IMAGE_URL_PATTERN = /https?:\/\/[^\s'"<>)\]]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s'"<>)\]]*)*/gi;
 
