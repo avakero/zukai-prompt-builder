@@ -1,6 +1,5 @@
 /**
  * 図解プロンプトビルダー — App Logic
- * Nano Banana Pro 専用
  */
 
 (function () {
@@ -42,13 +41,13 @@
   // ※ ブラウザに配信されるため、配布範囲に応じて差し替え・無効化してください
   const STRAICO_DEFAULT_API_KEY = 'WR-qLuslnqOHBAV3ni7xtagY9FuOpVzm34FH9MTFzZIzDPM95mE';
   const STRAICO_MODELS = [
-    { id: 'google/gemini-3-flash-preview',  label: 'Gemini 3 Flash Preview（推奨・高速）' },
-    { id: 'google/gemini-2.5-flash-lite',   label: 'Gemini 2.5 Flash Lite（最速・最安）' },
-    { id: 'google/gemini-3.1-pro-preview',  label: 'Gemini 3.1 Pro Preview（高品質）' },
-    { id: 'openai/gpt-4o-mini',             label: 'GPT-4o mini（JSON出力安定）' },
-    { id: 'openai/gpt-4.1-mini',            label: 'GPT-4.1 mini（バランス）' },
-    { id: 'openai/gpt-5-mini',              label: 'GPT-5 mini（新世代）' },
-    { id: 'claude-haiku-4-5-5',             label: 'Claude Haiku 4.5（軽量Claude）' }
+    { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview（推奨・高速）' },
+    { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite（最速・最安）' },
+    { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview（高品質）' },
+    { id: 'openai/gpt-4o-mini', label: 'GPT-4o mini（JSON出力安定）' },
+    { id: 'openai/gpt-4.1-mini', label: 'GPT-4.1 mini（バランス）' },
+    { id: 'openai/gpt-5-mini', label: 'GPT-5 mini（新世代）' },
+    { id: 'claude-haiku-4-5-5', label: 'Claude Haiku 4.5（軽量Claude）' }
   ];
 
   const PROVIDER_META = {
@@ -346,11 +345,11 @@
 
   // 季節テーマ定義
   const SEASONAL_THEMES = {
-    sakura:    { icon: '🌸', badge: '🌸 春限定',   months: [3, 4] },
-    shinryoku: { icon: '🌿', badge: '🌿 新緑',     months: [5, 6] },
-    natsu:     { icon: '🌊', badge: '🌊 夏',       months: [7, 8] },
-    kouyou:    { icon: '🍁', badge: '🍁 紅葉',     months: [9, 10, 11] },
-    fuyu:      { icon: '❄️', badge: '❄️ 冬',       months: [12, 1, 2] },
+    sakura: { icon: '🌸', badge: '🌸 春限定', months: [3, 4] },
+    shinryoku: { icon: '🌿', badge: '🌿 新緑', months: [5, 6] },
+    natsu: { icon: '🌊', badge: '🌊 夏', months: [7, 8] },
+    kouyou: { icon: '🍁', badge: '🍁 紅葉', months: [9, 10, 11] },
+    fuyu: { icon: '❄️', badge: '❄️ 冬', months: [12, 1, 2] },
   };
 
   function getSeasonalTheme() {
@@ -373,24 +372,24 @@
 
   // 上位プランは下位プランの機能を全て継承する
   const PLAN_FEATURES = {
-    free:     ['core.single'],
+    free: ['core.single'],
     standard: ['core.single', 'mode.carousel', 'ai.json'],
-    pro:      ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal'],
+    pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal'],
     lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal']
   };
 
   // タグによる個別解放 (プランより強い、上書き専用)
   const TAG_FEATURE_GRANTS = {
-    beta:     ['ai.json', 'ai.imagegen', 'theme.seasonal'],
+    beta: ['ai.json', 'ai.imagegen', 'theme.seasonal'],
     internal: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
-    vip:      ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel']
+    vip: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel']
   };
 
   // feature key → ユーザー向けに案内する必要プラン
   const FEATURE_REQUIRED_PLAN = {
-    'mode.carousel':  'STANDARD',
-    'ai.json':        'STANDARD',
-    'ai.imagegen':    'PRO',
+    'mode.carousel': 'STANDARD',
+    'ai.json': 'STANDARD',
+    'ai.imagegen': 'PRO',
     'theme.seasonal': 'PRO'
   };
 
@@ -663,14 +662,20 @@ ${layoutDef.desc}
 
   // 機能ゲート: hasFeature が true なら true を返し処理続行可、false ならトースト表示して false
   // 同一キーの連打は 1.5 秒スロットルでトースト 1 回に抑制
+  // 未ログイン (匿名 / open-access / fallback) と ログイン済み低プランで文言を分ける
   const _lastGateToast = {};
   function gateOrToast(featureKey, displayName) {
     if (window.hasFeature(featureKey)) return true;
     const now = Date.now();
     if (now - (_lastGateToast[featureKey] || 0) < 1500) return false;
     _lastGateToast[featureKey] = now;
-    const plan = FEATURE_REQUIRED_PLAN[featureKey] || 'STANDARD';
-    showToast(`🔒 ${displayName}は ${plan} プラン以上で利用できます`);
+    const profile = window.__USER_PROFILE__ || {};
+    if (typeof isProfileAuthenticated === 'function' && !isProfileAuthenticated(profile)) {
+      showToast(`🔒 ${displayName}は LINE公式の友だち追加 + ログインで利用できます`);
+    } else {
+      const plan = FEATURE_REQUIRED_PLAN[featureKey] || 'STANDARD';
+      showToast(`🔒 ${displayName}は ${plan} プラン以上で利用できます`);
+    }
     return false;
   }
 
@@ -775,6 +780,54 @@ ${layoutDef.desc}
       els.imageBadge.classList.remove('section__badge--active');
       els.imageBadge.classList.add('section__badge--success');
     }
+  }
+
+  // ------------------------------------------------------------
+  // キャラクター画像の公開URL確保（Pickaxe API 用）
+  // ------------------------------------------------------------
+  // /api/upload-character-image に dataUrl を POST して Supabase Storage 上の
+  // 公開 HTTPS URL を取得する。同じ画像は1度だけアップロードし、結果は
+  // characterImages[i].publicUrl にキャッシュする。
+  async function uploadOneCharacterImage(img) {
+    if (img.publicUrl) return img.publicUrl;
+
+    let token = null;
+    try {
+      token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+    } catch (_) { token = null; }
+    if (!token) throw new Error('LINE認証トークンが取得できません');
+
+    const res = await fetch('/api/upload-character-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ dataUrl: img.dataUrl, filename: img.name })
+    });
+
+    if (!res.ok) {
+      let detail = '';
+      try { const j = await res.json(); detail = j && j.error ? `: ${j.error}` : ''; } catch (_) {}
+      throw new Error(`アップロード失敗 (${res.status}${detail})`);
+    }
+
+    const data = await res.json();
+    if (!data || !data.publicUrl) throw new Error('publicUrl が応答に含まれていません');
+    img.publicUrl = data.publicUrl;
+    return data.publicUrl;
+  }
+
+  // 未アップロード画像をまとめて処理し、全画像の公開URL配列を返す。
+  // 失敗時は throw して呼び出し側でハンドルする。
+  async function ensureCharacterImageUrls() {
+    if (characterImages.length === 0) return [];
+    const urls = [];
+    for (const img of characterImages) {
+      const url = await uploadOneCharacterImage(img);
+      urls.push(url);
+    }
+    return urls;
   }
 
   // ============================================================
@@ -1387,7 +1440,7 @@ ${layoutDef.desc}
     return {
       provider: 'straico',
       straico: { apiKey: '', model: STRAICO_DEFAULT_MODEL },
-      gemini:  { apiKey: '', model: GEMINI_DEFAULT_MODEL }
+      gemini: { apiKey: '', model: GEMINI_DEFAULT_MODEL }
     };
   }
 
@@ -1424,14 +1477,14 @@ ${layoutDef.desc}
         if (cfg.gemini.apiKey) cfg.provider = 'gemini';
         saveAiConfig(cfg);
       }
-    } catch (e) {}
+    } catch (e) { }
     return cfg;
   }
 
   function saveAiConfig(cfg) {
     try {
       localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(cfg));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   /**
@@ -1699,7 +1752,7 @@ ${theme}
         if (errJson.error && errJson.error.message) {
           errMsg = errJson.error.message;
         }
-      } catch (e) {}
+      } catch (e) { }
       throw new Error(errMsg);
     }
 
@@ -1731,7 +1784,7 @@ ${theme}
 
     if (!res.ok) {
       let errBody = '';
-      try { errBody = await res.text(); } catch (e) {}
+      try { errBody = await res.text(); } catch (e) { }
       console.error('Straico HTTP error:', res.status, errBody.slice(0, 1000));
       let detail = '';
       try {
@@ -2373,7 +2426,7 @@ ${layoutDef.desc}
       `;
 
       // 出力カード内のコピーボタン
-      card.querySelector('[data-carousel-copy]').addEventListener('click', function() {
+      card.querySelector('[data-carousel-copy]').addEventListener('click', function () {
         const idx = parseInt(this.dataset.carouselCopy);
         navigator.clipboard.writeText(carouselPrompts[idx]).then(() => {
           showToast(`📋 スライド${carouselData.slides[idx].page || idx + 1}をコピーしました`);
@@ -2470,7 +2523,7 @@ ${layoutDef.desc}
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey) {
+  async function callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey, refImageUrls) {
     const fullPrompt = aspectRatio
       ? prompt + '\n\nアスペクト比: ' + aspectRatio
       : prompt;
@@ -2482,6 +2535,12 @@ ${layoutDef.desc}
       },
       stream: false
     };
+
+    // 参考画像が指定されている場合は imageUrls をトップレベルに添付
+    // (Pickaxe API のドキュメント形式に合わせる)
+    if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
+      payload.imageUrls = refImageUrls;
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), PICKAXE_REQUEST_TIMEOUT_MS);
@@ -2545,7 +2604,7 @@ ${layoutDef.desc}
     return key;
   }
 
-  async function callPickaxeAPI(prompt, model, aspectRatio, preferredKey) {
+  async function callPickaxeAPI(prompt, model, aspectRatio, preferredKey, refImageUrls) {
     let lastErr;
     // 初回は割り当てキーを使用、リトライ時は別キーにフォールバック
     for (let attempt = 0; attempt <= PICKAXE_MAX_RETRIES; attempt++) {
@@ -2553,7 +2612,7 @@ ${layoutDef.desc}
         ? preferredKey
         : nextApiKey();
       try {
-        return await callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey);
+        return await callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey, refImageUrls);
       } catch (err) {
         lastErr = err;
         if (attempt >= PICKAXE_MAX_RETRIES || !isRetryable(err)) break;
@@ -2713,7 +2772,10 @@ ${layoutDef.desc}
 
     const slides = carouselData.slides;
     const total = slides.length;
-    const estimatedSec = Math.ceil((total / PICKAXE_CONCURRENCY) * ESTIMATED_SEC_PER_IMAGE);
+    // 参考画像つきの場合は1枚あたり約1.5倍の時間を見込む
+    const hasCharRefs = characterImages.length > 0;
+    const perImageSec = hasCharRefs ? Math.ceil(ESTIMATED_SEC_PER_IMAGE * 1.5) : ESTIMATED_SEC_PER_IMAGE;
+    const estimatedSec = Math.ceil((total / PICKAXE_CONCURRENCY) * perImageSec);
     const estimatedLabel = estimatedSec < 60
       ? `約${estimatedSec}秒`
       : `約${Math.ceil(estimatedSec / 60)}分`;
@@ -2721,8 +2783,26 @@ ${layoutDef.desc}
     const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
     const presetLabel = presetDef ? presetDef.label : 'カスタム';
 
+    // 参考画像があれば先にアップロードして公開URLを取得
+    // (失敗時はテキストのみで続行)
+    let characterImageUrls = [];
+    if (hasCharRefs) {
+      showToast(`📤 キャラ画像${characterImages.length}枚をアップロード中...`);
+      try {
+        characterImageUrls = await ensureCharacterImageUrls();
+        console.log('[ImageGen] character ref URLs:', characterImageUrls);
+      } catch (err) {
+        console.warn('[ImageGen] character image upload failed:', err);
+        showToast(`⚠️ キャラ画像のアップロード失敗（テキストのみで生成します）: ${err.message}`);
+        characterImageUrls = [];
+      }
+    }
+
     // 開始通知（即時実行、ブロッキングなし）
-    showToast(`🎨 ${total}枚を「${presetLabel}」で生成開始（${estimatedLabel}）`);
+    const refsNote = characterImageUrls.length > 0
+      ? `（参考画像${characterImageUrls.length}枚あり）`
+      : '';
+    showToast(`🎨 ${total}枚を「${presetLabel}」で生成開始${refsNote}（${estimatedLabel}）`);
 
     const model = imageGenState.model;
     const aspectRatio = state.format;
@@ -2780,7 +2860,7 @@ ${layoutDef.desc}
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
       console.log(`[ImageGen] slide ${i + 1} -> key #${(i % PICKAXE_CONFIG.api_keys.length) + 1} (start delay: ${initialDelay}ms)`);
       try {
-        const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKey);
+        const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKey, characterImageUrls);
         imageGenState.generatedImages[i].imageUrl = imageUrl;
         imageGenState.generatedImages[i].status = 'success';
         imageGenState.generatedImages[i].model = model;
@@ -3100,7 +3180,19 @@ ${layoutDef.desc}
       const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
       const presetLabel = presetDef ? presetDef.label : 'カスタム';
       const fullPrompt = buildImagePrompt(contentPrompt, stylePrompt, presetLabel);
-      const imageUrl = await callPickaxeAPI(fullPrompt, selectedModel, state.format);
+
+      // 参考画像があれば同じURLを使い回す (既にアップロード済みのはず)
+      let charImageUrls = [];
+      if (characterImages.length > 0) {
+        try {
+          charImageUrls = await ensureCharacterImageUrls();
+        } catch (err) {
+          console.warn('[Regen] character image upload failed:', err);
+          showToast(`⚠️ キャラ画像のアップロード失敗（テキストのみで再生成します）`);
+          charImageUrls = [];
+        }
+      }
+      const imageUrl = await callPickaxeAPI(fullPrompt, selectedModel, state.format, undefined, charImageUrls);
 
       imageGenState.generatedImages[idx].imageUrl = imageUrl;
       imageGenState.generatedImages[idx].status = 'success';
@@ -3325,7 +3417,7 @@ ${layoutDef.desc}
     const profile = window.__USER_PROFILE__;
     if (!profile) return false;
     const planActive = profile.status === 'active';
-    const planFeats  = planActive
+    const planFeats = planActive
       ? (PLAN_FEATURES[profile.plan] || PLAN_FEATURES.free)
       : PLAN_FEATURES.free;
     const tagFeats = (profile.tags || []).flatMap(t => TAG_FEATURE_GRANTS[t] || []);
@@ -3335,8 +3427,8 @@ ${layoutDef.desc}
   // ページごとに別のLIFFアプリを使い分け
   // ※ LIFFはエンドポイントURLを1つしか登録できないため、ページごとに別のLIFFアプリを作成
   const LIFF_IDS = {
-    'pro-max':  '2009850086-ynnPKSBX', // 図解ビルダーPRO MAX用（新規）
-    'default':  '2009850086-K3TrYsDF'  // illustrated-prompt-editor-pro 用（既存）
+    'pro-max': '2009850086-ynnPKSBX', // 図解ビルダーPRO MAX用（新規）
+    'default': '2009850086-K3TrYsDF'  // illustrated-prompt-editor-pro 用（既存）
   };
 
   // 現在のページURLからLIFF IDを判定
@@ -3350,39 +3442,65 @@ ${layoutDef.desc}
   // ※ LINE Official Account Manager で確認できるベーシックID（@xxx）またはプレミアムID
   const LINE_OA_ID = '@922tidzy';
 
-  // ログインゲートの状態切替
-  function setLoginState(stateId) {
-    document.querySelectorAll('.line-login-state').forEach(el => {
-      el.classList.remove('active');
-    });
-    const target = document.getElementById(stateId);
-    if (target) target.classList.add('active');
-  }
-
-  // ログインゲートを非表示にする
+  // ログインゲートを非表示にする (デフォルトで .hidden だが念のため)
   function hideLoginGate() {
     const gate = document.getElementById('lineLoginGate');
     if (gate) gate.classList.add('hidden');
   }
 
-  // ヘッダーにログイン状態を表示（個人情報は表示しない）
-  function showUserProfile() {
-    const profileEl = document.getElementById('lineUserProfile');
-    if (profileEl) {
-      profileEl.style.display = 'flex';
+  // プロファイルが「LIFF ログイン済み相当」かどうか
+  // (local-dev もテスト目的で認証済み扱い、 anonymous / open-access / fallback は未認証扱い)
+  function isProfileAuthenticated(profile) {
+    if (!profile) return false;
+    return profile.source === 'api' || profile.source === 'local-dev';
+  }
+
+  // 現在のプロファイルに応じてヘッダの CTA / ユーザープロフィール表示を切替
+  function applyHeaderForProfile() {
+    const profile = window.__USER_PROFILE__ || {};
+    const authenticated = isProfileAuthenticated(profile);
+
+    const cta = document.getElementById('lineLoginCtaBtn');
+    const userProfileEl = document.getElementById('lineUserProfile');
+    const badge = document.getElementById('lineUserPlanBadge');
+
+    if (authenticated) {
+      if (cta) cta.hidden = true;
+      if (userProfileEl) userProfileEl.style.display = 'flex';
+      if (badge) {
+        const plan = (profile.plan || 'free');
+        badge.textContent = plan.toUpperCase();
+        badge.className = 'line-user-profile__plan line-user-profile__plan--' + plan;
+      }
+    } else {
+      if (userProfileEl) userProfileEl.style.display = 'none';
+      if (cta) cta.hidden = false;
     }
+  }
+
+  // CTA クリック時: LIFF が使えれば liff.login()、ダメなら友だち追加 URL にフォールバック
+  function triggerLineLogin() {
+    if (typeof liff !== 'undefined' && typeof liff.login === 'function') {
+      try {
+        liff.login();
+        return;
+      } catch (e) {
+        console.warn('[LIFF] liff.login() failed; falling back to friend-add URL', e);
+      }
+    }
+    window.location.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_ID);
   }
 
   function buildFallbackProfile(source) {
     return {
-      lineUserId:    null,
-      product:       PRODUCT_CODE,
-      plan:          'free',
-      status:        'active',
+      lineUserId: null,
+      product: PRODUCT_CODE,
+      plan: 'free',
+      status: 'active',
       planExpiresAt: null,
-      tags:          [],
-      updatedAt:     null,
-      source:        source || 'fallback'
+      tags: [],
+      updatedAt: null,
+      source: source || 'fallback'
     };
   }
 
@@ -3407,16 +3525,16 @@ ${layoutDef.desc}
         return;
       }
       const data = await res.json();
-      const ent  = data.entitlement || {};
+      const ent = data.entitlement || {};
       window.__USER_PROFILE__ = {
-        lineUserId:    data.lineUserId,
-        product:       data.product || PRODUCT_CODE,
-        plan:          ent.plan   || 'free',
-        status:        ent.status || 'active',
+        lineUserId: data.lineUserId,
+        product: data.product || PRODUCT_CODE,
+        plan: ent.plan || 'free',
+        status: ent.status || 'active',
         planExpiresAt: ent.planExpiresAt || null,
-        tags:          Array.isArray(data.tags) ? data.tags : [],
-        updatedAt:     ent.updatedAt || null,
-        source:        'api'
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        updatedAt: ent.updatedAt || null,
+        source: 'api'
       };
       console.log('[api/me] loaded profile:', { plan: ent.plan, tags: data.tags });
     } catch (e) {
@@ -3425,34 +3543,9 @@ ${layoutDef.desc}
     }
   }
 
-  // 友だち確認（タイムアウト付き）
-  async function checkFriendship() {
-    try {
-      // getFriendship() が応答しないケースに備えて 8秒タイムアウト
-      const friendship = await withTimeout(liff.getFriendship(), 8000, '友だち確認');
-      if (friendship.friendFlag) {
-        // 友だち → アプリ表示
-        hideLoginGate();
-        init();
-        showUserProfile();
-      } else {
-        // 友だちではない → 友だち追加画面表示
-        const addBtn = document.getElementById('lineAddFriendBtn');
-        if (addBtn) {
-          addBtn.href = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
-        }
-        setLoginState('lineStateNonFriend');
-      }
-    } catch (e) {
-      console.error('友だち確認エラー:', e);
-      // getFriendship() が失敗・タイムアウトした場合のフォールバック
-      // ログイン済みでチャネル未リンクなど → アプリを表示してそのまま使わせる
-      console.warn('友だち確認をスキップしてアプリを表示します。LINE公式アカウントのリンク設定を確認してください。');
-      hideLoginGate();
-      init();
-      showUserProfile();
-    }
-  }
+  // (旧 checkFriendship はブロッキングだったため廃止。
+  //  新フロー: アプリは常に即起動し、LIFF ログイン済みなら header に PRO/STANDARD/FREE バッジを出すだけ。
+  //  友だち追加自体は CTA リンクから誘導する。)
 
   // LIFF SDKがロードされるまで待機（最大8秒）
   function waitForLiffSdk(timeoutMs) {
@@ -3479,83 +3572,52 @@ ${layoutDef.desc}
     ]);
   }
 
-  // LIFF初期化＆認証フロー（診断ログ付き）
+  // LIFF初期化＆認証フロー (バックグラウンド実行・非ブロッキング)
+  // - アプリは startApp() 時点で既に表示済み。本関数はあくまで「ログイン済みなら本物のプランに昇格」する役割。
+  // - 失敗しても匿名フリーのまま継続。
   async function initLiff() {
-    console.log('[LIFF] init start. path=', location.pathname, 'href=', location.href);
-    console.log('[LIFF] using LIFF_ID =', LIFF_ID);
+    console.log('[LIFF] background init start. path=', location.pathname);
     try {
-      // 1) LIFF SDK の読み込み待ち
-      console.log('[LIFF] step 1: waiting for SDK...');
       await waitForLiffSdk(8000);
-      console.log('[LIFF] step 1 OK: SDK loaded. liff.id (if any) =', (typeof liff !== 'undefined' && liff.id) || '(none)');
-
-      // 2) LIFF init（10秒タイムアウト）
-      console.log('[LIFF] step 2: calling liff.init({ liffId: ' + LIFF_ID + ' }) ...');
       await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
-      console.log('[LIFF] step 2 OK: liff.init resolved.');
 
-      const loggedIn = liff.isLoggedIn();
-      console.log('[LIFF] step 3: isLoggedIn() =', loggedIn);
-
-      if (loggedIn) {
-        // ログイン済み → /api/me でプラン取得 → 友だち確認
-        setLoginState('lineStateLoading');
-        console.log('[LIFF] step 4a: fetchUserProfile() ...');
+      if (liff.isLoggedIn()) {
+        console.log('[LIFF] logged in → fetchUserProfile()');
         await fetchUserProfile();
-        console.log('[LIFF] step 4a done.');
-        console.log('[LIFF] step 4b: checkFriendship() ...');
-        await checkFriendship();
-        console.log('[LIFF] step 4b done.');
+        applyHeaderForProfile();
       } else {
-        // 未ログイン → ログインボタン表示
-        console.log('[LIFF] not logged in → showing login button');
-        setLoginState('lineStateLogin');
+        console.log('[LIFF] not logged in → staying anonymous');
+        // 匿名のまま。ヘッダの CTA から手動でログインしてもらう。
       }
     } catch (e) {
-      console.error('[LIFF] init error:', e);
-      setLoginState('lineStateError');
-      const errMsg = document.getElementById('lineErrorMessage');
-      if (errMsg) {
-        errMsg.innerHTML = `認証の初期化に失敗しました。<br>ページを再読み込みしてお試しください。<br><small style="color:var(--text-tertiary)">${e.message || ''}</small><br><small style="color:var(--text-tertiary)">LIFF_ID: ${LIFF_ID}</small>`;
-      }
+      console.warn('[LIFF] background init failed; staying anonymous:', e && e.message);
     }
   }
 
-  // ログインゲートのイベントリスナー
+  // ヘッダおよびログインゲート系のイベントリスナー
   function initLoginEvents() {
-    // LINEログインボタン
-    const loginBtn = document.getElementById('lineLoginBtn');
-    if (loginBtn) {
-      loginBtn.addEventListener('click', () => {
-        liff.login();
+    // ヘッダの「友だち追加/ログイン」CTA (匿名ユーザー向け)
+    const ctaBtn = document.getElementById('lineLoginCtaBtn');
+    if (ctaBtn) {
+      ctaBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        triggerLineLogin();
       });
     }
 
-    // 友だち追加後の再確認ボタン
-    const retryFriendBtn = document.getElementById('lineRetryFriendBtn');
-    if (retryFriendBtn) {
-      retryFriendBtn.addEventListener('click', async () => {
-        setLoginState('lineStateLoading');
-        await checkFriendship();
-      });
-    }
-
-    // エラー時の再試行ボタン
-    const errorRetryBtn = document.getElementById('lineErrorRetryBtn');
-    if (errorRetryBtn) {
-      errorRetryBtn.addEventListener('click', () => {
-        location.reload();
-      });
-    }
+    // (旧 lineLoginBtn / lineRetryFriendBtn / lineErrorRetryBtn は
+    //  ログインゲート内に残っているが現在は表示されないため配線は省略)
 
     // ログアウトボタン
     const logoutBtn = document.getElementById('lineLogoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
-        if (liff.isLoggedIn()) {
-          liff.logout();
-          location.reload();
-        }
+        try {
+          if (typeof liff !== 'undefined' && liff.isLoggedIn && liff.isLoggedIn()) {
+            liff.logout();
+          }
+        } catch (_) { /* noop */ }
+        location.reload();
       });
     }
   }
@@ -3572,18 +3634,24 @@ ${layoutDef.desc}
     return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
   }
 
-  // DOM準備完了後にLIFF認証を開始
+  // アプリ起動 (常にアプリ本体を即表示。LIFF はバックグラウンドで初期化)
+  // 流れ:
+  //   1) URL クエリと経路を解析して "ベースライン" プロファイルを作る
+  //      - /free or localhost → 既存挙動 (open-access / local-dev)
+  //      - それ以外 → 匿名フリー (source='anonymous')
+  //   2) アプリ本体を起動 + ヘッダ反映
+  //   3) /free/localhost 以外なら LIFF をバックグラウンド初期化し、
+  //      ログイン済みなら本物のプロファイルにアップグレード
   function startApp() {
     initLoginEvents();
+    hideLoginGate();
+
+    const qs = new URLSearchParams(location.search);
+    const overridePlan = qs.get('plan');
+    const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
+
     if (isLocalDev() || isOpenAccessRoute()) {
-      // ローカル開発 or /free 公開ページ: LIFFも /api/me もスキップして擬似プロファイルをセット
-      // URL クエリで擬似プラン/タグを上書き可:
-      //   ?plan=free|standard|pro|lifetime
-      //   ?tags=beta,vip
       const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
-      const qs = new URLSearchParams(location.search);
-      const overridePlan = qs.get('plan');
-      const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
       const defaultPlan = isOpenAccessRoute() ? 'free' : 'pro';
       window.__USER_PROFILE__ = {
         lineUserId:    isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
@@ -3595,10 +3663,26 @@ ${layoutDef.desc}
         updatedAt:     null,
         source:        source
       };
-      hideLoginGate();
       init();
+      applyHeaderForProfile();
       return;
     }
+
+    // 通常ルート: 匿名フリーで即起動、LIFF はバックグラウンドで初期化
+    window.__USER_PROFILE__ = {
+      lineUserId:    null,
+      product:       PRODUCT_CODE,
+      plan:          overridePlan || 'free',
+      status:        'active',
+      planExpiresAt: null,
+      tags:          overrideTags,
+      updatedAt:     null,
+      source:        'anonymous'
+    };
+    init();
+    applyHeaderForProfile();
+
+    // ログイン済みなら本物のプロファイルに昇格 (失敗しても匿名のまま続行)
     initLiff();
   }
 

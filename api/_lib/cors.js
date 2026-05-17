@@ -12,21 +12,21 @@ function isOriginAllowed(origin) {
   return allowed.includes(origin);
 }
 
-function applyCors(req, res) {
+function applyCors(req, res, methods = 'GET, OPTIONS') {
   const origin = req.headers.origin;
   if (origin && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', methods);
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     res.setHeader('Access-Control-Max-Age', '600');
   }
 }
 
 // preflight (OPTIONS) を処理した場合 true を返す。呼び出し側はその場合 return すること。
-function handlePreflight(req, res) {
+function handlePreflight(req, res, methods = 'GET, OPTIONS') {
   if (req.method !== 'OPTIONS') return false;
-  applyCors(req, res);
+  applyCors(req, res, methods);
   res.statusCode = 204;
   res.end();
   return true;
