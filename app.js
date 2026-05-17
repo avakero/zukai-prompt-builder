@@ -1354,9 +1354,11 @@ ${layoutDef.desc}
     }
 
     // カルーセルモードでは「画像生成スタイル」が新しいスタイル選択を担当するため、
-    // ChatGPT貼り付けプロンプト用の旧スタイル/レイアウト/配色/キャラ画像セクションを隠す
+    // ChatGPT貼り付けプロンプト用の旧スタイル/レイアウト/配色セクションは隠す
     // （混乱を避けるため）。フォーマットは両方の生成で共通利用するので残す。
-    const carouselOnlyHidden = ['sectionStyle', 'sectionLayout', 'sectionColor', 'sectionImages'];
+    // キャラクター画像 (sectionImages) はカルーセルモードでも参考画像として
+    // Pickaxe API に渡せるようになったため、両モードで表示する。
+    const carouselOnlyHidden = ['sectionStyle', 'sectionLayout', 'sectionColor'];
     carouselOnlyHidden.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = mode === 'carousel' ? 'none' : '';
