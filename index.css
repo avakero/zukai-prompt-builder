@@ -2358,7 +2358,7 @@ img {
   flex: 1;
 }
 
-.post-caption__copy {
+.post-caption__head .post-caption__copy {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2367,14 +2367,16 @@ img {
   font-weight: 600;
   background: var(--color-primary-500);
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.post-caption__copy:hover {
+.post-caption__head .post-caption__copy:hover {
   background: var(--color-primary-600, var(--color-primary-500));
+  border-color: transparent;
+  color: #fff;
   transform: translateY(-1px);
 }
 
@@ -3595,6 +3597,69 @@ img {
 .regen-modal__footer .generate-btn {
   padding: var(--space-3) var(--space-5);
   font-size: var(--text-sm);
+}
+
+.regen-modal__models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.regen-model-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+  text-align: left;
+}
+
+.regen-model-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-neutral-50);
+}
+
+.regen-model-btn:active {
+  transform: scale(0.98);
+}
+
+.regen-model-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-50, rgba(99, 102, 241, 0.08));
+  box-shadow: 0 0 0 3px var(--color-primary-100, rgba(99, 102, 241, 0.15));
+}
+
+.regen-model-btn__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.regen-model-btn__desc {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.regen-model-btn--failed .regen-model-btn__label::after {
+  content: ' （失敗）';
+  color: var(--color-danger, #ef4444);
+  font-weight: var(--font-normal);
+}
+
+.regen-modal__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  min-height: 1em;
+}
+
+.regen-modal__hint--suggest {
+  color: var(--color-primary);
 }
 
 .form-group {

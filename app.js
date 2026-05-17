@@ -196,10 +196,11 @@
   let imageGenState = {
     selectedPreset: 'handdrawn',
     customStyle: '',
-    model: 'NanoBanana2',
-    // { slideIndex, imageUrl, stylePrompt, contentPrompt, status: 'loading'|'success'|'error', error? }
+    model: 'GPT Image2',
+    // { slideIndex, imageUrl, stylePrompt, contentPrompt, model, status: 'loading'|'success'|'error', error?, failedModel? }
     generatedImages: [],
-    regenSlideIndex: -1
+    regenSlideIndex: -1,
+    regenSelectedModel: 'GPT Image2'
   };
 
   // ============================================================
@@ -287,6 +288,9 @@
     regenContentPrompt: $('#regenContentPrompt'),
     regenModalCancel: $('#regenModalCancel'),
     regenModalSubmit: $('#regenModalSubmit'),
+    regenModelNano: $('#regenModelNano'),
+    regenModelGPT: $('#regenModelGPT'),
+    regenModelHint: $('#regenModelHint'),
     // AI生成（Gemini / Straico）
     aiThemeInput: $('#aiThemeInput'),
     aiProvider: $('#aiProvider'),
@@ -360,6 +364,36 @@
   const currentSeason = getSeasonalTheme();
   const THEMES = ['light', currentSeason.id, 'dark'];
 
+  // ============================================================
+  // プラン → 機能マッピング (Phase 2)
+  // ============================================================
+
+  const PRODUCT_CODE = 'zukai-builder';
+  window.__PRODUCT_CODE__ = PRODUCT_CODE;
+
+  // 上位プランは下位プランの機能を全て継承する
+  const PLAN_FEATURES = {
+    free:     ['core.single'],
+    standard: ['core.single', 'mode.carousel', 'ai.json'],
+    pro:      ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal'],
+    lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal']
+  };
+
+  // タグによる個別解放 (プランより強い、上書き専用)
+  const TAG_FEATURE_GRANTS = {
+    beta:     ['ai.json', 'ai.imagegen', 'theme.seasonal'],
+    internal: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
+    vip:      ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel']
+  };
+
+  // feature key → ユーザー向けに案内する必要プラン
+  const FEATURE_REQUIRED_PLAN = {
+    'mode.carousel':  'STANDARD',
+    'ai.json':        'STANDARD',
+    'ai.imagegen':    'PRO',
+    'theme.seasonal': 'PRO'
+  };
+
   function applyTheme(theme) {
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
@@ -389,9 +423,11 @@
   }
 
   function setTheme(theme) {
-    if (THEMES.includes(theme)) {
-      applyTheme(theme);
+    if (!THEMES.includes(theme)) return;
+    if (SEASONAL_THEMES[theme]) {
+      if (!gateOrToast('theme.seasonal', '季節テーマ')) return;
     }
+    applyTheme(theme);
   }
 
   // ============================================================
@@ -623,6 +659,19 @@ ${layoutDef.desc}
     toastTimer = setTimeout(() => {
       els.toast.classList.remove('visible');
     }, 2500);
+  }
+
+  // 機能ゲート: hasFeature が true なら true を返し処理続行可、false ならトースト表示して false
+  // 同一キーの連打は 1.5 秒スロットルでトースト 1 回に抑制
+  const _lastGateToast = {};
+  function gateOrToast(featureKey, displayName) {
+    if (window.hasFeature(featureKey)) return true;
+    const now = Date.now();
+    if (now - (_lastGateToast[featureKey] || 0) < 1500) return false;
+    _lastGateToast[featureKey] = now;
+    const plan = FEATURE_REQUIRED_PLAN[featureKey] || 'STANDARD';
+    showToast(`🔒 ${displayName}は ${plan} プラン以上で利用できます`);
+    return false;
   }
 
   // ============================================================
@@ -1213,6 +1262,16 @@ ${layoutDef.desc}
         if (e.target === els.regenModalOverlay) closeRegenModal();
       });
     }
+    // 再生成モーダルのモデル切替
+    [els.regenModelNano, els.regenModelGPT].forEach(btn => {
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const idx = imageGenState.regenSlideIndex;
+        const img = idx >= 0 ? imageGenState.generatedImages[idx] : null;
+        const failedModel = img && img.status === 'error' ? img.failedModel : null;
+        updateRegenModelSelection(btn.dataset.model, failedModel);
+      });
+    });
   }
 
   // ============================================================
@@ -1221,6 +1280,7 @@ ${layoutDef.desc}
 
   function switchMode(mode) {
     if (mode !== 'single' && mode !== 'carousel') return;
+    if (mode === 'carousel' && !gateOrToast('mode.carousel', 'カルーセルモード')) return;
     state.mode = mode;
 
     // タブ UI
@@ -1707,6 +1767,7 @@ ${theme}
   }
 
   async function generateCarouselJsonWithAi() {
+    if (!gateOrToast('ai.json', 'AIでカルーセルJSON生成')) return;
     const theme = els.aiThemeInput.value.trim();
     if (!theme) {
       showToast('⚠️ テーマや元文章を入力してください');
@@ -2638,6 +2699,7 @@ ${layoutDef.desc}
   }
 
   async function generateAllImages() {
+    if (!gateOrToast('ai.imagegen', '画像一括生成')) return;
     if (!carouselData || !carouselData.slides || carouselData.slides.length === 0) {
       showToast('先にJSONを展開してください');
       return;
@@ -2671,8 +2733,10 @@ ${layoutDef.desc}
       imageUrl: null,
       stylePrompt: stylePrompt,
       contentPrompt: slide.content || '',
+      model: imageGenState.model,
       status: 'loading',
-      error: null
+      error: null,
+      failedModel: null
     }));
 
     // UI表示＋プログレスバー
@@ -2719,11 +2783,14 @@ ${layoutDef.desc}
         const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKey);
         imageGenState.generatedImages[i].imageUrl = imageUrl;
         imageGenState.generatedImages[i].status = 'success';
+        imageGenState.generatedImages[i].model = model;
+        imageGenState.generatedImages[i].failedModel = null;
         renderImageGrid();
         updateProgressUI(total);
       } catch (err) {
         imageGenState.generatedImages[i].status = 'error';
         imageGenState.generatedImages[i].error = err.message || String(err);
+        imageGenState.generatedImages[i].failedModel = model;
         console.error(`[ImageGen] slide ${i + 1} failed:`, err);
         renderImageGrid();
         updateProgressUI(total);
@@ -2948,9 +3015,47 @@ ${layoutDef.desc}
       els.regenContentPrompt.value = imgData.contentPrompt || '';
     }
 
+    // モデル選択の初期化
+    // - 失敗していたら、失敗モデルとは別のモデルを推奨選択
+    // - それ以外は、最後に使用したモデル（imgData.model）を選択
+    const failedModel = imgData.status === 'error' ? imgData.failedModel : null;
+    let initialModel;
+    if (failedModel) {
+      initialModel = failedModel === 'NanoBanana2' ? 'GPT Image2' : 'NanoBanana2';
+    } else {
+      initialModel = imgData.model || imageGenState.model;
+    }
+    updateRegenModelSelection(initialModel, failedModel);
+
     // モーダル表示
     if (els.regenModalOverlay) {
       els.regenModalOverlay.classList.add('active');
+    }
+  }
+
+  function updateRegenModelSelection(selectedModel, failedModel) {
+    imageGenState.regenSelectedModel = selectedModel;
+    const btns = [
+      { el: els.regenModelNano, model: 'NanoBanana2' },
+      { el: els.regenModelGPT, model: 'GPT Image2' }
+    ];
+    btns.forEach(({ el, model }) => {
+      if (!el) return;
+      el.classList.toggle('active', model === selectedModel);
+      el.classList.toggle('regen-model-btn--failed', model === failedModel);
+      el.setAttribute('aria-checked', model === selectedModel ? 'true' : 'false');
+    });
+    if (els.regenModelHint) {
+      if (failedModel && selectedModel !== failedModel) {
+        els.regenModelHint.textContent = `${failedModel} で失敗したため、${selectedModel} で再試行します。`;
+        els.regenModelHint.classList.add('regen-modal__hint--suggest');
+      } else if (failedModel && selectedModel === failedModel) {
+        els.regenModelHint.textContent = `同じ ${failedModel} で再試行します（別モデルへの切替も可能）。`;
+        els.regenModelHint.classList.remove('regen-modal__hint--suggest');
+      } else {
+        els.regenModelHint.textContent = '';
+        els.regenModelHint.classList.remove('regen-modal__hint--suggest');
+      }
     }
   }
 
@@ -2976,30 +3081,42 @@ ${layoutDef.desc}
     // モーダル閉じる
     closeRegenModal();
 
+    // 再生成に使うモデル（モーダルで選択されたもの。未選択時は画像保存値→グローバル）
+    const selectedModel = imageGenState.regenSelectedModel
+      || imageGenState.generatedImages[idx].model
+      || imageGenState.model;
+
     // ローディング表示
     imageGenState.generatedImages[idx].status = 'loading';
     imageGenState.generatedImages[idx].stylePrompt = stylePrompt;
     imageGenState.generatedImages[idx].contentPrompt = contentPrompt;
+    const total = imageGenState.generatedImages.length;
     renderImageGrid();
+    updateProgressUI(total);
 
-    showToast(`🔄 スライド ${idx + 1} を再生成中...`);
+    showToast(`🔄 スライド ${idx + 1} を ${selectedModel} で再生成中...`);
 
     try {
       const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
       const presetLabel = presetDef ? presetDef.label : 'カスタム';
       const fullPrompt = buildImagePrompt(contentPrompt, stylePrompt, presetLabel);
-      const imageUrl = await callPickaxeAPI(fullPrompt, imageGenState.model, state.format);
+      const imageUrl = await callPickaxeAPI(fullPrompt, selectedModel, state.format);
 
       imageGenState.generatedImages[idx].imageUrl = imageUrl;
       imageGenState.generatedImages[idx].status = 'success';
       imageGenState.generatedImages[idx].error = null;
+      imageGenState.generatedImages[idx].model = selectedModel;
+      imageGenState.generatedImages[idx].failedModel = null;
       renderImageGrid();
-      showToast(`✅ スライド ${idx + 1} を再生成しました`);
+      updateProgressUI(total);
+      showToast(`✅ スライド ${idx + 1} を ${selectedModel} で再生成しました`);
     } catch (err) {
       imageGenState.generatedImages[idx].status = 'error';
       imageGenState.generatedImages[idx].error = err.message;
+      imageGenState.generatedImages[idx].failedModel = selectedModel;
       renderImageGrid();
-      showToast(`⚠️ スライド ${idx + 1} の再生成に失敗しました`);
+      updateProgressUI(total);
+      showToast(`⚠️ ${selectedModel} での再生成に失敗しました（別モデルでお試しください）`);
     }
   }
 
@@ -3200,12 +3317,19 @@ ${layoutDef.desc}
   // ============================================================
 
   // /api/me で取得したプラン情報のシングルソース
-  // 形 : { lineUserId, plan, status, planExpiresAt, tags: string[], updatedAt, source: 'api'|'local-dev'|'fallback' }
+  // 形 : { lineUserId, product, plan, status, planExpiresAt, tags: string[], updatedAt, source: 'api'|'local-dev'|'open-access'|'fallback' }
   window.__USER_PROFILE__ = null;
 
-  // 機能ゲートの口 (Phase 2 で plan → feature マッピングを実装する差し込み点)
-  window.hasFeature = function hasFeature(_featureKey) {
-    return true;
+  // 機能ゲート: feature key が現プラン/タグで解放されているかを返す
+  window.hasFeature = function hasFeature(featureKey) {
+    const profile = window.__USER_PROFILE__;
+    if (!profile) return false;
+    const planActive = profile.status === 'active';
+    const planFeats  = planActive
+      ? (PLAN_FEATURES[profile.plan] || PLAN_FEATURES.free)
+      : PLAN_FEATURES.free;
+    const tagFeats = (profile.tags || []).flatMap(t => TAG_FEATURE_GRANTS[t] || []);
+    return planFeats.includes(featureKey) || tagFeats.includes(featureKey);
   };
 
   // ページごとに別のLIFFアプリを使い分け
@@ -3249,39 +3373,55 @@ ${layoutDef.desc}
     }
   }
 
+  function buildFallbackProfile(source) {
+    return {
+      lineUserId:    null,
+      product:       PRODUCT_CODE,
+      plan:          'free',
+      status:        'active',
+      planExpiresAt: null,
+      tags:          [],
+      updatedAt:     null,
+      source:        source || 'fallback'
+    };
+  }
+
   // /api/me を叩いてプラン情報を取得する (失敗しても非ブロッキング)
   async function fetchUserProfile() {
     try {
       const token = liff.getAccessToken();
       if (!token) {
         console.warn('[api/me] no access token available; skipping');
-        window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
+        window.__USER_PROFILE__ = buildFallbackProfile('fallback');
         return;
       }
+      const url = '/api/me?product=' + encodeURIComponent(PRODUCT_CODE);
       const res = await withTimeout(
-        fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } }),
+        fetch(url, { headers: { Authorization: 'Bearer ' + token } }),
         8000,
         '/api/me'
       );
       if (!res.ok) {
         console.warn('[api/me] non-200 response:', res.status);
-        window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
+        window.__USER_PROFILE__ = buildFallbackProfile('fallback');
         return;
       }
       const data = await res.json();
+      const ent  = data.entitlement || {};
       window.__USER_PROFILE__ = {
         lineUserId:    data.lineUserId,
-        plan:          data.plan,
-        status:        data.status,
-        planExpiresAt: data.planExpiresAt,
+        product:       data.product || PRODUCT_CODE,
+        plan:          ent.plan   || 'free',
+        status:        ent.status || 'active',
+        planExpiresAt: ent.planExpiresAt || null,
         tags:          Array.isArray(data.tags) ? data.tags : [],
-        updatedAt:     data.updatedAt,
+        updatedAt:     ent.updatedAt || null,
         source:        'api'
       };
-      console.log('[api/me] loaded profile:', { plan: data.plan, tags: data.tags });
+      console.log('[api/me] loaded profile:', { plan: ent.plan, tags: data.tags });
     } catch (e) {
       console.warn('[api/me] failed:', e && e.message);
-      window.__USER_PROFILE__ = { plan: 'free', status: 'active', tags: [], source: 'fallback' };
+      window.__USER_PROFILE__ = buildFallbackProfile('fallback');
     }
   }
 
@@ -3437,15 +3577,23 @@ ${layoutDef.desc}
     initLoginEvents();
     if (isLocalDev() || isOpenAccessRoute()) {
       // ローカル開発 or /free 公開ページ: LIFFも /api/me もスキップして擬似プロファイルをセット
+      // URL クエリで擬似プラン/タグを上書き可:
+      //   ?plan=free|standard|pro|lifetime
+      //   ?tags=beta,vip
       const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
+      const qs = new URLSearchParams(location.search);
+      const overridePlan = qs.get('plan');
+      const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
+      const defaultPlan = isOpenAccessRoute() ? 'free' : 'pro';
       window.__USER_PROFILE__ = {
-        lineUserId: isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
-        plan: isOpenAccessRoute() ? 'free' : 'pro',
-        status: 'active',
+        lineUserId:    isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
+        product:       PRODUCT_CODE,
+        plan:          overridePlan || defaultPlan,
+        status:        'active',
         planExpiresAt: null,
-        tags: [source],
-        updatedAt: null,
-        source: source
+        tags:          overrideTags.length ? overrideTags : [source],
+        updatedAt:     null,
+        source:        source
       };
       hideLoginGate();
       init();
