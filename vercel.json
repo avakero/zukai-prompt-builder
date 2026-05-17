@@ -3,6 +3,9 @@
   "functions": {
     "api/**/*.js": {
       "maxDuration": 10
+    },
+    "api/pickaxe-proxy.js": {
+      "maxDuration": 120
     }
   },
   "rewrites": [

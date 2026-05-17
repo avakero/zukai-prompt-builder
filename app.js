@@ -788,6 +788,53 @@ ${layoutDef.desc}
   // /api/upload-character-image に dataUrl を POST して Supabase Storage 上の
   // 公開 HTTPS URL を取得する。同じ画像は1度だけアップロードし、結果は
   // characterImages[i].publicUrl にキャッシュする。
+  //
+  // 注: Vercel のリクエストボディ上限は 4.5MB なので、大きな画像はあらかじめ
+  // クライアント側で縮小・JPEG化してから送信する。
+
+  // 画像を canvas で縮小し、JPEG dataUrl にして返す。
+  // 既に十分小さい場合は元の dataUrl をそのまま返す。
+  function compressDataUrlIfNeeded(dataUrl, maxDimension = 1280, quality = 0.85, maxBytes = 2_500_000) {
+    return new Promise((resolve, reject) => {
+      // 既に小さい場合はスキップ (base64 文字数 ≒ バイト数 * 4/3)
+      const approxOriginalBytes = Math.ceil((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+      if (approxOriginalBytes <= maxBytes && /^data:image\/jpeg/.test(dataUrl)) {
+        return resolve(dataUrl);
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const scale = Math.min(1, maxDimension / Math.max(width, height));
+        const targetW = Math.round(width * scale);
+        const targetH = Math.round(height * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        // 背景を白で塗ってから描画 (PNG透過対策。JPEG変換で黒くならないように)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        // JPEGで品質を下げつつ目標サイズ以下にする
+        let q = quality;
+        let out = canvas.toDataURL('image/jpeg', q);
+        let attempts = 0;
+        const decodedSize = (s) => Math.ceil((s.length - s.indexOf(',') - 1) * 0.75);
+        while (decodedSize(out) > maxBytes && q > 0.4 && attempts < 5) {
+          q -= 0.1;
+          out = canvas.toDataURL('image/jpeg', q);
+          attempts++;
+        }
+        resolve(out);
+      };
+      img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+      img.src = dataUrl;
+    });
+  }
+
   async function uploadOneCharacterImage(img) {
     if (img.publicUrl) return img.publicUrl;
 
@@ -797,13 +844,22 @@ ${layoutDef.desc}
     } catch (_) { token = null; }
     if (!token) throw new Error('LINE認証トークンが取得できません');
 
+    // 大きい画像は送信前に縮小
+    let dataUrlToSend;
+    try {
+      dataUrlToSend = await compressDataUrlIfNeeded(img.dataUrl);
+    } catch (err) {
+      console.warn('[upload] compress failed, sending original:', err.message);
+      dataUrlToSend = img.dataUrl;
+    }
+
     const res = await fetch('/api/upload-character-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({ dataUrl: img.dataUrl, filename: img.name })
+      body: JSON.stringify({ dataUrl: dataUrlToSend, filename: img.name })
     });
 
     if (!res.ok) {
@@ -2493,23 +2549,8 @@ ${layoutDef.desc}
   // Pickaxe API 呼び出し
   // ============================================================
 
-  const IMAGE_URL_PATTERN = /https?:\/\/[^\s'"<>)\]]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s'"<>)\]]*)*/gi;
-
-  function extractImageUrlsFromResponse(data) {
-    const urls = [];
-    function scan(obj) {
-      if (typeof obj === 'string') {
-        const matches = obj.match(IMAGE_URL_PATTERN);
-        if (matches) urls.push.apply(urls, matches);
-      } else if (Array.isArray(obj)) {
-        obj.forEach(scan);
-      } else if (obj && typeof obj === 'object') {
-        Object.values(obj).forEach(scan);
-      }
-    }
-    scan(data);
-    return Array.from(new Set(urls));
-  }
+  // 注: 画像URL抽出は /api/pickaxe-proxy 側で行うようにしたため
+  // ブラウザ側のヘルパーは削除した。
 
   // 同時実行数とリトライ設定
   // Pickaxe deployment キーは単独だと並列実行に制限があるため、
@@ -2526,20 +2567,20 @@ ${layoutDef.desc}
   }
 
   async function callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey, refImageUrls) {
-    const fullPrompt = aspectRatio
-      ? prompt + '\n\nアスペクト比: ' + aspectRatio
-      : prompt;
+    // Pickaxe は現在ブラウザからの直接呼び出しを CORS 拒否するため、
+    // 自前の Vercel 関数 /api/pickaxe-proxy 経由でアクセスする。
+    let token = null;
+    try {
+      token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+    } catch (_) { token = null; }
+    if (!token) throw new Error('LINE認証トークンが取得できません');
 
     const payload = {
-      inputs: {
-        [PICKAXE_CONFIG.input_ids.model]: model,
-        [PICKAXE_CONFIG.input_ids.prompt]: fullPrompt
-      },
-      stream: false
+      prompt,
+      model,
+      aspectRatio,
+      apiKey
     };
-
-    // 参考画像が指定されている場合は imageUrls をトップレベルに添付
-    // (Pickaxe API のドキュメント形式に合わせる)
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
     }
@@ -2549,11 +2590,11 @@ ${layoutDef.desc}
 
     let res;
     try {
-      res = await fetch(PICKAXE_CONFIG.endpoint, {
+      res = await fetch('/api/pickaxe-proxy', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
         },
         body: JSON.stringify(payload),
         signal: controller.signal
@@ -2571,20 +2612,23 @@ ${layoutDef.desc}
     }
 
     if (!res.ok) {
-      const errText = await res.text();
-      const err = new Error(`API Error ${res.status}: ${errText.substring(0, 200)}`);
+      let detail = '';
+      try {
+        const j = await res.json();
+        detail = j && j.detail ? `: ${typeof j.detail === 'string' ? j.detail.substring(0, 200) : JSON.stringify(j.detail).substring(0, 200)}` : '';
+        if (j && j.error) detail = `${j.error}${detail}`;
+      } catch (_) {}
+      const err = new Error(`API Error ${res.status}${detail ? ` (${detail})` : ''}`);
       err.status = res.status;
       throw err;
     }
 
     const data = await res.json();
-    const imageUrls = extractImageUrlsFromResponse(data);
-
-    if (imageUrls.length === 0) {
-      throw new Error('画像URLが見つかりませんでした');
+    if (!data || !data.imageUrl) {
+      throw new Error('画像URLが応答に含まれていません');
     }
 
-    return imageUrls[0]; // 最初の画像URLを返す
+    return data.imageUrl;
   }
 
   function isRetryable(err) {

@@ -3037,22 +3037,27 @@ img {
   align-items: center;
   gap: 6px;
   margin-right: var(--space-2);
-  padding: 5px 12px;
-  background: #06C755;
+  padding: 7px 14px;
+  /* 白文字とのコントラストを WCAG AA 相当 (4.5:1 以上) に近づけるため
+     ブランド緑よりやや濃いトーンに変更 (#06C755 では 2.2:1 程度しかなかった) */
+  background: #008a3c;
   color: #fff;
   border: none;
   border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .line-login-cta:hover {
-  background: #05a847;
+  background: #00733a;
   transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
 .line-login-cta:active {
@@ -3060,8 +3065,8 @@ img {
 }
 
 .line-login-cta svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .line-login-cta[hidden] {
