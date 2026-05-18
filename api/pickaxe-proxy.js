@@ -191,12 +191,30 @@ module.exports = async function handler(req, res) {
 
   const urls = extractImageUrls(data);
   if (urls.length === 0) {
-    console.warn(`[api/pickaxe-proxy] no image URL in response idx=${keyIndex} elapsed=${elapsedMs}ms`);
+    // 応答に画像URLが見つからなかった場合、何が返ってきているか診断する
+    // ため応答全体の先頭部分をログに出す。
+    let snippet;
+    try {
+      snippet = JSON.stringify(data).substring(0, 1500);
+    } catch {
+      snippet = String(data).substring(0, 1500);
+    }
+    console.warn(
+      `[api/pickaxe-proxy] no image URL in response idx=${keyIndex} elapsed=${elapsedMs}ms` +
+      ` keys=[${data && typeof data === 'object' ? Object.keys(data).join(',') : ''}]\n` +
+      `--- response snippet ---\n${snippet}\n--- end snippet ---`
+    );
     res.statusCode = 502;
-    return res.json({ error: 'no_image_in_response', keyIndex, elapsedMs });
+    return res.json({
+      error: 'no_image_in_response',
+      keyIndex,
+      elapsedMs,
+      responseKeys: data && typeof data === 'object' ? Object.keys(data) : null,
+      responseSnippet: snippet.substring(0, 400)
+    });
   }
 
-  console.log(`[api/pickaxe-proxy] success idx=${keyIndex} elapsed=${elapsedMs}ms`);
+  console.log(`[api/pickaxe-proxy] success idx=${keyIndex} elapsed=${elapsedMs}ms imageUrl=${urls[0].substring(0, 80)}`);
   res.statusCode = 200;
   return res.json({ imageUrl: urls[0], keyIndex, elapsedMs });
 };
