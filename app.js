@@ -72,23 +72,14 @@
   };
 
   // Pickaxe API 設定
-  // 同一インプット仕様の deployment キーを複数登録し、リクエストごとに
-  // ローテーションすることで並列実行を可能にする（各 deployment は単独だと
-  // 同時実行が制限されるため）。
-  const PICKAXE_CONFIG = {
-    api_keys: [
-      'deployment-c28df016-464b-445c-9576-421a36c83d9b',
-      'deployment-031af6c4-5338-4245-91e8-d49c9072c64e',
-      'deployment-4614230c-a147-4585-9092-27e1a50ca2d4',
-      'deployment-949477eb-f5a3-4de5-90c7-696cfcc1ea3c',
-      'deployment-20d3497f-4d6e-4def-beb7-3f64071501c8'
-    ],
-    endpoint: 'https://api.pickaxe.co/v1/completions',
-    input_ids: {
-      model: '57fac2d1-e94a-46b8-8afb-fff18fed82a3',
-      prompt: '18fc7bff-e8e7-4660-9434-0cee04a658fd'
-    }
-  };
+  // 旧構成: 1ワークスペース内に複数 deployment を作って並列化していたが、
+  //         Pickaxe バックエンド (Modal.com) のリソース共有により真の並列が
+  //         効かず 504 多発。
+  // 新構成: 別ワークスペース × 7 を用意し、それぞれに画像生成 Pickaxe を
+  //         デプロイ。デプロイメントキーは Vercel 環境変数
+  //         (PICKAXE_API_KEY_1 .. _7) に保存し、ブラウザはキー本体を持たず
+  //         keyIndex (0..6) のみをサーバーに伝える。
+  const PICKAXE_WORKSPACE_COUNT = 7;
 
   // 画像生成スタイルプリセット定義
   const IMAGE_GEN_STYLE_PRESETS = {
@@ -2555,7 +2546,12 @@ ${layoutDef.desc}
   // 同時実行数とリトライ設定
   // Pickaxe deployment キーは単独だと並列実行に制限があるため、
   // 複数キーをローテーション利用することで N 並列を実現する。
-  const PICKAXE_CONCURRENCY = PICKAXE_CONFIG.api_keys.length; // = 4
+  // 同時実行数。デプロイメントキーは複数あるが、Pickaxe バックエンド
+  // (Modal.com) は実際には共通リソースを取り合うため、同一ワークスペース内
+  // の複数 deployment では真の並列にならない。
+  // 新構成では別ワークスペース × 7 にそれぞれ独立した画像生成 AI を置き、
+  // ワークスペース単位で並列するので 7 並列まで真に独立して動く。
+  const PICKAXE_CONCURRENCY = PICKAXE_WORKSPACE_COUNT;
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
   // 1試行あたりのタイムアウト（ミリ秒）。実測70秒/枚に対し約2.5倍の余裕。
@@ -2566,9 +2562,10 @@ ${layoutDef.desc}
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey, refImageUrls) {
+  async function callPickaxeAPIOnce(prompt, aspectRatio, keyIndex, refImageUrls) {
     // Pickaxe は現在ブラウザからの直接呼び出しを CORS 拒否するため、
     // 自前の Vercel 関数 /api/pickaxe-proxy 経由でアクセスする。
+    // キー本体はサーバー側 env var で管理し、ブラウザは keyIndex (0..6) のみ送る。
     let token = null;
     try {
       token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
@@ -2577,9 +2574,8 @@ ${layoutDef.desc}
 
     const payload = {
       prompt,
-      model,
       aspectRatio,
-      apiKey
+      keyIndex
     };
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
@@ -2641,24 +2637,23 @@ ${layoutDef.desc}
     return false;
   }
 
-  // APIキーのラウンドロビン割り当て用カウンター
-  let _apiKeyCursor = 0;
-  function nextApiKey() {
-    const keys = PICKAXE_CONFIG.api_keys;
-    const key = keys[_apiKeyCursor % keys.length];
-    _apiKeyCursor++;
-    return key;
+  // ワークスペース keyIndex のラウンドロビン用カーソル (0..PICKAXE_WORKSPACE_COUNT-1)
+  let _keyCursor = 0;
+  function nextKeyIndex() {
+    const idx = _keyCursor % PICKAXE_WORKSPACE_COUNT;
+    _keyCursor++;
+    return idx;
   }
 
-  async function callPickaxeAPI(prompt, model, aspectRatio, preferredKey, refImageUrls) {
+  async function callPickaxeAPI(prompt, aspectRatio, preferredKeyIndex, refImageUrls) {
     let lastErr;
-    // 初回は割り当てキーを使用、リトライ時は別キーにフォールバック
+    // 初回は割り当てワークスペースを使用、リトライ時は別ワークスペースにフォールバック
     for (let attempt = 0; attempt <= PICKAXE_MAX_RETRIES; attempt++) {
-      const apiKey = attempt === 0 && preferredKey
-        ? preferredKey
-        : nextApiKey();
+      const keyIndex = (attempt === 0 && Number.isInteger(preferredKeyIndex))
+        ? preferredKeyIndex
+        : nextKeyIndex();
       try {
-        return await callPickaxeAPIOnce(prompt, model, aspectRatio, apiKey, refImageUrls);
+        return await callPickaxeAPIOnce(prompt, aspectRatio, keyIndex, refImageUrls);
       } catch (err) {
         lastErr = err;
         if (attempt >= PICKAXE_MAX_RETRIES || !isRetryable(err)) break;
@@ -2888,10 +2883,10 @@ ${layoutDef.desc}
     console.log('[ImageGen] preset:', imageGenState.selectedPreset, '/ label:', presetLabel);
     console.log('[ImageGen] stylePrompt:', stylePrompt);
 
-    // APIキーカウンターを毎回リセット（毎回キー1から開始）
-    _apiKeyCursor = 0;
+    // ワークスペース keyIndex カーソルを毎回リセット（毎回 #1 から開始）
+    _keyCursor = 0;
 
-    // 各スライドに専用のAPIキーをラウンドロビンで割り当てて並列実行
+    // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
     // ※リクエスト開始は1.5秒ずつずらす（HTTP/2 multiplexing と Modal コールド
     //   スタート時の競合を回避するため）
     const STAGGER_DELAY_MS = 1500;
@@ -2902,11 +2897,11 @@ ${layoutDef.desc}
 
       const content = slide.content || '';
       const fullPrompt = buildImagePrompt(content, stylePrompt, presetLabel);
-      const assignedKey = PICKAXE_CONFIG.api_keys[i % PICKAXE_CONFIG.api_keys.length];
+      const assignedKeyIndex = i % PICKAXE_WORKSPACE_COUNT;
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
-      console.log(`[ImageGen] slide ${i + 1} -> key #${(i % PICKAXE_CONFIG.api_keys.length) + 1} (start delay: ${initialDelay}ms)`);
+      console.log(`[ImageGen] slide ${i + 1} -> workspace #${assignedKeyIndex + 1} (start delay: ${initialDelay}ms)`);
       try {
-        const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKey, characterImageUrls);
+        const imageUrl = await callPickaxeAPI(fullPrompt, aspectRatio, assignedKeyIndex, characterImageUrls);
         imageGenState.generatedImages[i].imageUrl = imageUrl;
         imageGenState.generatedImages[i].status = 'success';
         imageGenState.generatedImages[i].model = model;
@@ -3238,7 +3233,8 @@ ${layoutDef.desc}
           charImageUrls = [];
         }
       }
-      const imageUrl = await callPickaxeAPI(fullPrompt, selectedModel, state.format, undefined, charImageUrls);
+      // 再生成では preferredKeyIndex を指定せず、ラウンドロビンに任せる
+      const imageUrl = await callPickaxeAPI(fullPrompt, state.format, undefined, charImageUrls);
 
       imageGenState.generatedImages[idx].imageUrl = imageUrl;
       imageGenState.generatedImages[idx].status = 'success';
