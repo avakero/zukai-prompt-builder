@@ -2550,8 +2550,10 @@ ${layoutDef.desc}
   // (Modal.com) は実際には共通リソースを取り合うため、同一ワークスペース内
   // の複数 deployment では真の並列にならない。
   // 新構成では別ワークスペース × 7 にそれぞれ独立した画像生成 AI を置き、
-  // ワークスペース単位で並列するので 7 並列まで真に独立して動く。
-  const PICKAXE_CONCURRENCY = PICKAXE_WORKSPACE_COUNT;
+  // ワークスペース単位で並列する。理論上は 7 並列まで可能だが、本番実測で
+  // 7 並列だと一部スライドが 504 (Modal コールドスタート衝突と思われる)
+  // 4 並列にすると残り 3 枚は次バッチに回るので待機分散され、成功率が安定。
+  const PICKAXE_CONCURRENCY = 4;
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
   // 1試行あたりのタイムアウト（ミリ秒）。実測70秒/枚に対し約2.5倍の余裕。
@@ -2888,9 +2890,10 @@ ${layoutDef.desc}
     _keyCursor = 0;
 
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
-    // ※リクエスト開始は1.5秒ずつずらす（HTTP/2 multiplexing と Modal コールド
-    //   スタート時の競合を回避するため）
-    const STAGGER_DELAY_MS = 1500;
+    // ※リクエスト開始は5秒ずつずらす (旧 1.5s では Modal コールドスタートが
+    //   ほぼ同時に走って一部 504。5s 間隔だと先発の起動が落ち着いてから
+    //   次が始まるので衝突しにくい)
+    const STAGGER_DELAY_MS = 5000;
     await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
       const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
