@@ -46,10 +46,11 @@ function getInputIdsForIndex(idx) {
   };
 }
 
-// Vercel Pro プランで maxDuration を 180s に設定している前提。
+// Vercel Pro プランで maxDuration を 250s に設定している前提。
 // プラットフォーム側の強制終了より少し早く AbortError を返したいので
-// 170s をタイムアウトとする (Pickaxe の応答が 90-150s 程度かかるケースに対応)。
-const REQUEST_TIMEOUT_MS = 170_000;
+// 240s をタイムアウトとする (Pickaxe 混雑時は 120-200s 程度かかることが
+// 実測されており、170s では不足だった)。
+const REQUEST_TIMEOUT_MS = 240_000;
 
 const IMAGE_URL_PATTERN = /https?:\/\/[^\s'"<>)\]]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s'"<>)\]]*)*/gi;
 

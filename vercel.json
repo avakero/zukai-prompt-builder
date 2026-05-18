@@ -8,7 +8,7 @@
       "maxDuration": 10
     },
     "api/pickaxe-proxy.js": {
-      "maxDuration": 180
+      "maxDuration": 250
     }
   },
   "rewrites": [
