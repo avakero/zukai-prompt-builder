@@ -2701,8 +2701,11 @@ ${layoutDef.desc}
       `## 最終再確認\n画風は必ず「${presetLabel || 'ユーザー指定'}」: ${stylePrompt}`;
   }
 
-  // 1枚あたりの想定生成時間（秒）。実測でNanoBanana2は約70秒/枚
-  const ESTIMATED_SEC_PER_IMAGE = 70;
+  // 1枚あたりの想定生成時間（秒）。
+  // 当初 70s で見積もっていたが、Pickaxe の混雑時は 120-240s ぐらいまで
+  // 伸びることがあるため、ユーザーへの「残り時間」を過小に見せないよう
+  // 中央値寄りの値にしている。
+  const ESTIMATED_SEC_PER_IMAGE = 120;
 
   // 生成中に表示するヒント（30秒に1回程度ローテーション）
   const GENERATION_TIPS = [

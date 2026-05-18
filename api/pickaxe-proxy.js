@@ -46,11 +46,13 @@ function getInputIdsForIndex(idx) {
   };
 }
 
-// Vercel Pro プランで maxDuration を 250s に設定している前提。
-// プラットフォーム側の強制終了より少し早く AbortError を返したいので
-// 240s をタイムアウトとする (Pickaxe 混雑時は 120-200s 程度かかることが
-// 実測されており、170s では不足だった)。
-const REQUEST_TIMEOUT_MS = 240_000;
+// Vercel Pro プランの Serverless Function maxDuration 上限は 300s。
+// vercel.json で 300s に設定しているので、内部タイムアウトはそれより
+// 10s 短い 290s とする (Vercel に強制終了される前に AbortError を出して
+// クライアントに整形済み 504 を返すため)。
+// 実測で Pickaxe 側は画像生成完了しているのに UI までの応答が 4 分以上
+// かかるケースが確認されており、ここまで伸ばす必要があった。
+const REQUEST_TIMEOUT_MS = 290_000;
 
 const IMAGE_URL_PATTERN = /https?:\/\/[^\s'"<>)\]]+?\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s'"<>)\]]*)*/gi;
 
