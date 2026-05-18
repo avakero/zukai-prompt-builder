@@ -189,6 +189,23 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'upstream_error', detail: 'invalid JSON from Pickaxe', keyIndex, elapsedMs });
   }
 
+  // Pickaxe は HTTP 200 でも body に `{ success: false, error: "..." }` を
+  // 返してくることがある (デプロイ設定不備・モデル制限・入力エラーなど)。
+  // 画像 URL 抽出より先にここで握って、生のエラー本文をフロントへ転送する。
+  if (data && data.success === false) {
+    const pickaxeError = typeof data.error === 'string' ? data.error : JSON.stringify(data.error || {}).substring(0, 500);
+    console.warn(`[api/pickaxe-proxy] pickaxe returned success=false idx=${keyIndex} elapsed=${elapsedMs}ms error=${pickaxeError}`);
+    res.statusCode = 502;
+    return res.json({
+      error: 'pickaxe_error',
+      pickaxeError,
+      keyIndex,
+      elapsedMs,
+      // 失敗詳細 (errorCode, details, requestId など) もそのまま見せる
+      raw: data
+    });
+  }
+
   const urls = extractImageUrls(data);
   if (urls.length === 0) {
     // 応答に画像URLが見つからなかった場合、何が返ってきているか診断する
