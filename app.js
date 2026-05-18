@@ -2559,9 +2559,12 @@ ${layoutDef.desc}
   const PICKAXE_CONCURRENCY = 2;
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
-  // 1試行あたりのタイムアウト（ミリ秒）。実測70秒/枚に対し約2.5倍の余裕。
-  // これを超えたらサーバー無応答とみなしてリトライ（または失敗確定）させる。
-  const PICKAXE_REQUEST_TIMEOUT_MS = 180_000;
+  // 1試行あたりのフロントエンド側タイムアウト (ミリ秒)。
+  // プロキシ側が 290s で諦めて 504 を返す → ブラウザはその応答を読み終える
+  // 必要があるので、プロキシ + Vercel ハードキル (300s) よりさらに余裕を持って
+  // 320s 待つ。これより前に AbortError を出すと、Pickaxe が裏で完了していても
+  // 取得できないので必ずプロキシより長くする。
+  const PICKAXE_REQUEST_TIMEOUT_MS = 320_000;
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
