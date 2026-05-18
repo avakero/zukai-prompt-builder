@@ -2562,7 +2562,7 @@ ${layoutDef.desc}
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function callPickaxeAPIOnce(prompt, aspectRatio, keyIndex, refImageUrls) {
+  async function callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls) {
     // Pickaxe は現在ブラウザからの直接呼び出しを CORS 拒否するため、
     // 自前の Vercel 関数 /api/pickaxe-proxy 経由でアクセスする。
     // キー本体はサーバー側 env var で管理し、ブラウザは keyIndex (0..6) のみ送る。
@@ -2574,6 +2574,7 @@ ${layoutDef.desc}
 
     const payload = {
       prompt,
+      model,
       aspectRatio,
       keyIndex
     };
@@ -2645,7 +2646,7 @@ ${layoutDef.desc}
     return idx;
   }
 
-  async function callPickaxeAPI(prompt, aspectRatio, preferredKeyIndex, refImageUrls) {
+  async function callPickaxeAPI(prompt, model, aspectRatio, preferredKeyIndex, refImageUrls) {
     let lastErr;
     // 初回は割り当てワークスペースを使用、リトライ時は別ワークスペースにフォールバック
     for (let attempt = 0; attempt <= PICKAXE_MAX_RETRIES; attempt++) {
@@ -2653,7 +2654,7 @@ ${layoutDef.desc}
         ? preferredKeyIndex
         : nextKeyIndex();
       try {
-        return await callPickaxeAPIOnce(prompt, aspectRatio, keyIndex, refImageUrls);
+        return await callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls);
       } catch (err) {
         lastErr = err;
         if (attempt >= PICKAXE_MAX_RETRIES || !isRetryable(err)) break;
@@ -2901,7 +2902,7 @@ ${layoutDef.desc}
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
       console.log(`[ImageGen] slide ${i + 1} -> workspace #${assignedKeyIndex + 1} (start delay: ${initialDelay}ms)`);
       try {
-        const imageUrl = await callPickaxeAPI(fullPrompt, aspectRatio, assignedKeyIndex, characterImageUrls);
+        const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKeyIndex, characterImageUrls);
         imageGenState.generatedImages[i].imageUrl = imageUrl;
         imageGenState.generatedImages[i].status = 'success';
         imageGenState.generatedImages[i].model = model;
@@ -3234,7 +3235,7 @@ ${layoutDef.desc}
         }
       }
       // 再生成では preferredKeyIndex を指定せず、ラウンドロビンに任せる
-      const imageUrl = await callPickaxeAPI(fullPrompt, state.format, undefined, charImageUrls);
+      const imageUrl = await callPickaxeAPI(fullPrompt, selectedModel, state.format, undefined, charImageUrls);
 
       imageGenState.generatedImages[idx].imageUrl = imageUrl;
       imageGenState.generatedImages[idx].status = 'success';

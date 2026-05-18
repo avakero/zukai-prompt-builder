@@ -29,6 +29,23 @@ const ALLOW_METHODS = 'POST, OPTIONS';
 const PICKAXE_ENDPOINT = 'https://api.pickaxe.co/v1/completions';
 const KEY_COUNT = 7;
 
+// Pickaxe の form-chat デプロイメントは inputs.{uuid} 形式で入力を受け取る。
+// 7 つの新ワークスペースは同じテンプレート由来で UUID が共通 (Pickaxe の API
+// 画面で全て同じだったことを確認済み)。違うワークスペースが出てきた場合は
+// PICKAXE_MODEL_INPUT_ID_{N} / PICKAXE_PROMPT_INPUT_ID_{N} の env で上書き可。
+const DEFAULT_MODEL_INPUT_ID  = '57fac2d1-e94a-46b8-8afb-fff18fed82a3';
+const DEFAULT_PROMPT_INPUT_ID = '18fc7bff-e8e7-4660-9434-0cee04a658fd';
+
+function getInputIdsForIndex(idx) {
+  const n = idx + 1;
+  const modelId = process.env[`PICKAXE_MODEL_INPUT_ID_${n}`];
+  const promptId = process.env[`PICKAXE_PROMPT_INPUT_ID_${n}`];
+  return {
+    modelInputId:  (modelId && modelId.trim())  || DEFAULT_MODEL_INPUT_ID,
+    promptInputId: (promptId && promptId.trim()) || DEFAULT_PROMPT_INPUT_ID
+  };
+}
+
 // Vercel Pro プランで maxDuration を 180s に設定している前提。
 // プラットフォーム側の強制終了より少し早く AbortError を返したいので
 // 170s をタイムアウトとする (Pickaxe の応答が 90-150s 程度かかるケースに対応)。
@@ -103,10 +120,14 @@ module.exports = async function handler(req, res) {
     res.statusCode = 400;
     return res.json({ error: 'invalid_input' });
   }
-  const { prompt, keyIndex, aspectRatio, imageUrls } = body;
+  const { prompt, model, keyIndex, aspectRatio, imageUrls } = body;
   if (typeof prompt !== 'string' || !prompt.trim()) {
     res.statusCode = 400;
     return res.json({ error: 'invalid_input', detail: 'prompt required' });
+  }
+  if (typeof model !== 'string' || !model.trim()) {
+    res.statusCode = 400;
+    return res.json({ error: 'invalid_input', detail: 'model required' });
   }
   if (!Number.isInteger(keyIndex)) {
     res.statusCode = 400;
@@ -124,12 +145,14 @@ module.exports = async function handler(req, res) {
     ? prompt + '\n\nアスペクト比: ' + aspectRatio
     : prompt;
 
-  // 新ワークスペース (form-chat 型) は message トップレベル形式
+  // Pickaxe デプロイメントの inputs.{uuid} 形式
+  // (Pickaxe API ページの Python サンプルと同形)
+  const { modelInputId, promptInputId } = getInputIdsForIndex(keyIndex);
   const payload = {
-    message: fullPrompt,
-    inputs: {},
-    userId: auth.lineUserId,
-    conversationId: '',
+    inputs: {
+      [modelInputId]:  model,
+      [promptInputId]: fullPrompt
+    },
     stream: false
   };
   if (Array.isArray(imageUrls) && imageUrls.length > 0) {
