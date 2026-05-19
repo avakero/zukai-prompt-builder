@@ -2551,12 +2551,14 @@ ${layoutDef.desc}
   // の複数 deployment では真の並列にならない。
   // 新構成では別ワークスペース × 7 にそれぞれ独立した画像生成 AI を置く。
   // 過去実測 (ブラウザ側タイムアウトが 180s だった頃):
-  //   7 並列 → 4/7 成功、4 並列 → 5/7、2 並列 → 7/7
-  // ただしこの失敗の多くは「クライアントが 180s で abort したが Pickaxe 側は
-  // 完了していた」ケースで、Modal の真の並列限界ではなかった可能性が高い。
-  // 現在は Browser 320s > Vercel 300s > Proxy 290s に揃えてあるので、
-  // 7 ワークスペースをフル活用した 7 並列を再検証する。
-  const PICKAXE_CONCURRENCY = 7;
+  //   7 並列 → 4/7、4 並列 → 5/7、2 並列 → 7/7
+  // 修正後タイムアウト (Browser 320s > Vercel 300s > Proxy 290s) で再検証:
+  //   7 並列 + stagger 8s → 初回 5/7・リトライ込み 7/7・wall-clock 430s
+  //   7 並列 + stagger 4s → 初回 2/7 (Pickaxe ゲートウェイ詰まり) — NG
+  //   4 並列 + stagger 8s → 検証中。同時着信を減らしてゲートウェイ負荷を下げ
+  //     初回成功率を 7/7 に近づけることを狙う。wall-clock は 7並列とほぼ同等
+  //     想定 (~400-450s) だがリトライ依存が減るぶん安定する見込み。
+  const PICKAXE_CONCURRENCY = 4;
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
   // 1試行あたりのフロントエンド側タイムアウト (ミリ秒)。
@@ -2899,10 +2901,11 @@ ${layoutDef.desc}
     _keyCursor = 0;
 
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
-    // ※リクエスト開始は4秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
-    //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する。
-    //   7 ワークスペース並列なら 4s 間隔でも cold start 起動は十分ばらける)
-    const STAGGER_DELAY_MS = 4000;
+    // ※リクエスト開始は8秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
+    //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する)
+    // 実測: 並列度7で stagger=4000ms にすると Pickaxe 共有ゲートウェイが詰まり
+    //   初回 2/7 まで成功率が落ちる。8s は load-bearing なので下げない。
+    const STAGGER_DELAY_MS = 8000;
     await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
       const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
