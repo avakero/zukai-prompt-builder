@@ -2550,15 +2550,14 @@ ${layoutDef.desc}
   // (Modal.com) は実際には共通リソースを取り合うため、同一ワークスペース内
   // の複数 deployment では真の並列にならない。
   // 新構成では別ワークスペース × 7 にそれぞれ独立した画像生成 AI を置く。
-  // 過去実測 (ブラウザ側タイムアウトが 180s だった頃):
-  //   7 並列 → 4/7、4 並列 → 5/7、2 並列 → 7/7
-  // 修正後タイムアウト (Browser 320s > Vercel 300s > Proxy 290s) で再検証:
-  //   7 並列 + stagger 8s → 初回 5/7・リトライ込み 7/7・wall-clock 430s
-  //   7 並列 + stagger 4s → 初回 2/7 (Pickaxe ゲートウェイ詰まり) — NG
-  //   4 並列 + stagger 8s → 検証中。同時着信を減らしてゲートウェイ負荷を下げ
-  //     初回成功率を 7/7 に近づけることを狙う。wall-clock は 7並列とほぼ同等
-  //     想定 (~400-450s) だがリトライ依存が減るぶん安定する見込み。
-  const PICKAXE_CONCURRENCY = 4;
+  // 修正後タイムアウト (Browser 320s > Vercel 300s > Proxy 290s) での実測 (2026-05-19):
+  //   7 並列 + stagger 8s → 初回 5/7・リトライ込み 7/7・wall-clock 430s ★最良
+  //   7 並列 + stagger 4s → 初回 2/7 (ゲートウェイ詰まり) wall-clock 903s
+  //   4 並列 + stagger 8s → 初回 0/4 (290s 同時 timeout → スロット解放と
+  //     後発スライドが同時発火し集中バースト連鎖) wall-clock 844s
+  // 並列数を絞ると「タイムアウト周期=290s 毎の集中バースト」を生むため逆効果。
+  // 7 ワークスペースを一斉に散らして発火するのが結果的に最も詰まりにくい。
+  const PICKAXE_CONCURRENCY = 7;
   const PICKAXE_MAX_RETRIES = 2;
   const PICKAXE_RETRY_DELAY_MS = 2000;
   // 1試行あたりのフロントエンド側タイムアウト (ミリ秒)。
@@ -2812,6 +2811,56 @@ ${layoutDef.desc}
     if (el) el.style.display = '';
   }
 
+  // ============================================================
+  // 生成ジョブの永続化ログ (フェーズ1: Supabase に best-effort で記録)
+  // ============================================================
+  // 目的: 将来サーバーサイドオーケストレーションに移行する土台。
+  //   フェーズ1 では生成フロー自体に影響を与えず、観測データだけを蓄積する。
+  // 失敗時の挙動: console.warn を出して黙って続行する。画像生成は止めない。
+
+  function _getLiffToken() {
+    try {
+      return (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+    } catch (_) { return null; }
+  }
+
+  async function logGenerationStart(jobId, payload) {
+    const token = _getLiffToken();
+    if (!token) return false;
+    try {
+      const res = await fetch('/api/log-generation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ job_id: jobId, ...payload })
+      });
+      if (!res.ok) {
+        console.warn('[ImageGen] log-generation HTTP', res.status);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('[ImageGen] log-generation failed (non-fatal):', e && e.message);
+      return false;
+    }
+  }
+
+  function logSlideResult(jobId, slideIdx, result) {
+    // 完全な fire-and-forget。keepalive を付けることで、ユーザーがタブを
+    // 閉じても送信は完遂される (フェーズ2 で活きる前提)。
+    const token = _getLiffToken();
+    if (!token) return;
+    try {
+      fetch('/api/log-slide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ job_id: jobId, slide_idx: slideIdx, ...result }),
+        keepalive: true
+      }).catch(e => console.warn('[ImageGen] log-slide failed (non-fatal):', e && e.message));
+    } catch (e) {
+      console.warn('[ImageGen] log-slide setup failed:', e && e.message);
+    }
+  }
+
   async function generateAllImages() {
     if (!gateOrToast('ai.imagegen', '画像一括生成')) return;
     if (!carouselData || !carouselData.slides || carouselData.slides.length === 0) {
@@ -2900,6 +2949,28 @@ ${layoutDef.desc}
     // ワークスペース keyIndex カーソルを毎回リセット（毎回 #1 から開始）
     _keyCursor = 0;
 
+    // 生成ジョブの永続化ログを開始 (フェーズ1: best-effort)。
+    // 失敗時は jobId を null に倒して以降の slide ログを no-op にする。
+    let jobId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : null;
+    if (jobId) {
+      const logged = await logGenerationStart(jobId, {
+        preset_code:        imageGenState.selectedPreset,
+        preset_label:       presetLabel,
+        style_prompt:       stylePrompt,
+        model:              model,
+        aspect_ratio:       aspectRatio,
+        total_slides:       total,
+        has_character_refs: characterImageUrls.length > 0,
+        slides: slides.map((s, i) => ({ slide_idx: i, content: s.content || '' }))
+      });
+      if (!logged) {
+        console.warn('[ImageGen] generation logging unavailable, continuing without it');
+        jobId = null;
+      } else {
+        console.log('[ImageGen] generation job logged:', jobId);
+      }
+    }
+
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
     // ※リクエスト開始は8秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
     //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する)
@@ -2916,6 +2987,7 @@ ${layoutDef.desc}
       const assignedKeyIndex = i % PICKAXE_WORKSPACE_COUNT;
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
       console.log(`[ImageGen] slide ${i + 1} -> workspace #${assignedKeyIndex + 1} (start delay: ${initialDelay}ms)`);
+      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       try {
         const imageUrl = await callPickaxeAPI(fullPrompt, model, aspectRatio, assignedKeyIndex, characterImageUrls);
         imageGenState.generatedImages[i].imageUrl = imageUrl;
@@ -2924,6 +2996,15 @@ ${layoutDef.desc}
         imageGenState.generatedImages[i].failedModel = null;
         renderImageGrid();
         updateProgressUI(total);
+        if (jobId) {
+          const elapsedMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+          logSlideResult(jobId, i, {
+            status: 'success',
+            image_url: imageUrl,
+            workspace_idx: assignedKeyIndex,
+            elapsed_ms: elapsedMs
+          });
+        }
       } catch (err) {
         imageGenState.generatedImages[i].status = 'error';
         imageGenState.generatedImages[i].error = err.message || String(err);
@@ -2931,6 +3012,16 @@ ${layoutDef.desc}
         console.error(`[ImageGen] slide ${i + 1} failed:`, err);
         renderImageGrid();
         updateProgressUI(total);
+        if (jobId) {
+          const elapsedMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+          const errMsg = (err && err.message ? err.message : String(err)).slice(0, 500);
+          logSlideResult(jobId, i, {
+            status: 'failed',
+            error: errMsg,
+            workspace_idx: assignedKeyIndex,
+            elapsed_ms: elapsedMs
+          });
+        }
       }
     });
 
