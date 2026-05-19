@@ -2899,9 +2899,10 @@ ${layoutDef.desc}
     _keyCursor = 0;
 
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
-    // ※リクエスト開始は8秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
-    //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する)
-    const STAGGER_DELAY_MS = 8000;
+    // ※リクエスト開始は4秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
+    //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する。
+    //   7 ワークスペース並列なら 4s 間隔でも cold start 起動は十分ばらける)
+    const STAGGER_DELAY_MS = 4000;
     await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
       const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
