@@ -18,9 +18,11 @@
 //
 // 設計:
 //   - OPENAI_API_KEY env var からキーを取得 (ブラウザには絶対に渡さない)
-//   - gpt-image-1 は base64 のみ返すため、いったん data URL として返す。
-//     PHASE-B TODO: Supabase Storage 'generated-images' バケットにアップロードして
-//     公開 URL を返す (応答サイズの抑制 + 共有可能化)。
+//   - 返ってきた base64 画像は Supabase Storage 'generated-images' バケットに
+//     アップロードして公開 URL を応答に乗せる (data URL 直返しは応答が重く、
+//     共有・再訪 UX も組めないため)。
+//   - Storage アップロードに失敗した場合のみ data URL にフォールバックする
+//     (best-effort)。
 //   - imageUrls が指定された場合は /v1/images/edits を使う (image-to-image)。
 //     Pickaxe の character refs と同じ役割。
 //
@@ -47,6 +49,7 @@
 
 const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { uploadGeneratedImage } = require('./_lib/image-storage');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const GENERATIONS_ENDPOINT = 'https://api.openai.com/v1/images/generations';
@@ -234,10 +237,19 @@ module.exports = async function handler(req, res) {
     }
 
     let imageUrl = null;
+    let storagePath = null;
     if (first.b64_json) {
-      imageUrl = `data:image/png;base64,${first.b64_json}`;
+      // Supabase Storage に上げて公開URLを得る。失敗時のみ data URL にフォールバック。
+      try {
+        const uploaded = await uploadGeneratedImage(first.b64_json, 'image/png', auth.lineUserId);
+        imageUrl = uploaded.publicUrl;
+        storagePath = uploaded.path;
+      } catch (uploadErr) {
+        console.warn('[api/openai-image] storage upload failed, falling back to data URL:', uploadErr && uploadErr.message);
+        imageUrl = `data:image/png;base64,${first.b64_json}`;
+      }
     } else if (first.url) {
-      // dall-e-3 は url を直接返す
+      // dall-e-3 は url を直接返す (OpenAI CDN; 一定時間で失効する点に注意)
       imageUrl = first.url;
     }
     if (!imageUrl) {
@@ -245,7 +257,11 @@ module.exports = async function handler(req, res) {
       return res.json({ error: 'upstream_error', detail: 'response had neither b64_json nor url' });
     }
 
-    console.log('[api/openai-image] success', { model, elapsedMs, hasRefs: refImageUrls.length > 0 });
+    console.log('[api/openai-image] success', {
+      model, elapsedMs,
+      hasRefs: refImageUrls.length > 0,
+      storage: storagePath ? 'uploaded' : 'data-url-fallback'
+    });
     res.statusCode = 200;
     return res.json({ imageUrl, model, elapsedMs });
 

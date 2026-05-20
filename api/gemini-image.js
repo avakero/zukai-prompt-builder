@@ -14,7 +14,8 @@
 // 設計:
 //   - GEMINI_API_KEY env var からキーを取得 (Google AI Studio で発行したキー)
 //   - Imagen 3 (純粋な text→image) と Gemini 2.5 Flash Image (multimodal) を切替可能
-//   - レスポンスは base64 → data URL で返す。PHASE-B TODO は openai-image と同じ。
+//   - 返ってきた base64 画像は Supabase Storage 'generated-images' バケットに
+//     アップロードして公開 URL を応答に乗せる。失敗時のみ data URL にフォールバック。
 //
 // スパイク用 curl:
 //   # Imagen 3 (text→image):
@@ -35,6 +36,7 @@
 
 const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { uploadGeneratedImage } = require('./_lib/image-storage');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -109,8 +111,7 @@ async function callImagen3(apiKey, prompt, aspectRatio) {
   if (!first || !first.bytesBase64Encoded) {
     return { ok: false, status: 502, detail: 'no predictions in response' };
   }
-  const mime = first.mimeType || 'image/png';
-  return { ok: true, dataUrl: `data:${mime};base64,${first.bytesBase64Encoded}` };
+  return { ok: true, b64: first.bytesBase64Encoded, mimeType: first.mimeType || 'image/png' };
 }
 
 async function callGemini25FlashImage(apiKey, prompt, refImageUrls) {
@@ -146,8 +147,7 @@ async function callGemini25FlashImage(apiKey, prompt, refImageUrls) {
   if (!imagePart) {
     return { ok: false, status: 502, detail: 'no inlineData in response' };
   }
-  const mime = imagePart.inlineData.mimeType || 'image/png';
-  return { ok: true, dataUrl: `data:${mime};base64,${imagePart.inlineData.data}` };
+  return { ok: true, b64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType || 'image/png' };
 }
 
 module.exports = async function handler(req, res) {
@@ -223,9 +223,25 @@ module.exports = async function handler(req, res) {
       return res.json({ error: 'upstream_error', status: result.status, detail: result.detail });
     }
 
-    console.log('[api/gemini-image] success', { model, elapsedMs, hasRefs: refImageUrls.length > 0 });
+    // Supabase Storage に上げて公開URLを得る。失敗時のみ data URL にフォールバック。
+    let imageUrl;
+    let storagePath = null;
+    try {
+      const uploaded = await uploadGeneratedImage(result.b64, result.mimeType, auth.lineUserId);
+      imageUrl = uploaded.publicUrl;
+      storagePath = uploaded.path;
+    } catch (uploadErr) {
+      console.warn('[api/gemini-image] storage upload failed, falling back to data URL:', uploadErr && uploadErr.message);
+      imageUrl = `data:${result.mimeType};base64,${result.b64}`;
+    }
+
+    console.log('[api/gemini-image] success', {
+      model, elapsedMs,
+      hasRefs: refImageUrls.length > 0,
+      storage: storagePath ? 'uploaded' : 'data-url-fallback'
+    });
     res.statusCode = 200;
-    return res.json({ imageUrl: result.dataUrl, model, elapsedMs });
+    return res.json({ imageUrl, model, elapsedMs });
 
   } catch (e) {
     const elapsedMs = Date.now() - t0;
