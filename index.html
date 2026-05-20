@@ -222,21 +222,40 @@
           <h2 class="section__title">AIモデル</h2>
         </div>
         <div class="selection-grid selection-grid--model" role="radiogroup" aria-label="モデル選択">
-          <div class="selection-card" data-group="model" data-value="NanoBanana2" role="radio" aria-checked="false" tabindex="0" id="modelNanoBanana">
+          <!-- 公開モデル: OpenAI gpt-image-2 (デフォルト) -->
+          <div class="selection-card active" data-group="model" data-value="gpt-image-2" role="radio" aria-checked="true" tabindex="0" id="modelGptImage2">
+            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span class="selection-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </span>
+            <span class="selection-card__label">gpt-image-2</span>
+            <span class="selection-card__desc">OpenAI（推奨）</span>
+          </div>
+          <!-- 公開モデル: Gemini 2.5 Flash Image -->
+          <div class="selection-card" data-group="model" data-value="gemini-2.5-flash-image-preview" role="radio" aria-checked="false" tabindex="0" id="modelGeminiFlashImage">
             <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <span class="selection-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
             </span>
-            <span class="selection-card__label">NanoBanana2</span>
-            <span class="selection-card__desc">Geminiベース</span>
+            <span class="selection-card__label">Gemini 2.5 Flash Image</span>
+            <span class="selection-card__desc">Google</span>
           </div>
-          <div class="selection-card active" data-group="model" data-value="GPT Image2" role="radio" aria-checked="true" tabindex="0" id="modelGPTImage">
+          <!-- 内部限定 (provider.pickaxe タグ持ちのみ JS 側で表示) -->
+          <div class="selection-card selection-card--internal" data-group="model" data-value="NanoBanana2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelNanoBanana" style="display:none">
+            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <span class="selection-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+            </span>
+            <span class="selection-card__label">NanoBanana2</span>
+            <span class="selection-card__desc">Pickaxe (内部)</span>
+          </div>
+          <div class="selection-card selection-card--internal" data-group="model" data-value="GPT Image2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelGPTImage" style="display:none">
             <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <span class="selection-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </span>
             <span class="selection-card__label">GPT Image2</span>
-            <span class="selection-card__desc">OpenAIベース（推奨）</span>
+            <span class="selection-card__desc">Pickaxe (内部)</span>
           </div>
         </div>
       </section>
@@ -730,7 +749,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
           </svg>
-          画像を一括生成する（Pickaxe API）
+          画像を一括生成する
         </button>
       </section>
 
@@ -891,13 +910,21 @@
         <div class="form-group">
           <label class="form-label">AIモデル</label>
           <div class="regen-modal__models" role="radiogroup" aria-label="再生成モデル選択">
-            <button type="button" class="regen-model-btn" data-model="NanoBanana2" id="regenModelNano" role="radio" aria-checked="false">
-              <span class="regen-model-btn__label">NanoBanana2</span>
-              <span class="regen-model-btn__desc">Geminiベース</span>
+            <button type="button" class="regen-model-btn" data-model="gpt-image-2" id="regenModelGptImage2" role="radio" aria-checked="true">
+              <span class="regen-model-btn__label">gpt-image-2</span>
+              <span class="regen-model-btn__desc">OpenAI（推奨）</span>
             </button>
-            <button type="button" class="regen-model-btn" data-model="GPT Image2" id="regenModelGPT" role="radio" aria-checked="false">
+            <button type="button" class="regen-model-btn" data-model="gemini-2.5-flash-image-preview" id="regenModelGeminiFlashImage" role="radio" aria-checked="false">
+              <span class="regen-model-btn__label">Gemini 2.5 Flash Image</span>
+              <span class="regen-model-btn__desc">Google</span>
+            </button>
+            <button type="button" class="regen-model-btn regen-model-btn--internal" data-model="NanoBanana2" data-internal="pickaxe" id="regenModelNano" role="radio" aria-checked="false" style="display:none">
+              <span class="regen-model-btn__label">NanoBanana2</span>
+              <span class="regen-model-btn__desc">Pickaxe (内部)</span>
+            </button>
+            <button type="button" class="regen-model-btn regen-model-btn--internal" data-model="GPT Image2" data-internal="pickaxe" id="regenModelGPT" role="radio" aria-checked="false" style="display:none">
               <span class="regen-model-btn__label">GPT Image2</span>
-              <span class="regen-model-btn__desc">OpenAIベース</span>
+              <span class="regen-model-btn__desc">Pickaxe (内部)</span>
             </button>
           </div>
           <p class="regen-modal__hint" id="regenModelHint"></p>

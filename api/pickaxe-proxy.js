@@ -24,6 +24,29 @@
 
 const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { getSupabaseAdmin } = require('./_lib/supabase');
+
+// Pickaxe アクセス可否チェック: user_tags に 'pickaxe_internal' タグがあるユーザーのみ許可。
+// 7月末で Pickaxe サブスクが終わるため、一般ユーザーは OpenAI/Gemini に誘導する。
+async function userHasPickaxeAccess(lineUserId) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('user_tags')
+      .select('tag')
+      .eq('line_user_id', lineUserId)
+      .eq('tag', 'pickaxe_internal')
+      .maybeSingle();
+    if (error) {
+      console.error('[api/pickaxe-proxy] user_tags lookup failed:', error.message);
+      return false;
+    }
+    return !!data;
+  } catch (e) {
+    console.error('[api/pickaxe-proxy] supabase init failed:', e && e.message);
+    return false;
+  }
+}
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const PICKAXE_ENDPOINT = 'https://api.pickaxe.co/v1/completions';
@@ -115,6 +138,15 @@ module.exports = async function handler(req, res) {
     console.error('[api/pickaxe-proxy] unexpected auth error:', e);
     res.statusCode = 500;
     return res.json({ error: 'internal_error' });
+  }
+
+  // アクセスゲート: Pickaxe は 'pickaxe_internal' タグ保持者のみ。
+  // 一般ユーザーは /api/openai-image または /api/gemini-image を使うこと。
+  const hasAccess = await userHasPickaxeAccess(auth.lineUserId);
+  if (!hasAccess) {
+    console.warn('[api/pickaxe-proxy] forbidden (no pickaxe_internal tag)', { lineUserId: auth.lineUserId });
+    res.statusCode = 403;
+    return res.json({ error: 'forbidden', detail: 'Pickaxe access is restricted to internal users. Use /api/openai-image or /api/gemini-image instead.' });
   }
 
   // 入力検証

@@ -183,14 +183,17 @@
   let pasteQueueIndex = 0;
 
   // 画像生成状態
+  // デフォルトは OpenAI gpt-image-2 (2026-05-20 のスパイクで採用決定)。
+  // Pickaxe ('GPT Image2' / 'NanoBanana2') は provider.pickaxe タグ保持者のみ
+  // 選べるよう UI 側でカードが非表示になる。
   let imageGenState = {
     selectedPreset: 'handdrawn',
     customStyle: '',
-    model: 'GPT Image2',
+    model: 'gpt-image-2',
     // { slideIndex, imageUrl, stylePrompt, contentPrompt, model, status: 'loading'|'success'|'error', error?, failedModel? }
     generatedImages: [],
     regenSlideIndex: -1,
-    regenSelectedModel: 'GPT Image2'
+    regenSelectedModel: 'gpt-image-2'
   };
 
   // ============================================================
@@ -278,6 +281,8 @@
     regenContentPrompt: $('#regenContentPrompt'),
     regenModalCancel: $('#regenModalCancel'),
     regenModalSubmit: $('#regenModalSubmit'),
+    regenModelGptImage2: $('#regenModelGptImage2'),
+    regenModelGeminiFlashImage: $('#regenModelGeminiFlashImage'),
     regenModelNano: $('#regenModelNano'),
     regenModelGPT: $('#regenModelGPT'),
     regenModelHint: $('#regenModelHint'),
@@ -1110,6 +1115,8 @@ ${layoutDef.desc}
         else if (group === 'model') {
           imageGenState.model = value;
           if (els.modelBadge) els.modelBadge.textContent = value;
+          // 選択を永続化 (リロード後も維持)。zukaiDebug.setModel と同じキーに統一。
+          try { localStorage.setItem('zukai-debug-model', value); } catch (_) {}
         }
 
         activateCard(group, value);
@@ -1365,8 +1372,8 @@ ${layoutDef.desc}
         if (e.target === els.regenModalOverlay) closeRegenModal();
       });
     }
-    // 再生成モーダルのモデル切替
-    [els.regenModelNano, els.regenModelGPT].forEach(btn => {
+    // 再生成モーダルのモデル切替 (全プロバイダ対応)
+    [els.regenModelGptImage2, els.regenModelGeminiFlashImage, els.regenModelNano, els.regenModelGPT].forEach(btn => {
       if (!btn) return;
       btn.addEventListener('click', () => {
         const idx = imageGenState.regenSlideIndex;
@@ -2582,14 +2589,23 @@ ${layoutDef.desc}
   //   window.zukaiDebug.clearModel()        → 永続化したモデル設定をクリア (デフォルトに戻す)
   const ZUKAI_DEBUG_MODEL_KEY = 'zukai-debug-model';
 
-  // ページロード時、保存済みのデバッグモデルがあればそれを imageGenState に反映する
+  // ページロード時、保存済みのデバッグモデルがあればそれを imageGenState に反映する。
+  // UI カード (selection-card) の active 状態も同期させる。
+  function _syncModelCardUI(model) {
+    // activateCard を使ってカードのハイライトを同期 (この時点で DOM は存在する)
+    if (typeof activateCard === 'function') {
+      try { activateCard('model', model); } catch (_) {}
+    }
+  }
   try {
     const savedModel = localStorage.getItem(ZUKAI_DEBUG_MODEL_KEY);
     if (savedModel && IMAGE_GEN_MODEL_REGISTRY[savedModel]) {
       imageGenState.model = savedModel;
+      _syncModelCardUI(savedModel);
       console.log('[zukaiDebug] restored from localStorage: model =', savedModel,
         '/ provider =', IMAGE_GEN_MODEL_REGISTRY[savedModel].provider);
     } else {
+      _syncModelCardUI(imageGenState.model);
       console.log('[zukaiDebug] active model =', imageGenState.model,
         '/ provider =', getProviderForModel(imageGenState.model),
         '(default; use zukaiDebug.setModel(...) to switch)');
@@ -2617,6 +2633,7 @@ ${layoutDef.desc}
     }
     imageGenState.model = model;
     try { localStorage.setItem(ZUKAI_DEBUG_MODEL_KEY, model); } catch (_) {}
+    _syncModelCardUI(model);
     console.log('[zukaiDebug] imageGenState.model =', model,
       '/ provider =', IMAGE_GEN_MODEL_REGISTRY[model].provider,
       '(saved to localStorage, persists across reloads)');
@@ -3177,7 +3194,7 @@ ${layoutDef.desc}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
       </svg>
-      画像を一括生成する（Pickaxe API）
+      画像を一括生成する
     `;
 
     const successCount = imageGenState.generatedImages.filter(g => g.status === 'success').length;
@@ -3392,7 +3409,14 @@ ${layoutDef.desc}
     const failedModel = imgData.status === 'error' ? imgData.failedModel : null;
     let initialModel;
     if (failedModel) {
-      initialModel = failedModel === 'NanoBanana2' ? 'GPT Image2' : 'NanoBanana2';
+      // 失敗時は別プロバイダにフォールバック提案 (gpt-image-2 ↔ gemini-2.5 ↔ Pickaxe で循環)
+      const fallbackChain = {
+        'gpt-image-2':                    'gemini-2.5-flash-image-preview',
+        'gemini-2.5-flash-image-preview': 'gpt-image-2',
+        'NanoBanana2':                    'GPT Image2',
+        'GPT Image2':                     'NanoBanana2'
+      };
+      initialModel = fallbackChain[failedModel] || 'gpt-image-2';
     } else {
       initialModel = imgData.model || imageGenState.model;
     }
@@ -3407,8 +3431,10 @@ ${layoutDef.desc}
   function updateRegenModelSelection(selectedModel, failedModel) {
     imageGenState.regenSelectedModel = selectedModel;
     const btns = [
-      { el: els.regenModelNano, model: 'NanoBanana2' },
-      { el: els.regenModelGPT, model: 'GPT Image2' }
+      { el: els.regenModelGptImage2,        model: 'gpt-image-2' },
+      { el: els.regenModelGeminiFlashImage, model: 'gemini-2.5-flash-image-preview' },
+      { el: els.regenModelNano,             model: 'NanoBanana2' },
+      { el: els.regenModelGPT,              model: 'GPT Image2' }
     ];
     btns.forEach(({ el, model }) => {
       if (!el) return;
@@ -3716,6 +3742,32 @@ ${layoutDef.desc}
     return planFeats.includes(featureKey) || tagFeats.includes(featureKey);
   };
 
+  // プロバイダゲート: 内部限定 (Pickaxe など) のモデルカードを表示/非表示する。
+  // fetchUserProfile 完了後に呼ばれる。デフォルトでは内部カードは HTML 上 display:none。
+  // タグを失ったユーザーが localStorage に古い Pickaxe モデルを残していた場合は
+  // デフォルト (gpt-image-2) にリセットして無効選択を回避する。
+  function applyProviderGate() {
+    const showPickaxe = !!(window.hasFeature && window.hasFeature('provider.pickaxe'));
+    // メインのモデル選択カード
+    document.querySelectorAll('.selection-card--internal[data-internal="pickaxe"]').forEach(card => {
+      card.style.display = showPickaxe ? '' : 'none';
+    });
+    // 再生成モーダルのモデルボタン
+    document.querySelectorAll('.regen-model-btn--internal[data-internal="pickaxe"]').forEach(btn => {
+      btn.style.display = showPickaxe ? '' : 'none';
+    });
+    // タグ未保有ユーザーが Pickaxe モデルを保持していたらデフォルトに戻す
+    if (!showPickaxe
+        && typeof getProviderForModel === 'function'
+        && getProviderForModel(imageGenState.model) === 'pickaxe') {
+      console.log('[applyProviderGate] no pickaxe tag, resetting model to default gpt-image-2');
+      imageGenState.model = 'gpt-image-2';
+      try { localStorage.setItem('zukai-debug-model', 'gpt-image-2'); } catch (_) {}
+      if (typeof activateCard === 'function') activateCard('model', 'gpt-image-2');
+    }
+    console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ active model =', imageGenState.model);
+  }
+
   // ページごとに別のLIFFアプリを使い分け
   // ※ LIFFはエンドポイントURLを1つしか登録できないため、ページごとに別のLIFFアプリを作成
   const LIFF_IDS = {
@@ -3829,6 +3881,7 @@ ${layoutDef.desc}
         source: 'api'
       };
       console.log('[api/me] loaded profile:', { plan: ent.plan, tags: data.tags });
+      applyProviderGate();
     } catch (e) {
       console.warn('[api/me] failed:', e && e.message);
       window.__USER_PROFILE__ = buildFallbackProfile('fallback');
