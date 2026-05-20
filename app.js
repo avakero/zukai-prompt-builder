@@ -2572,6 +2572,37 @@ ${layoutDef.desc}
     return def ? def.provider : 'pickaxe';
   }
 
+  // デバッグ/スパイク用: モデル切替をブラウザコンソールから行うためのヘルパを公開。
+  // 本来の app.js は IIFE で閉じているため、UI 完成までの暫定的な「裏口」。
+  // 利用例:
+  //   window.zukaiDebug.listModels()        → 登録モデル一覧
+  //   window.zukaiDebug.getModel()          → 現在のモデル
+  //   window.zukaiDebug.setModel('gpt-image-2')  → 切替 (ボタン押下時にこれが使われる)
+  window.zukaiDebug = window.zukaiDebug || {};
+  window.zukaiDebug.listModels = function () {
+    return Object.entries(IMAGE_GEN_MODEL_REGISTRY).map(([id, def]) => ({
+      id,
+      provider: def.provider,
+      label: def.label,
+      internal: def.internal,
+      supportsCharRefs: def.supportsCharRefs
+    }));
+  };
+  window.zukaiDebug.getModel = function () {
+    return imageGenState.model;
+  };
+  window.zukaiDebug.setModel = function (model) {
+    if (!IMAGE_GEN_MODEL_REGISTRY[model]) {
+      console.warn('[zukaiDebug] unknown model:', model, '— allowed:',
+        Object.keys(IMAGE_GEN_MODEL_REGISTRY).join(', '));
+      return null;
+    }
+    imageGenState.model = model;
+    console.log('[zukaiDebug] imageGenState.model =', model,
+      '/ provider =', IMAGE_GEN_MODEL_REGISTRY[model].provider);
+    return model;
+  };
+
   // 同時実行数とリトライ設定
   // Pickaxe deployment キーは単独だと並列実行に制限があるため、
   // 複数キーをローテーション利用することで N 並列を実現する。
