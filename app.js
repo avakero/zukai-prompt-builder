@@ -2574,10 +2574,28 @@ ${layoutDef.desc}
 
   // デバッグ/スパイク用: モデル切替をブラウザコンソールから行うためのヘルパを公開。
   // 本来の app.js は IIFE で閉じているため、UI 完成までの暫定的な「裏口」。
+  // モデル選択は localStorage 'zukai-debug-model' に保存され、ページリロード後も維持される。
   // 利用例:
   //   window.zukaiDebug.listModels()        → 登録モデル一覧
   //   window.zukaiDebug.getModel()          → 現在のモデル
-  //   window.zukaiDebug.setModel('gpt-image-2')  → 切替 (ボタン押下時にこれが使われる)
+  //   window.zukaiDebug.setModel('gpt-image-2')  → 切替 + 永続化
+  //   window.zukaiDebug.clearModel()        → 永続化したモデル設定をクリア (デフォルトに戻す)
+  const ZUKAI_DEBUG_MODEL_KEY = 'zukai-debug-model';
+
+  // ページロード時、保存済みのデバッグモデルがあればそれを imageGenState に反映する
+  try {
+    const savedModel = localStorage.getItem(ZUKAI_DEBUG_MODEL_KEY);
+    if (savedModel && IMAGE_GEN_MODEL_REGISTRY[savedModel]) {
+      imageGenState.model = savedModel;
+      console.log('[zukaiDebug] restored from localStorage: model =', savedModel,
+        '/ provider =', IMAGE_GEN_MODEL_REGISTRY[savedModel].provider);
+    } else {
+      console.log('[zukaiDebug] active model =', imageGenState.model,
+        '/ provider =', getProviderForModel(imageGenState.model),
+        '(default; use zukaiDebug.setModel(...) to switch)');
+    }
+  } catch (_) {}
+
   window.zukaiDebug = window.zukaiDebug || {};
   window.zukaiDebug.listModels = function () {
     return Object.entries(IMAGE_GEN_MODEL_REGISTRY).map(([id, def]) => ({
@@ -2598,9 +2616,15 @@ ${layoutDef.desc}
       return null;
     }
     imageGenState.model = model;
+    try { localStorage.setItem(ZUKAI_DEBUG_MODEL_KEY, model); } catch (_) {}
     console.log('[zukaiDebug] imageGenState.model =', model,
-      '/ provider =', IMAGE_GEN_MODEL_REGISTRY[model].provider);
+      '/ provider =', IMAGE_GEN_MODEL_REGISTRY[model].provider,
+      '(saved to localStorage, persists across reloads)');
     return model;
+  };
+  window.zukaiDebug.clearModel = function () {
+    try { localStorage.removeItem(ZUKAI_DEBUG_MODEL_KEY); } catch (_) {}
+    console.log('[zukaiDebug] localStorage cleared. Reload page to reset to default.');
   };
 
   // 同時実行数とリトライ設定
