@@ -370,10 +370,13 @@
   };
 
   // タグによる個別解放 (プランより強い、上書き専用)
+  // 'provider.pickaxe': Pickaxe (個人サブスク利用) を選べるかどうか。7月末のサブスク
+  //   終了とともに使わなくなる予定。タグ持ちユーザー (=オーナー本人) のみ表示。
   const TAG_FEATURE_GRANTS = {
     beta: ['ai.json', 'ai.imagegen', 'theme.seasonal'],
     internal: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
-    vip: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel']
+    vip: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
+    pickaxe_internal: ['provider.pickaxe']
   };
 
   // feature key → ユーザー向けに案内する必要プラン
@@ -2543,6 +2546,32 @@ ${layoutDef.desc}
   // 注: 画像URL抽出は /api/pickaxe-proxy 側で行うようにしたため
   // ブラウザ側のヘルパーは削除した。
 
+  // ============================================================
+  // 画像生成プロバイダ抽象化
+  // ============================================================
+  // Pickaxe (個人用、7月末まで利用予定) と OpenAI / Gemini (公開用) を
+  // 1つの dispatcher で透過的に扱う。model 名から自動的にプロバイダを判定。
+  //
+  // ⚠️ Pickaxe オプションは UI 上ではタグ 'pickaxe_internal' を持つユーザー
+  //    にだけ見せる想定 (フェーズB の UI 対応で実装)。
+  const IMAGE_GEN_MODEL_REGISTRY = {
+    // --- Pickaxe (個人用) ---
+    'NanoBanana2':                    { provider: 'pickaxe', label: 'Pickaxe / NanoBanana2',   internal: true, supportsCharRefs: true },
+    'GPT Image2':                     { provider: 'pickaxe', label: 'Pickaxe / GPT Image2',    internal: true, supportsCharRefs: true },
+    // --- OpenAI ---
+    'gpt-image-2':                    { provider: 'openai',  label: 'OpenAI gpt-image-2',      internal: false, supportsCharRefs: true },
+    'gpt-image-1':                    { provider: 'openai',  label: 'OpenAI gpt-image-1',      internal: false, supportsCharRefs: true },
+    'dall-e-3':                       { provider: 'openai',  label: 'OpenAI DALL·E 3',         internal: false, supportsCharRefs: false },
+    // --- Gemini (Google) ---
+    'imagen-3.0-generate-002':        { provider: 'gemini',  label: 'Google Imagen 3',         internal: false, supportsCharRefs: false },
+    'gemini-2.5-flash-image-preview': { provider: 'gemini',  label: 'Gemini 2.5 Flash Image',  internal: false, supportsCharRefs: true }
+  };
+  function getProviderForModel(model) {
+    const def = IMAGE_GEN_MODEL_REGISTRY[model];
+    // 未登録モデルは Pickaxe 経由として扱う (歴史的互換: 旧 Pickaxe モデル文字列が来ても動く)
+    return def ? def.provider : 'pickaxe';
+  }
+
   // 同時実行数とリトライ設定
   // Pickaxe deployment キーは単独だと並列実行に制限があるため、
   // 複数キーをローテーション利用することで N 並列を実現する。
@@ -2571,43 +2600,33 @@ ${layoutDef.desc}
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls) {
-    // Pickaxe は現在ブラウザからの直接呼び出しを CORS 拒否するため、
-    // 自前の Vercel 関数 /api/pickaxe-proxy 経由でアクセスする。
-    // キー本体はサーバー側 env var で管理し、ブラウザは keyIndex (0..6) のみ送る。
+  // 共通: 画像生成プロキシ POST ヘルパ。
+  // どのプロバイダの endpoint でも、LIFF認証 + AbortController による
+  // タイムアウト管理 + エラーレスポンス整形を統一する。
+  async function _postImageGenProxy(endpoint, body, timeoutMs) {
     let token = null;
     try {
       token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
     } catch (_) { token = null; }
     if (!token) throw new Error('LINE認証トークンが取得できません');
 
-    const payload = {
-      prompt,
-      model,
-      aspectRatio,
-      keyIndex
-    };
-    if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
-      payload.imageUrls = refImageUrls;
-    }
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PICKAXE_REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     let res;
     try {
-      res = await fetch('/api/pickaxe-proxy', {
+      res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + token
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
         signal: controller.signal
       });
     } catch (err) {
       if (err && err.name === 'AbortError') {
-        const e = new Error(`タイムアウト（${Math.round(PICKAXE_REQUEST_TIMEOUT_MS / 1000)}秒以内に応答なし）`);
+        const e = new Error(`タイムアウト（${Math.round(timeoutMs / 1000)}秒以内に応答なし）`);
         e.status = 0;
         e.isTimeout = true;
         throw e;
@@ -2633,8 +2652,37 @@ ${layoutDef.desc}
     if (!data || !data.imageUrl) {
       throw new Error('画像URLが応答に含まれていません');
     }
-
     return data.imageUrl;
+  }
+
+  // Pickaxe 1試行 (旧 callPickaxeAPIOnce)
+  async function callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls) {
+    const payload = { prompt, model, aspectRatio, keyIndex };
+    if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
+      payload.imageUrls = refImageUrls;
+    }
+    return _postImageGenProxy('/api/pickaxe-proxy', payload, PICKAXE_REQUEST_TIMEOUT_MS);
+  }
+
+  // OpenAI 1試行 (gpt-image-1 / dall-e-3)
+  // 通常 5–30s で返ってくるので 70s タイムアウトで十分。
+  const OPENAI_REQUEST_TIMEOUT_MS = 70_000;
+  async function callOpenAIImageOnce(prompt, model, aspectRatio, refImageUrls) {
+    const payload = { prompt, model, aspectRatio };
+    if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
+      payload.imageUrls = refImageUrls;
+    }
+    return _postImageGenProxy('/api/openai-image', payload, OPENAI_REQUEST_TIMEOUT_MS);
+  }
+
+  // Gemini 1試行 (Imagen 3 / Gemini 2.5 Flash Image)
+  const GEMINI_REQUEST_TIMEOUT_MS = 70_000;
+  async function callGeminiImageOnce(prompt, model, aspectRatio, refImageUrls) {
+    const payload = { prompt, model, aspectRatio };
+    if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
+      payload.imageUrls = refImageUrls;
+    }
+    return _postImageGenProxy('/api/gemini-image', payload, GEMINI_REQUEST_TIMEOUT_MS);
   }
 
   function isRetryable(err) {
@@ -2655,15 +2703,27 @@ ${layoutDef.desc}
     return idx;
   }
 
+  // 統一エントリポイント。model 名から自動的にプロバイダを判定して dispatch する。
+  // 関数名 callPickaxeAPI は歴史的経緯で残しており、実態はマルチプロバイダ dispatcher。
+  // preferredKeyIndex は Pickaxe 経路でのみ使われる (OpenAI/Gemini ではワークスペース概念がない)。
   async function callPickaxeAPI(prompt, model, aspectRatio, preferredKeyIndex, refImageUrls) {
+    const provider = getProviderForModel(model);
     let lastErr;
-    // 初回は割り当てワークスペースを使用、リトライ時は別ワークスペースにフォールバック
     for (let attempt = 0; attempt <= PICKAXE_MAX_RETRIES; attempt++) {
-      const keyIndex = (attempt === 0 && Number.isInteger(preferredKeyIndex))
-        ? preferredKeyIndex
-        : nextKeyIndex();
       try {
-        return await callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls);
+        if (provider === 'pickaxe') {
+          // 初回は割り当てワークスペースを使用、リトライ時は別ワークスペースにフォールバック
+          const keyIndex = (attempt === 0 && Number.isInteger(preferredKeyIndex))
+            ? preferredKeyIndex
+            : nextKeyIndex();
+          return await callPickaxeAPIOnce(prompt, model, aspectRatio, keyIndex, refImageUrls);
+        } else if (provider === 'openai') {
+          return await callOpenAIImageOnce(prompt, model, aspectRatio, refImageUrls);
+        } else if (provider === 'gemini') {
+          return await callGeminiImageOnce(prompt, model, aspectRatio, refImageUrls);
+        } else {
+          throw new Error(`unknown provider for model: ${model}`);
+        }
       } catch (err) {
         lastErr = err;
         if (attempt >= PICKAXE_MAX_RETRIES || !isRetryable(err)) break;
@@ -2876,9 +2936,13 @@ ${layoutDef.desc}
 
     const slides = carouselData.slides;
     const total = slides.length;
-    // 参考画像つきの場合は1枚あたり約1.5倍の時間を見込む
     const hasCharRefs = characterImages.length > 0;
-    const perImageSec = hasCharRefs ? Math.ceil(ESTIMATED_SEC_PER_IMAGE * 1.5) : ESTIMATED_SEC_PER_IMAGE;
+
+    // プロバイダ別の所要時間見積もり (Pickaxe は Modal cold start 込みで遅い、
+    // OpenAI/Gemini は warm な共有インフラで概ね 10–25s/枚)
+    const _activeProvider = getProviderForModel(imageGenState.model);
+    const _baseSecPerImage = (_activeProvider === 'pickaxe') ? ESTIMATED_SEC_PER_IMAGE : 20;
+    const perImageSec = hasCharRefs ? Math.ceil(_baseSecPerImage * 1.5) : _baseSecPerImage;
     const estimatedSec = Math.ceil((total / PICKAXE_CONCURRENCY) * perImageSec);
     const estimatedLabel = estimatedSec < 60
       ? `約${estimatedSec}秒`
@@ -2972,11 +3036,9 @@ ${layoutDef.desc}
     }
 
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
-    // ※リクエスト開始は8秒ずつずらす (全ワークスペースを t=0 で同時に叩くと
-    //   Modal コンテナのコールドスタートが衝突して詰まるため、起動を直列化する)
-    // 実測: 並列度7で stagger=4000ms にすると Pickaxe 共有ゲートウェイが詰まり
-    //   初回 2/7 まで成功率が落ちる。8s は load-bearing なので下げない。
-    const STAGGER_DELAY_MS = 8000;
+    // ※Pickaxe は Modal cold start 衝突回避のため 8s スタガーが必須 (実測で load-bearing)。
+    //   OpenAI/Gemini は warm な共有インフラなので stagger 不要 (すぐ並列発火OK)。
+    const STAGGER_DELAY_MS = (_activeProvider === 'pickaxe') ? 8000 : 0;
     await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
       const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
