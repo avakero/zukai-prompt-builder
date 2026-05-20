@@ -17,10 +17,10 @@
       "maxDuration": 10
     },
     "api/openai-image.js": {
-      "maxDuration": 60
+      "maxDuration": 180
     },
     "api/gemini-image.js": {
-      "maxDuration": 60
+      "maxDuration": 180
     }
   },
   "rewrites": [

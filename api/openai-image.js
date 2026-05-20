@@ -51,7 +51,10 @@ const { applyCors, handlePreflight } = require('./_lib/cors');
 const ALLOW_METHODS = 'POST, OPTIONS';
 const GENERATIONS_ENDPOINT = 'https://api.openai.com/v1/images/generations';
 const EDITS_ENDPOINT       = 'https://api.openai.com/v1/images/edits';
-const REQUEST_TIMEOUT_MS   = 55_000; // OpenAI は通常 5-30s。60s vercel maxDuration の内側で abort
+// OpenAI は通常 5-30s と言われるが、gpt-image-2 + /v1/images/edits (画像入力) は
+// 1分超かかるケースを観測したため、Vercel maxDuration=180s の内側で 170s abort とする。
+// 実測でこれ以下に短縮できるようなら下げる。
+const REQUEST_TIMEOUT_MS   = 170_000;
 
 // 対応モデル。gpt-image-2 は 2026年4月に公開された最新世代。
 const SUPPORTED_MODELS = ['gpt-image-2', 'gpt-image-1', 'dall-e-3'];

@@ -2719,9 +2719,10 @@ ${layoutDef.desc}
     return _postImageGenProxy('/api/pickaxe-proxy', payload, PICKAXE_REQUEST_TIMEOUT_MS);
   }
 
-  // OpenAI 1試行 (gpt-image-1 / dall-e-3)
-  // 通常 5–30s で返ってくるので 70s タイムアウトで十分。
-  const OPENAI_REQUEST_TIMEOUT_MS = 70_000;
+  // OpenAI 1試行 (gpt-image-2 / gpt-image-1 / dall-e-3)
+  // 実測で gpt-image-2 + img2img (char refs あり) は 60s 以上かかるケースあり。
+  // Vercel maxDuration 180s + proxy abort 170s なので、ブラウザ側は更に長く 200s 待つ。
+  const OPENAI_REQUEST_TIMEOUT_MS = 200_000;
   async function callOpenAIImageOnce(prompt, model, aspectRatio, refImageUrls) {
     const payload = { prompt, model, aspectRatio };
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
@@ -2731,7 +2732,8 @@ ${layoutDef.desc}
   }
 
   // Gemini 1試行 (Imagen 3 / Gemini 2.5 Flash Image)
-  const GEMINI_REQUEST_TIMEOUT_MS = 70_000;
+  // OpenAI と同じく Vercel 180s + proxy 170s + browser 200s で揃える
+  const GEMINI_REQUEST_TIMEOUT_MS = 200_000;
   async function callGeminiImageOnce(prompt, model, aspectRatio, refImageUrls) {
     const payload = { prompt, model, aspectRatio };
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
@@ -2993,11 +2995,20 @@ ${layoutDef.desc}
     const total = slides.length;
     const hasCharRefs = characterImages.length > 0;
 
-    // プロバイダ別の所要時間見積もり (Pickaxe は Modal cold start 込みで遅い、
-    // OpenAI/Gemini は warm な共有インフラで概ね 10–25s/枚)
+    // プロバイダ別の所要時間見積もり
+    //   Pickaxe: Modal cold start 込みで重い (1枚 120s ベース)
+    //   OpenAI/Gemini text→画像: warm インフラで 15–30s/枚
+    //   OpenAI/Gemini img2img (char refs): gpt-image-2 + edits で 60–120s/枚 と判明
     const _activeProvider = getProviderForModel(imageGenState.model);
-    const _baseSecPerImage = (_activeProvider === 'pickaxe') ? ESTIMATED_SEC_PER_IMAGE : 20;
-    const perImageSec = hasCharRefs ? Math.ceil(_baseSecPerImage * 1.5) : _baseSecPerImage;
+    let _baseSecPerImage;
+    if (_activeProvider === 'pickaxe') {
+      _baseSecPerImage = ESTIMATED_SEC_PER_IMAGE;
+    } else if (hasCharRefs) {
+      _baseSecPerImage = 90;  // img2img は遅い
+    } else {
+      _baseSecPerImage = 25;
+    }
+    const perImageSec = _baseSecPerImage;
     const estimatedSec = Math.ceil((total / PICKAXE_CONCURRENCY) * perImageSec);
     const estimatedLabel = estimatedSec < 60
       ? `約${estimatedSec}秒`
@@ -3092,11 +3103,26 @@ ${layoutDef.desc}
 
     // 各スライドに別ワークスペースを割り当ててワークスペース単位で並列実行
     // ※Pickaxe は Modal cold start 衝突回避のため 8s スタガーが必須 (実測で load-bearing)。
-    //   OpenAI/Gemini は warm な共有インフラなので stagger 不要 (すぐ並列発火OK)。
-    const STAGGER_DELAY_MS = (_activeProvider === 'pickaxe') ? 8000 : 0;
-    await runWithConcurrency(slides, PICKAXE_CONCURRENCY, async (slide, i) => {
+    //   OpenAI は Tier 1 で 5 IPM 制限のため並列度を 3 に下げる (5枚同時発火を回避)。
+    //   Gemini は AI Studio で比較的緩いが念のため 5。
+    let _activeConcurrency, STAGGER_DELAY_MS;
+    if (_activeProvider === 'pickaxe') {
+      _activeConcurrency = PICKAXE_CONCURRENCY;  // 7
+      STAGGER_DELAY_MS = 8000;
+    } else if (_activeProvider === 'openai') {
+      _activeConcurrency = 3;                    // Tier 1 安全圏
+      STAGGER_DELAY_MS = 1500;                   // 軽くずらして burst を避ける
+    } else if (_activeProvider === 'gemini') {
+      _activeConcurrency = 5;
+      STAGGER_DELAY_MS = 500;
+    } else {
+      _activeConcurrency = 3;
+      STAGGER_DELAY_MS = 0;
+    }
+    console.log('[ImageGen] provider:', _activeProvider, '/ concurrency:', _activeConcurrency, '/ stagger:', STAGGER_DELAY_MS + 'ms');
+    await runWithConcurrency(slides, _activeConcurrency, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
-      const initialDelay = (i < PICKAXE_CONCURRENCY) ? i * STAGGER_DELAY_MS : 0;
+      const initialDelay = (i < _activeConcurrency) ? i * STAGGER_DELAY_MS : 0;
       if (initialDelay > 0) await sleep(initialDelay);
 
       const content = slide.content || '';

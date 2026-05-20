@@ -38,7 +38,8 @@ const { applyCors, handlePreflight } = require('./_lib/cors');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const REQUEST_TIMEOUT_MS = 55_000;
+// Vercel maxDuration=180s の内側で 170s abort
+const REQUEST_TIMEOUT_MS = 170_000;
 
 const IMAGEN_AR_SUPPORTED = new Set(['1:1', '9:16', '16:9', '3:4', '4:3']);
 
