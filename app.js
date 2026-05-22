@@ -893,7 +893,7 @@ ${layoutDef.desc}
     try {
       token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
     } catch (_) { token = null; }
-    if (!token) throw new Error('LINE認証トークンが取得できません');
+    if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
 
     // 大きい画像は送信前に縮小
     let dataUrlToSend;
@@ -908,7 +908,8 @@ ${layoutDef.desc}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+        ...temporaryProMaxHeaders()
       },
       body: JSON.stringify({ dataUrl: dataUrlToSend, filename: img.name })
     });
@@ -2737,7 +2738,7 @@ ${layoutDef.desc}
     try {
       token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
     } catch (_) { token = null; }
-    if (!token) throw new Error('LINE認証トークンが取得できません');
+    if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -2748,7 +2749,8 @@ ${layoutDef.desc}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+          ...temporaryProMaxHeaders()
         },
         body: JSON.stringify(body),
         signal: controller.signal
@@ -3035,11 +3037,15 @@ ${layoutDef.desc}
 
   async function logGenerationStart(jobId, payload) {
     const token = _getLiffToken();
-    if (!token) return false;
+    if (!token && !isTemporaryProMaxRoute()) return false;
     try {
       const res = await fetch('/api/log-generation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+          ...temporaryProMaxHeaders()
+        },
         body: JSON.stringify({ job_id: jobId, ...payload })
       });
       if (!res.ok) {
@@ -3057,11 +3063,15 @@ ${layoutDef.desc}
     // 完全な fire-and-forget。keepalive を付けることで、ユーザーがタブを
     // 閉じても送信は完遂される (フェーズ2 で活きる前提)。
     const token = _getLiffToken();
-    if (!token) return;
+    if (!token && !isTemporaryProMaxRoute()) return;
     try {
       fetch('/api/log-slide', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+          ...temporaryProMaxHeaders()
+        },
         body: JSON.stringify({ job_id: jobId, slide_idx: slideIdx, ...result }),
         keepalive: true
       }).catch(e => console.warn('[ImageGen] log-slide failed (non-fatal):', e && e.message));
@@ -3955,7 +3965,7 @@ ${layoutDef.desc}
   // (local-dev もテスト目的で認証済み扱い、 anonymous / open-access / fallback は未認証扱い)
   function isProfileAuthenticated(profile) {
     if (!profile) return false;
-    return profile.source === 'api' || profile.source === 'local-dev';
+    return profile.source === 'api' || profile.source === 'local-dev' || profile.source === 'temporary-pro-max';
   }
 
   // 現在のプロファイルに応じてヘッダの CTA / ユーザープロフィール表示を切替
@@ -4236,7 +4246,17 @@ ${layoutDef.desc}
   // LINE認証不要の公開ページ (/free) かどうか
   function isOpenAccessRoute() {
     const path = location.pathname || '';
-    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
+    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0 ||
+      path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
+  }
+
+  function isTemporaryProMaxRoute() {
+    const path = location.pathname || '';
+    return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
+  }
+
+  function temporaryProMaxHeaders() {
+    return isTemporaryProMaxRoute() ? { 'X-Temporary-Pro-Max-Access': '1' } : {};
   }
 
   // アプリ起動 (常にアプリ本体を即表示。LIFF はバックグラウンドで初期化)
@@ -4256,10 +4276,16 @@ ${layoutDef.desc}
     const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
 
     if (isLocalDev() || isOpenAccessRoute()) {
-      const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
-      const defaultPlan = isOpenAccessRoute() ? 'free' : 'pro';
+      const source = isTemporaryProMaxRoute()
+        ? 'temporary-pro-max'
+        : (isOpenAccessRoute() ? 'open-access' : 'local-dev');
+      const defaultPlan = isTemporaryProMaxRoute()
+        ? 'pro'
+        : (isOpenAccessRoute() ? 'free' : 'pro');
       window.__USER_PROFILE__ = {
-        lineUserId:    isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
+        lineUserId:    isTemporaryProMaxRoute()
+          ? 'Utemp-pro-max-open-access'
+          : (isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev'),
         product:       PRODUCT_CODE,
         plan:          overridePlan || defaultPlan,
         status:        'active',

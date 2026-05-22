@@ -20,7 +20,8 @@
 //   - 24時間程度で削除する運用 (0003_character_refs_storage.sql の関数参照)。
 
 const { randomUUID } = require('crypto');
-const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
+const { VerificationError } = require('./_lib/line');
+const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 
@@ -76,7 +77,7 @@ module.exports = async function handler(req, res) {
   // 認証
   let auth;
   try {
-    auth = await authenticateFromAuthorizationHeader(req.headers.authorization);
+    auth = await authenticateWithTemporaryProMax(req);
   } catch (e) {
     if (e instanceof VerificationError) {
       console.warn('[api/upload-character-image] auth failed', { code: e.code });

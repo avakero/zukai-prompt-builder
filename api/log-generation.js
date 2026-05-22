@@ -26,7 +26,8 @@
 //     (UPSERT 相当)。
 //   - 失敗してもクライアントは生成を続行する想定 (fire-and-forget)。
 
-const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
+const { VerificationError } = require('./_lib/line');
+const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 
@@ -71,7 +72,7 @@ module.exports = async function handler(req, res) {
   // 認証
   let auth;
   try {
-    auth = await authenticateFromAuthorizationHeader(req.headers.authorization);
+    auth = await authenticateWithTemporaryProMax(req);
   } catch (e) {
     if (e instanceof VerificationError) {
       console.warn('[api/log-generation] auth failed', { code: e.code });

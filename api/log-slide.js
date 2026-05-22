@@ -23,7 +23,8 @@
 //   - 認証ユーザーが job の所有者であることを確認してから更新する。
 //   - 失敗してもクライアント側の UI 反映には影響させない (best-effort logging)。
 
-const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
+const { VerificationError } = require('./_lib/line');
+const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 
@@ -69,7 +70,7 @@ module.exports = async function handler(req, res) {
   // 認証
   let auth;
   try {
-    auth = await authenticateFromAuthorizationHeader(req.headers.authorization);
+    auth = await authenticateWithTemporaryProMax(req);
   } catch (e) {
     if (e instanceof VerificationError) {
       console.warn('[api/log-slide] auth failed', { code: e.code });

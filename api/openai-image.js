@@ -47,7 +47,8 @@
 //   - input_fidelity は gpt-image-2 では設定不可 (API がいまのところ受け付けない)。
 //   - 画像入力は /v1/images/edits (gpt-image-1 と同じ)。
 
-const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
+const { VerificationError } = require('./_lib/line');
+const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 const { uploadGeneratedImage } = require('./_lib/image-storage');
 
@@ -130,7 +131,7 @@ module.exports = async function handler(req, res) {
   // 認証
   let auth;
   try {
-    auth = await authenticateFromAuthorizationHeader(req.headers.authorization);
+    auth = await authenticateWithTemporaryProMax(req);
   } catch (e) {
     if (e instanceof VerificationError) {
       res.statusCode = e.httpStatus;
