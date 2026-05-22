@@ -762,6 +762,12 @@
           <h2 class="section__title">生成画像</h2>
           <span class="section__badge" id="imageGridBadge">0 / 0</span>
         </div>
+        <div class="image-grid-notice" id="imageGridNotice" role="status">
+          <svg class="image-grid-notice__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="image-grid-notice__text" id="imageGridNoticeText">生成画像は<strong>24時間</strong>で自動削除されます。保存するには各画像のダウンロードボタン📥を押してください。</span>
+        </div>
         <div class="image-grid" id="imageGrid"></div>
         <div class="image-grid-actions" id="imageGridActions">
           <button class="generate-btn generate-btn--download" id="bulkDownloadBtn" type="button" style="display:none">

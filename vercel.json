@@ -16,6 +16,9 @@
     "api/log-slide.js": {
       "maxDuration": 10
     },
+    "api/job.js": {
+      "maxDuration": 10
+    },
     "api/openai-image.js": {
       "maxDuration": 180
     },

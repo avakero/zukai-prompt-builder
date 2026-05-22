@@ -3058,6 +3058,7 @@ img {
   background: #00733a;
   transform: translateY(-1px);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  color: #fff;
 }
 
 .line-login-cta:active {
@@ -3755,6 +3756,69 @@ img {
 .generate-btn--download:hover {
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
   transform: translateY(-2px);
+}
+
+/* ============================================================
+   生成画像の保存期限通知バナー
+   ============================================================ */
+.image-grid-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.10), rgba(251, 146, 60, 0.10));
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  color: var(--text-color, #92400e);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.image-grid-notice__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #d97706;
+}
+
+.image-grid-notice__text {
+  flex: 1;
+}
+
+.image-grid-notice__text strong {
+  color: #b45309;
+  font-weight: var(--font-bold, 700);
+}
+
+.image-grid-notice--urgent {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(248, 113, 113, 0.12));
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.image-grid-notice--urgent .image-grid-notice__icon {
+  color: #dc2626;
+}
+
+.image-grid-notice--urgent .image-grid-notice__text strong {
+  color: #b91c1c;
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+  .image-grid-notice {
+    color: #fde68a;
+  }
+  .image-grid-notice__text strong {
+    color: #fbbf24;
+  }
+  .image-grid-notice--urgent {
+    color: #fca5a5;
+  }
+  .image-grid-notice--urgent .image-grid-notice__text strong {
+    color: #f87171;
+  }
 }
 
 /* ============================================================

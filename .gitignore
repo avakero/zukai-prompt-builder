@@ -22,6 +22,9 @@ desktop.ini
 .agents/
 .gemini/
 
+# Codex local workspace metadata
+.codex/
+
 # Claude Code (設定ファイルはコミット、ログ・キャッシュは除外)
 .claude/sessions/
 .claude/cache/

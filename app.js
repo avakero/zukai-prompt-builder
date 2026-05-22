@@ -82,30 +82,34 @@
   const PICKAXE_WORKSPACE_COUNT = 7;
 
   // 画像生成スタイルプリセット定義
+  // 旧 Pickaxe ワークスペースは事前設定でスタイルバイアスを持っていたが、
+  // 直接 OpenAI gpt-image-2 / Gemini を叩く現構成ではプロンプトに完全な
+  // 視覚指示を載せる必要があるため、各 preset を具体化している。
+  // (色パレット・線の太さ・テクスチャ・アンチパターン明記)
   const IMAGE_GEN_STYLE_PRESETS = {
     handdrawn: {
       label: '手書き風イラスト',
-      prompt: '色鉛筆や水彩で描いたような温かみのあるイラスト。パステル調の色使い、手描きのラフなライン。デジタル感を排除し、紙に描かれたような質感。日本語テキストは手書き風フォントで。'
+      prompt: '温かみのある手描きイラスト風。色鉛筆・水彩・クレヨンで描いたような質感、紙のテクスチャが透ける表現。線はわざとラフに、塗りはムラを残す。色調はパステルカラー(やわらかいピンク・ミント・水色・クリーム色)。日本語テキストは手書き風(ハネ・トメが見える書き文字感)。デジタル感・ベクター感・写実的CGは厳禁。アナログで人間味のあるタッチを最優先。'
     },
     flat: {
       label: 'フラットビジネス',
-      prompt: 'フラットデザインのビジネス向けイラスト。ベクター調の整った直線的デザイン。信頼感のある寒色系カラー。余白を活かしたクリーンなレイアウト。日本語テキストはゴシック体で明瞭に。'
+      prompt: 'フラットデザインのビジネスイラスト。ベクター調の整った直線とジオメトリックな形状。シャドウ・グラデーション最小限。色は信頼感のある寒色系(ネイビー・スレートブルー・グレー・白)を主体に、アクセントに1色だけ温かい色(オレンジまたはコーラル)。余白を大きく取り、要素を厳選した整理されたレイアウト。日本語テキストはモダンなゴシック体で明瞭に配置。手描き感・テクスチャ・複雑な装飾は厳禁。'
     },
     pop: {
       label: 'ポップ＆カラフル',
-      prompt: '鮮やかな原色使いのポップなイラスト。太い主線、コミック調の表現。エネルギッシュで元気な印象。吹き出しやエフェクト演出あり。'
+      prompt: '鮮やかな原色のポップ＆コミック調イラスト。太く力強い黒の主線(マンガのインク線)、明るく彩度の高い色(赤・黄・青・緑)のフラット塗り。スクリーントーン・効果線・吹き出し・「ボン」などのオノマトペ演出を多用。元気で勢いのある躍動的な構図。日本語テキストはマンガ風(太字・縁取り・斜体)で目立たせる。落ち着いた配色・暗いトーン・写実的タッチは厳禁。'
     },
     minimal: {
       label: 'ミニマルモノクロ',
-      prompt: 'ミニマルデザインの図解。線画のみまたは最低限の色数。洗練されたシンプルな構成。余白を大きく取り、要素を厳選。モノクロームまたはデュオトーン。'
+      prompt: 'ミニマルでクリーンな線画図解。細く一様な黒い線(均等幅のストローク)による線画主体、塗りは最小限または無し。要素を極限まで削ぎ落とした洗練された構成、余白を大胆に取る。色はモノクローム(黒+白)、またはデュオトーン(黒+1色のアクセント)のみ。日本語テキストは細めの明朝体またはサンセリフで控えめに。装飾・グラデーション・テクスチャ・複雑な背景は厳禁。'
     },
     infographic: {
       label: 'インフォグラフィック',
-      prompt: 'モダンなインフォグラフィックスタイル。データビジュアライゼーション風のアイコン・チャート・グラフ要素。整理された情報階層、読みやすいタイポグラフィ。鮮やかなアクセントカラー。'
+      prompt: 'モダンなインフォグラフィック図解スタイル。アイコン化された人物・物・矢印・数値・データバー・円グラフなどのデータビジュアル要素を組み合わせる。情報階層が明確で、見出し・小見出し・数値・キャプションが整理されて配置されている。色は1〜2色の鮮やかなアクセントカラー(青またはエメラルド+オレンジなど)+グレースケール。日本語テキストはサンセリフ系で読みやすく。マンガ的演出・手描き感・写実描写は厳禁。'
     },
     chalkboard: {
       label: '黒板チョーク風',
-      prompt: '黒板にチョークで描いたような手書き風図解。ダークグリーンまたはダーク背景に白・パステルカラーのチョーク文字と図。レトロで親しみやすい雰囲気。'
+      prompt: '黒板にチョークで描いた手書き風図解。背景は深いダークグリーンの黒板テクスチャ(縞ムラ・チョーク粉のかすれ)。線と文字はチョーク質感(白・黄・水色・ピンクのパステル系)、ややかすれて粉っぽい。授業ノートのような親しみやすく整理されたレイアウト。日本語テキストはチョーク風の手書き(ハネ・トメ・かすれ)。デジタル感・グラデーション・写実的描写は厳禁。'
     },
     custom: {
       label: 'カスタム',
@@ -683,6 +687,7 @@ ${layoutDef.desc}
   // ============================================================
 
   function resetAll() {
+    // ===== シングルモードの state =====
     state = {
       text: '',
       style: 'A',
@@ -691,7 +696,8 @@ ${layoutDef.desc}
       colorMode: 'auto',
       colorValue: '',
       customColor: '#3b82f6',
-      theme: state.theme // テーマはリセットしない
+      theme: state.theme, // テーマはリセットしない
+      mode: 'single'
     };
 
     // 花びらが飛んでいる場合はそのまま維持
@@ -702,10 +708,56 @@ ${layoutDef.desc}
     els.promptText.textContent = '';
     els.customColorPicker.value = '#3b82f6';
 
-    // 画像・ペーストキューもクリア
+    // ===== 画像 / ペーストキュー =====
     characterImages = [];
     renderImageThumbnails();
     closePasteQueue();
+
+    // ===== カルーセルモードの state / UI =====
+    carouselData = null;
+    carouselPrompts = [];
+    if (els.carouselJsonInput) els.carouselJsonInput.value = '';
+    if (els.carouselBadge) {
+      els.carouselBadge.textContent = '未入力';
+      els.carouselBadge.classList.remove('section__badge--active', 'section__badge--success');
+    }
+    if (els.carouselPreviewSection) els.carouselPreviewSection.style.display = 'none';
+    if (els.carouselSlides) els.carouselSlides.innerHTML = '';
+    if (els.carouselSlideCount) els.carouselSlideCount.textContent = '';
+    if (els.carouselPreviewTitle) els.carouselPreviewTitle.textContent = '';
+    if (els.carouselOutputSection) els.carouselOutputSection.classList.remove('visible');
+    if (els.carouselOutputCards) els.carouselOutputCards.innerHTML = '';
+
+    // ===== 投稿キャプション =====
+    if (els.postCaptionBodyBlock) els.postCaptionBodyBlock.hidden = true;
+    if (els.postCaptionTagsBlock) els.postCaptionTagsBlock.hidden = true;
+    if (els.postCaptionBody) els.postCaptionBody.value = '';
+    if (els.postCaptionTags) els.postCaptionTags.innerHTML = '';
+    if (els.postCaptionTagCount) els.postCaptionTagCount.textContent = '';
+
+    // ===== AI生成 入力欄 =====
+    if (els.aiThemeInput) els.aiThemeInput.value = '';
+
+    // ===== 画像生成 state / UI =====
+    imageGenState.generatedImages = [];
+    imageGenState.regenSlideIndex = -1;
+    imageGenState.selectedPreset = 'handdrawn';
+    imageGenState.customStyle = '';
+    if (els.imageGenCustomStyle) els.imageGenCustomStyle.value = '';
+    if (typeof selectImageGenPreset === 'function') {
+      selectImageGenPreset('handdrawn');
+    }
+    if (els.imageGrid) els.imageGrid.innerHTML = '';
+    if (els.imageGridSection) els.imageGridSection.style.display = 'none';
+    if (els.imageGridBadge) els.imageGridBadge.textContent = '';
+
+    // 直近ジョブの復元キャッシュも消す（次回リロードで前回生成が出てこない）
+    try { localStorage.removeItem('zukai-last-job-id'); } catch (_) {}
+
+    // ===== シングルモードへ戻す =====
+    if (typeof switchMode === 'function') {
+      switchMode('single');
+    }
 
     applyUIState();
     updateCharCount();
@@ -2643,6 +2695,11 @@ ${layoutDef.desc}
     try { localStorage.removeItem(ZUKAI_DEBUG_MODEL_KEY); } catch (_) {}
     console.log('[zukaiDebug] localStorage cleared. Reload page to reset to default.');
   };
+  // 直近の生成ジョブの復元キャッシュを消す。リロード時に「前回の生成」が出なくなる。
+  window.zukaiDebug.clearLastJob = function () {
+    try { localStorage.removeItem('zukai-last-job-id'); } catch (_) {}
+    console.log('[zukaiDebug] last job id cleared. Reload page to confirm no restoration.');
+  };
 
   // 同時実行数とリトライ設定
   // Pickaxe deployment キーは単独だと並列実行に制限があるため、
@@ -2825,13 +2882,31 @@ ${layoutDef.desc}
   // 画像の一括並行生成
   // ============================================================
 
-  function buildImagePrompt(slideContent, stylePrompt, presetLabel) {
-    // スタイル指示を冒頭・末尾の両方で強調することで、システム側のデフォルト
-    // スタイルバイアスを上書きしやすくする
+  function buildImagePrompt(slideContent, stylePrompt, presetLabel, providerHint) {
+    // OpenAI gpt-image-2 / Gemini は明示的かつ簡潔な指示が効きやすい。
+    // 一方 Pickaxe ワークスペースは独自バイアスがあるため、スタイル指示を
+    // 冒頭・末尾の両方で強調する従来フォーマットの方が安定する。
+    // providerHint で経路ごとに最適化する。
+    if (providerHint === 'openai' || providerHint === 'gemini') {
+      return [
+        `## 画風スタイル: ${presetLabel || 'カスタム'}`,
+        stylePrompt,
+        ``,
+        `## 図解の内容`,
+        slideContent,
+        ``,
+        `## 制約条件`,
+        `- 1枚の完結したイラストとして仕上げる(複数コマや分割はしない)`,
+        `- 図解内のテキストは日本語(漢字・ひらがな・カタカナ)で記載し、文字が崩れないよう丁寧に描画`,
+        `- 装飾的な枠線・外枠・ロゴ・ウォーターマークは入れない`,
+        `- 背景は上記の画風スタイルに合うシンプルなものに`,
+        `- 上記スタイルから外れず、忠実に従うこと`
+      ].join('\n');
+    }
+    // Pickaxe (歴史的フォーマット、後方互換維持)
     const styleHeader = presetLabel
       ? `【最優先：画風スタイル＝「${presetLabel}」】\n${stylePrompt}`
       : `【最優先：画風スタイル】\n${stylePrompt}`;
-
     return `${styleHeader}\n\n` +
       `上記の画風スタイルを必ず厳守してください。他のスタイルに勝手に変えないこと。\n\n` +
       `## コンテンツ\n以下の内容を図解画像として生成してください:\n${slideContent}\n\n` +
@@ -3075,6 +3150,8 @@ ${layoutDef.desc}
     showProgressBar();
     renderImageGrid();
     updateProgressUI(total);
+    // 24h カウントダウン: 新規生成なので now を起点に
+    updateImageGridNotice(Date.now());
 
     // スクロール
     setTimeout(() => {
@@ -3115,6 +3192,8 @@ ${layoutDef.desc}
         jobId = null;
       } else {
         console.log('[ImageGen] generation job logged:', jobId);
+        // 復元用: 最新の jobId を localStorage に保存 (ページ閉じても 24h 以内なら復元可)
+        try { localStorage.setItem(LAST_JOB_KEY, jobId); } catch (_) {}
       }
     }
 
@@ -3143,7 +3222,7 @@ ${layoutDef.desc}
       if (initialDelay > 0) await sleep(initialDelay);
 
       const content = slide.content || '';
-      const fullPrompt = buildImagePrompt(content, stylePrompt, presetLabel);
+      const fullPrompt = buildImagePrompt(content, stylePrompt, presetLabel, _activeProvider);
       const assignedKeyIndex = i % PICKAXE_WORKSPACE_COUNT;
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
       console.log(`[ImageGen] slide ${i + 1} -> workspace #${assignedKeyIndex + 1} (start delay: ${initialDelay}ms)`);
@@ -3249,6 +3328,8 @@ ${layoutDef.desc}
         `;
         item.addEventListener('click', () => openRegenModal(i));
       } else {
+        // data URL (フォールバック) は共有不可なのでコピーボタンの挙動を変える
+        const isDataUrl = typeof img.imageUrl === 'string' && img.imageUrl.startsWith('data:');
         item.innerHTML = `
           <div class="image-grid-item__badge">${i + 1}</div>
           <img class="image-grid-item__img" src="${img.imageUrl}" alt="スライド ${i + 1}" loading="lazy">
@@ -3259,6 +3340,9 @@ ${layoutDef.desc}
               </button>
               <button class="image-grid-item__action-btn" data-action="download" title="ダウンロード">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button class="image-grid-item__action-btn" data-action="copy-url" title="画像URLをコピー${isDataUrl ? ' (この画像はURL共有不可)' : ''}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
               <button class="image-grid-item__action-btn" data-action="regen" title="再生成">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -3274,6 +3358,10 @@ ${layoutDef.desc}
         item.querySelector('[data-action="download"]').addEventListener('click', (e) => {
           e.stopPropagation();
           downloadImage(img.imageUrl, i);
+        });
+        item.querySelector('[data-action="copy-url"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          copyImageUrl(img.imageUrl);
         });
         item.querySelector('[data-action="regen"]').addEventListener('click', (e) => {
           e.stopPropagation();
@@ -3323,6 +3411,76 @@ ${layoutDef.desc}
       overlay.classList.remove('active');
       document.body.style.overflow = '';
     }
+  }
+
+  // ============================================================
+  // 画像 URL コピー (Supabase Storage の公開URLをクリップボードへ)
+  // ============================================================
+
+  async function copyImageUrl(url) {
+    if (!url) {
+      showToast('⚠️ コピーできるURLがありません');
+      return;
+    }
+    // C 実装後は基本 https URL だが、Storage アップロード失敗時の data URL フォールバックが
+    // 起きていると共有不可。その場合は警告を出してダウンロードを促す。
+    if (typeof url === 'string' && url.startsWith('data:')) {
+      showToast('⚠️ この画像はURL共有できません。ダウンロードして使ってください');
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        showToast('✅ 画像URLをコピーしました');
+      } else {
+        // 古い環境 (LIFF 内 WebView 等) のフォールバック
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('✅ 画像URLをコピーしました');
+      }
+    } catch (e) {
+      console.warn('[copyImageUrl] clipboard write failed:', e && e.message);
+      showToast('⚠️ コピーに失敗しました。右クリック→画像のURLをコピーしてください');
+    }
+  }
+
+  // ============================================================
+  // 保存期限通知バナーの更新
+  // ============================================================
+  // 24時間で消える Supabase Storage の特性に合わせ、UI に残り時間を表示する。
+  // createdAtMs が分かっている場合は残り時間 (h/m) を表示、未確定 (= まだ生成中で
+  // jobId 確定前) なら一般文言を出す。残り3時間切ったら「urgent」スタイル。
+
+  function updateImageGridNotice(createdAtMs) {
+    const text = document.getElementById('imageGridNoticeText');
+    const box  = document.getElementById('imageGridNotice');
+    if (!text || !box) return;
+
+    if (!createdAtMs || !isFinite(createdAtMs)) {
+      text.innerHTML = '生成画像は<strong>24時間</strong>で自動削除されます。保存するには各画像のダウンロードボタン📥を押してください。';
+      box.classList.remove('image-grid-notice--urgent');
+      return;
+    }
+
+    const totalMs = 24 * 3600 * 1000;
+    const remainingMs = totalMs - (Date.now() - createdAtMs);
+    if (remainingMs <= 0) {
+      text.innerHTML = '生成画像は<strong>まもなく</strong>自動削除されます。ダウンロード済みでない場合は急いで保存してください。';
+      box.classList.add('image-grid-notice--urgent');
+      return;
+    }
+    const totalMin = Math.floor(remainingMs / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const remainStr = h > 0 ? `${h}時間${m}分` : `${m}分`;
+    text.innerHTML = `生成画像はあと<strong>${remainStr}</strong>で自動削除されます。保存するには各画像のダウンロードボタン📥または「すべての画像をダウンロード」を押してください。`;
+    box.classList.toggle('image-grid-notice--urgent', remainingMs < 3 * 3600 * 1000);
   }
 
   // ============================================================
@@ -3496,7 +3654,8 @@ ${layoutDef.desc}
     try {
       const presetDef = IMAGE_GEN_STYLE_PRESETS[imageGenState.selectedPreset];
       const presetLabel = presetDef ? presetDef.label : 'カスタム';
-      const fullPrompt = buildImagePrompt(contentPrompt, stylePrompt, presetLabel);
+      const _regenProvider = getProviderForModel(selectedModel);
+      const fullPrompt = buildImagePrompt(contentPrompt, stylePrompt, presetLabel, _regenProvider);
 
       // 参考画像があれば同じURLを使い回す (既にアップロード済みのはず)
       let charImageUrls = [];
@@ -3888,6 +4047,105 @@ ${layoutDef.desc}
     }
   }
 
+  // 前回の画像生成ジョブを Supabase から復元する。
+  // ブラウザを閉じても 24時間以内なら別タブ・別デバイスから結果を取り戻せる。
+  // localStorage 'zukai-last-job-id' にジョブIDを保持し、再訪時に /api/job を叩く。
+  const LAST_JOB_KEY = 'zukai-last-job-id';
+
+  async function restoreLastJob() {
+    let lastJobId;
+    try { lastJobId = localStorage.getItem(LAST_JOB_KEY); } catch (_) { return; }
+    if (!lastJobId) return;
+
+    const token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+    if (!token) {
+      console.log('[restoreLastJob] no access token, skip');
+      return;
+    }
+
+    let res;
+    try {
+      res = await fetch('/api/job?id=' + encodeURIComponent(lastJobId), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+    } catch (e) {
+      console.warn('[restoreLastJob] fetch failed:', e && e.message);
+      return;
+    }
+
+    if (res.status === 404 || res.status === 403) {
+      // ジョブが既に削除済み or 別ユーザーの ID が残存 → localStorage クリア
+      try { localStorage.removeItem(LAST_JOB_KEY); } catch (_) {}
+      console.log('[restoreLastJob] job not available (status', res.status + '), cleared localStorage');
+      return;
+    }
+    if (!res.ok) {
+      console.warn('[restoreLastJob] non-ok status:', res.status);
+      return;
+    }
+
+    let data;
+    try { data = await res.json(); } catch (_) { return; }
+    if (!data || !data.job || !Array.isArray(data.slides)) return;
+
+    // 24時間以上前のジョブは復元しない (Storage 画像も消えている可能性高)
+    const createdMs = new Date(data.job.created_at).getTime();
+    const ageHours = isFinite(createdMs) ? (Date.now() - createdMs) / 3600000 : 999;
+    if (ageHours > 24) {
+      try { localStorage.removeItem(LAST_JOB_KEY); } catch (_) {}
+      console.log('[restoreLastJob] job too old (', ageHours.toFixed(1), 'h), cleared localStorage');
+      return;
+    }
+
+    // 成功スライドが1枚もない (= 全失敗の死亡ジョブ) は復元しない
+    const successSlides = data.slides.filter(s => s.status === 'success' && s.image_url);
+    if (successSlides.length === 0) {
+      console.log('[restoreLastJob] no successful slides, skip restore');
+      return;
+    }
+
+    // imageGenState に展開
+    const totalSlides = data.job.total_slides || data.slides.length;
+    imageGenState.generatedImages = [];
+    for (let i = 0; i < totalSlides; i++) {
+      const s = data.slides.find(x => x.slide_idx === i);
+      imageGenState.generatedImages.push({
+        slideIndex:    i,
+        imageUrl:      s && s.status === 'success' ? s.image_url : null,
+        stylePrompt:   data.job.style_prompt || '',
+        contentPrompt: s ? (s.content || '') : '',
+        model:         data.job.model || imageGenState.model,
+        status:        s && s.status === 'success' ? 'success'
+                     : s && s.status === 'failed'  ? 'error'
+                     : 'loading',
+        error:         s && s.error ? s.error : null,
+        failedModel:   null
+      });
+    }
+
+    // UI に表示
+    if (els.imageGridSection) {
+      els.imageGridSection.style.display = '';
+      renderImageGrid();
+      updateProgressUI(totalSlides);
+      // 24h カウントダウン: 復元時は Supabase 上の created_at を起点に
+      updateImageGridNotice(createdMs);
+    }
+
+    // 経過時間表示
+    const minutesAgo = Math.max(1, Math.floor(ageHours * 60));
+    const ageStr = minutesAgo < 60
+      ? `${minutesAgo}分前`
+      : `${Math.floor(minutesAgo / 60)}時間${minutesAgo % 60}分前`;
+    showToast(`🔁 ${ageStr}の生成結果を復元しました (${successSlides.length}/${totalSlides}枚)`);
+    console.log('[restoreLastJob] restored', {
+      jobId: lastJobId,
+      ageHoursRounded: Math.round(ageHours * 10) / 10,
+      successCount: successSlides.length,
+      totalSlides
+    });
+  }
+
   // (旧 checkFriendship はブロッキングだったため廃止。
   //  新フロー: アプリは常に即起動し、LIFF ログイン済みなら header に PRO/STANDARD/FREE バッジを出すだけ。
   //  友だち追加自体は CTA リンクから誘導する。)
@@ -3930,6 +4188,8 @@ ${layoutDef.desc}
         console.log('[LIFF] logged in → fetchUserProfile()');
         await fetchUserProfile();
         applyHeaderForProfile();
+        // 前回の画像生成結果が 24時間以内にあれば自動復元する (失敗時は黙って続行)
+        restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
       } else {
         console.log('[LIFF] not logged in → staying anonymous');
         // 匿名のまま。ヘッダの CTA から手動でログインしてもらう。
