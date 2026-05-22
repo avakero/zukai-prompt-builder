@@ -78,6 +78,7 @@ npm run build:wp   # = node build-wp.js
 | パス | 説明 |
 |---------|------|
 | `index.html` / `index.css` / `app.js` | フロントエンド本体 |
+| `line-menu.html` | **LINEリッチメニュー プロンプトビルダー**（単体・認証不要）。行×列・アイコン・テキスト・配色をフォームで選ぶと、リッチメニュー画像生成用の英語プロンプトを自動作成。ライブプレビュー付き。`/line-menu` でアクセス（ブラウザで直接開いても動作） |
 | `api/me.js` | `/api/me` 認証＋エンタイトルメント取得 |
 | `api/openai-image.js` | OpenAI gpt-image-2 / DALL·E 3 プロキシ（character refs 対応） |
 | `api/gemini-image.js` | Google Imagen 3 / Gemini 2.5 Flash Image プロキシ |
