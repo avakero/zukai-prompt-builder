@@ -3937,19 +3937,13 @@ ${layoutDef.desc}
     console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ active model =', imageGenState.model);
   }
 
-  // ページごとに別のLIFFアプリを使い分け
-  // ※ LIFFはエンドポイントURLを1つしか登録できないため、ページごとに別のLIFFアプリを作成
-  const LIFF_IDS = {
-    'pro-max': '2009850086-ynnPKSBX', // 図解ビルダーPRO MAX用（新規）
-    'default': '2009850086-K3TrYsDF'  // illustrated-prompt-editor-pro 用（既存）
-  };
-
-  // 現在のページURLからLIFF IDを判定
-  const LIFF_ID = (function () {
-    const path = location.pathname || '';
-    if (path.indexOf('pro-max') !== -1) return LIFF_IDS['pro-max'];
-    return LIFF_IDS['default'];
-  })();
+  // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
+  // ※ このLIFFアプリのエンドポイントURLを ルート https://zukai-builder.vercel.app/ に
+  //   設定することで、配下の全サブパス (/pro-max, /line-menu 等) を1つのLIFFアプリでカバーする。
+  //   LIFFはトークンを LIFF IDごと に保存するため、IDを1本化することで
+  //   1度のLINEログインで全ページがログイン済みになる。
+  //   line-menu.html の LINE_MENU_LIFF_ID も同じIDに揃えること。
+  const LIFF_ID = '2009850086-K3TrYsDF';
 
   // LINE公式アカウントのID（友だち追加URLに使用）
   // ※ LINE Official Account Manager で確認できるベーシックID（@xxx）またはプレミアムID
@@ -3959,6 +3953,29 @@ ${layoutDef.desc}
   function hideLoginGate() {
     const gate = document.getElementById('lineLoginGate');
     if (gate) gate.classList.add('hidden');
+  }
+
+  // ログインゲートの内部状態 (loading/login/nonfriend/error) と DOM の対応
+  const LOGIN_GATE_STATES = {
+    loading:   'lineStateLoading',
+    login:     'lineStateLogin',
+    nonfriend: 'lineStateNonFriend',
+    error:     'lineStateError'
+  };
+  // ゲート内の表示状態を切替える
+  function setLoginGateState(state) {
+    Object.values(LOGIN_GATE_STATES).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
+    const active = document.getElementById(LOGIN_GATE_STATES[state] || LOGIN_GATE_STATES.loading);
+    if (active) active.classList.add('active');
+  }
+  // ログインゲートを表示し、指定状態に切替える
+  function showLoginGate(state) {
+    const gate = document.getElementById('lineLoginGate');
+    if (gate) gate.classList.remove('hidden');
+    setLoginGateState(state || 'loading');
   }
 
   // プロファイルが「LIFF ログイン済み相当」かどうか
@@ -4220,8 +4237,24 @@ ${layoutDef.desc}
       });
     }
 
-    // (旧 lineLoginBtn / lineRetryFriendBtn / lineErrorRetryBtn は
-    //  ログインゲート内に残っているが現在は表示されないため配線は省略)
+    // ログインゲート内の「LINEでログイン」ボタン (ログイン必須ルート用)
+    const gateLoginBtn = document.getElementById('lineLoginBtn');
+    if (gateLoginBtn) {
+      gateLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        triggerLineLogin();
+      });
+    }
+    // ゲート内エラー時の再試行
+    const gateErrorRetryBtn = document.getElementById('lineErrorRetryBtn');
+    if (gateErrorRetryBtn) {
+      gateErrorRetryBtn.addEventListener('click', () => location.reload());
+    }
+    // 「友だち追加済みの方はこちら（再確認）」→ 再読み込みして再判定
+    const gateRetryFriendBtn = document.getElementById('lineRetryFriendBtn');
+    if (gateRetryFriendBtn) {
+      gateRetryFriendBtn.addEventListener('click', () => location.reload());
+    }
 
     // ログアウトボタン
     const logoutBtn = document.getElementById('lineLogoutBtn');
@@ -4243,11 +4276,19 @@ ${layoutDef.desc}
     return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
   }
 
-  // LINE認証不要の公開ページ (/free) かどうか
+  // LINE認証不要の公開ページ (/free のみ) かどうか
+  // ※ /pro-max はログイン必須化したため、ここからは除外している
   function isOpenAccessRoute() {
     const path = location.pathname || '';
-    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0 ||
-      path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
+    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
+  }
+
+  // ログイン必須ルートか (現在は /pro-max のみ。/ と /free は公開)
+  // ※ localhost は開発用にゲートをスキップする
+  function isLoginRequiredRoute() {
+    if (isLocalDev()) return false;
+    const path = location.pathname || '';
+    return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
   }
 
   function isTemporaryProMaxRoute() {
@@ -4269,23 +4310,24 @@ ${layoutDef.desc}
   //      ログイン済みなら本物のプロファイルにアップグレード
   function startApp() {
     initLoginEvents();
-    hideLoginGate();
 
     const qs = new URLSearchParams(location.search);
     const overridePlan = qs.get('plan');
     const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
 
+    // ① ログイン必須ルート (/pro-max): ゲートを表示し、ログイン済みのときだけ本体を起動
+    if (isLoginRequiredRoute()) {
+      requireLoginThenStart();
+      return;
+    }
+
+    // ② 公開ルート (/free) と localhost: 固定プロファイルで即起動
     if (isLocalDev() || isOpenAccessRoute()) {
-      const source = isTemporaryProMaxRoute()
-        ? 'temporary-pro-max'
-        : (isOpenAccessRoute() ? 'open-access' : 'local-dev');
-      const defaultPlan = isTemporaryProMaxRoute()
-        ? 'pro'
-        : (isOpenAccessRoute() ? 'free' : 'pro');
+      hideLoginGate();
+      const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
+      const defaultPlan = isOpenAccessRoute() ? 'free' : 'pro';
       window.__USER_PROFILE__ = {
-        lineUserId:    isTemporaryProMaxRoute()
-          ? 'Utemp-pro-max-open-access'
-          : (isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev'),
+        lineUserId:    isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
         product:       PRODUCT_CODE,
         plan:          overridePlan || defaultPlan,
         status:        'active',
@@ -4299,7 +4341,9 @@ ${layoutDef.desc}
       return;
     }
 
-    // 通常ルート: 匿名フリーで即起動、LIFF はバックグラウンドで初期化
+    // ③ 通常ルート (/): ログイン不要。匿名フリーで即起動し、
+    //    既にLINEログイン済みなら裏で本物のプランに昇格 (ログインは強制しない)
+    hideLoginGate();
     window.__USER_PROFILE__ = {
       lineUserId:    null,
       product:       PRODUCT_CODE,
@@ -4312,9 +4356,42 @@ ${layoutDef.desc}
     };
     init();
     applyHeaderForProfile();
-
-    // ログイン済みなら本物のプロファイルに昇格 (失敗しても匿名のまま続行)
     initLiff();
+  }
+
+  // ログイン必須ルートのブートストラップ
+  //   1) ゲートを「確認中」で表示
+  //   2) LIFF init → 失敗なら「エラー」状態、未ログインなら「ログイン」状態で停止
+  //   3) ログイン済みなら本物のプラン情報を取得してからアプリ本体を起動
+  async function requireLoginThenStart() {
+    showLoginGate('loading');
+    try {
+      await waitForLiffSdk(8000);
+      await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
+    } catch (e) {
+      console.error('[LIFF] init failed on login-required route:', e && e.message);
+      setLoginGateState('error');
+      return;
+    }
+
+    if (!liff.isLoggedIn()) {
+      console.log('[LIFF] not logged in → showing login gate');
+      setLoginGateState('login');
+      return;
+    }
+
+    // ログイン済み: 本物のプロファイルを取得してからアプリ起動 (失敗時は fallback で続行)
+    try {
+      await fetchUserProfile();
+    } catch (e) {
+      console.warn('[LIFF] fetchUserProfile failed; continuing with fallback:', e && e.message);
+      if (!window.__USER_PROFILE__) window.__USER_PROFILE__ = buildFallbackProfile('fallback');
+    }
+    hideLoginGate();
+    init();
+    applyHeaderForProfile();
+    // 前回の生成結果が 24時間以内にあれば自動復元 (失敗時は黙って続行)
+    restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
   }
 
   if (document.readyState === 'loading') {
