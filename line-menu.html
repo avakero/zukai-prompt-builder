@@ -629,19 +629,20 @@ function cellPhrase(cell, i){
   const content = cell.icon==="character" ? "a mascot character illustration" : `a ${ic.en} icon`;
   return `a ${shade}tile showing ${content}${label}`;
 }
+function colorTag(name, hex){ return name.indexOf("#")>=0 ? name : `${name} (${hex})`; }
 function buildCompact(){
   const c=colors(), sz=SIZES[state.size], th=THICK[state.thickness], is=ICON_STYLE[state.iconStyle];
   const rowW=state.rows===1?"row":"rows", colW=state.cols===1?"column":"columns";
   const tilePat = state.checkerboard
-    ? `Tiles alternate in a checkerboard pattern between ${c.tileAName} and ${c.tileBName}.`
-    : `Every tile uses a ${c.tileAName} background.`;
+    ? `Tiles alternate in a checkerboard pattern between ${colorTag(c.tileAName,c.tileA)} and ${colorTag(c.tileBName,c.tileB)}.`
+    : `Every tile uses a ${colorTag(c.tileAName,c.tileA)} background.`;
   const list = state.cells.map(cellPhrase).join("; ");
   const mj = state.mjParams ? ` --ar ${sz.ar} --style raw` : "";
   return [
     `A clean, modern LINE official-account rich menu UI design, ${sz.label==="大"?"large":"compact"} format (${sz.px}), aspect ratio ${sz.ratio}.`,
-    `A ${state.rows}×${state.cols} grid of ${state.rows*state.cols} equal rectangular cells (${state.rows} ${rowW}, ${state.cols} ${colW}), separated by ${th.word} ${c.borderName} borders of perfectly uniform width, forming a precise grid with ruler-straight lines, even spacing, sharp right-angle corners and pixel-perfect alignment.`,
+    `A ${state.rows}×${state.cols} grid of ${state.rows*state.cols} equal rectangular cells (${state.rows} ${rowW}, ${state.cols} ${colW}), separated by ${th.word} ${colorTag(c.borderName,c.border)} borders of perfectly uniform width, forming a precise grid with ruler-straight lines, even spacing, sharp right-angle corners and pixel-perfect alignment.`,
     tilePat,
-    `Each cell shows one ${is.short} icon in ${c.iconName}, centered, with a bold sans-serif label beneath it in ${c.textName}.`,
+    `Each cell shows one ${is.short} icon in ${colorTag(c.iconName,c.icon)}, centered, with a bold sans-serif label beneath it in ${colorTag(c.textName,c.text)}; render every label in this exact ${c.textName} color, never plain black.`,
     `Cells from left to right, top row to bottom row: ${list}.`,
     `Flat design, no gradients, no drop shadows, high contrast, crisp vector look, ${c.vibe} style, mobile UI menu, Japanese gothic typography.${mj}`
   ].join(" ");
@@ -655,12 +656,12 @@ function buildDetailed(){
   lines.push("- Horizontal mobile UI menu, flat vector design, high resolution","");
   lines.push("[GRID]");
   lines.push(`- ${state.rows} rows × ${state.cols} columns = ${state.rows*state.cols} equal rectangular cells`);
-  lines.push(`- Cells separated by ${th.word} ${c.borderName} borders; the background grid is also ${c.borderName}`);
+  lines.push(`- Cells separated by ${th.word} ${colorTag(c.borderName,c.border)} borders; the background grid is also ${colorTag(c.borderName,c.border)}`);
   lines.push("- All gridlines perfectly straight and identical in thickness, evenly spaced, with sharp 90° corners and pixel-perfect alignment (no wavy, tapered or uneven lines)","");
   lines.push("[TILE COLORS]");
   lines.push(state.checkerboard
-    ? `- Checkerboard pattern: tiles alternate between ${c.tileAName} and ${c.tileBName}`
-    : `- All tiles use a ${c.tileAName} background`,"");
+    ? `- Checkerboard pattern: tiles alternate between ${colorTag(c.tileAName,c.tileA)} and ${colorTag(c.tileBName,c.tileB)}`
+    : `- All tiles use a ${colorTag(c.tileAName,c.tileA)} background`,"");
   lines.push("[CELLS]  (top-left to bottom-right)");
   state.cells.forEach((cell,i)=>{
     const row=Math.floor(i/state.cols)+1,col=i%state.cols+1;
@@ -671,8 +672,8 @@ function buildDetailed(){
   });
   lines.push("");
   lines.push("[STYLE]");
-  lines.push(`- Single-color ${is.word} icons in ${c.iconName}`);
-  lines.push(`- Bold sans-serif Japanese gothic labels in ${c.textName}, centered directly under each icon`);
+  lines.push(`- Single-color ${is.word} icons in ${colorTag(c.iconName,c.icon)}`);
+  lines.push(`- Bold sans-serif Japanese gothic labels in ${colorTag(c.textName,c.text)}, centered directly under each icon — render every label in this exact color, never plain black`);
   lines.push("- Flat design: no gradients, no shadows, no 3D effects");
   lines.push(`- ${c.vibe.charAt(0).toUpperCase()+c.vibe.slice(1)} look, crisp clean edges, even spacing, all cells balanced and aligned`);
   return lines.join("\n");
