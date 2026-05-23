@@ -38,7 +38,8 @@ button{font-family:inherit}
 .app-header p{margin:2px 0 0;font-size:.82rem;opacity:.85}
 .wrap{max-width:1240px;margin:0 auto;padding:22px 16px 80px}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:20px;align-items:start}
-@media (max-width:980px){.layout{grid-template-columns:1fr}}
+.panel-output{position:sticky;top:16px;align-self:start}
+@media (max-width:980px){.layout{grid-template-columns:1fr}.panel-output{position:static}}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
 .card__head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
@@ -216,7 +217,7 @@ textarea#promptText:focus{outline:none;border-color:var(--accent);box-shadow:0 0
 
   </div>
 
-  <!-- ============ OUTPUT ============ -->
+  <!-- ============ OUTPUT (sticky preview) ============ -->
   <div class="panel-output">
     <div class="card">
       <div class="card__head"><span class="card__num">★</span><h2>プレビュー</h2></div>
@@ -225,23 +226,24 @@ textarea#promptText:focus{outline:none;border-color:var(--accent);box-shadow:0 0
         <div id="sizeNote" class="size-note"></div>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card__head"><span class="card__num">↦</span><h2>生成プロンプト（英語）</h2></div>
-      <div class="card__body">
-        <div class="prompt-head">
-          <div id="promptTabs" class="seg"></div>
-          <label class="toggle mj-opt" id="mjOpt"><input type="checkbox" id="mjToggle" checked><span class="track"></span>MJパラメータ</label>
-        </div>
-        <textarea id="promptText" readonly spellcheck="false"></textarea>
-        <div class="prompt-actions">
-          <button class="btn btn-primary" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>プロンプトをコピー</button>
-          <button class="btn btn-ghost" id="resetBtn">サンプルに戻す</button>
-        </div>
-      </div>
-    </div>
   </div>
 
+</div>
+
+<!-- ============ PROMPT (full width) ============ -->
+<div class="card prompt-card">
+  <div class="card__head"><span class="card__num">↦</span><h2>生成プロンプト（英語）</h2></div>
+  <div class="card__body">
+    <div class="prompt-head">
+      <div id="promptTabs" class="seg"></div>
+      <label class="toggle mj-opt" id="mjOpt"><input type="checkbox" id="mjToggle" checked><span class="track"></span>MJパラメータ</label>
+    </div>
+    <textarea id="promptText" readonly spellcheck="false"></textarea>
+    <div class="prompt-actions">
+      <button class="btn btn-primary" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>プロンプトをコピー</button>
+      <button class="btn btn-ghost" id="resetBtn">サンプルに戻す</button>
+    </div>
+  </div>
 </div>
 
 <p class="footer-note">
