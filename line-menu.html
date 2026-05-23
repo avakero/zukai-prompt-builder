@@ -621,12 +621,13 @@ function updatePreview(){
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
 /* ---------------- prompt ---------------- */
-function cellPhrase(cell){
-  const ic=ICONS[cell.icon], lab=(cell.label||"").trim();
-  if((cell.icon==="none"||!ic) && !lab) return "an empty tile";
-  if(cell.icon==="none"||!ic) return `a tile with the bold label "${lab}"`;
-  if(cell.icon==="character") return lab?`a friendly mascot character illustration with the bold label "${lab}"`:"a friendly mascot character illustration";
-  return lab?`a ${ic.en} icon with the bold label "${lab}"`:`a ${ic.en} icon`;
+function cellPhrase(cell, i){
+  const c=colors(), ic=ICONS[cell.icon], lab=(cell.label||"").trim();
+  const shade = state.checkerboard ? `${tileShadeName(i,c)} ` : "";
+  const label = lab ? ` with the bold label "${lab}"` : "";
+  if(cell.icon==="none"||!ic) return lab ? `a ${shade}tile${label}` : `an empty ${shade}tile`;
+  const content = cell.icon==="character" ? "a mascot character illustration" : `a ${ic.en} icon`;
+  return `a ${shade}tile showing ${content}${label}`;
 }
 function buildCompact(){
   const c=colors(), sz=SIZES[state.size], th=THICK[state.thickness], is=ICON_STYLE[state.iconStyle];
