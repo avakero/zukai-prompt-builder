@@ -20,8 +20,6 @@ body {
   transition: background-color var(--transition-base), color var(--transition-base);
 }
 
-
-
 /* ============================================================
    1. Design Tokens (CSS Custom Properties)
    ============================================================ */
@@ -180,118 +178,6 @@ body {
 }
 
 /* ============================================================
-   1c. 桜モード トークン（期間限定・春）
-   ============================================================ */
-[data-theme="sakura"] {
-  --color-primary-50:  #fff1f2;
-  --color-primary-100: #ffe4e6;
-  --color-primary-200: #fecdd3;
-  --color-primary-300: #fda4af;
-  --color-primary-400: #fb7185;
-  --color-primary-500: #f43f5e;
-  --color-primary-600: #e11d48;
-  --color-primary-700: #be123c;
-  --color-primary-800: #9f1239;
-  --color-primary-900: #881337;
-  --color-primary-500-rgb: 244, 63, 94;
-
-  --color-accent-50:  #fdf2f8;
-  --color-accent-100: #fce7f3;
-  --color-accent-200: #fbcfe8;
-  --color-accent-300: #f9a8d4;
-  --color-accent-400: #f472b6;
-  --color-accent-500: #ec4899;
-  --color-accent-600: #db2777;
-  --color-accent-500-rgb: 236, 72, 153;
-
-  --surface-primary:   #fffbfc;
-  --surface-secondary: #fff5f7;
-  --surface-elevated:  #ffffff;
-  --surface-overlay:   rgba(244, 63, 94, 0.1);
-  --surface-card:      #ffffff;
-  --surface-card-hover: #fff0f3;
-
-  --text-primary:    #4a1025;
-  --text-secondary:  #8b3a5a;
-  --text-tertiary:   #c4728e;
-  --text-inverse:    #ffffff;
-  --text-link:       var(--color-primary-500);
-  --text-link-hover: var(--color-primary-600);
-
-  --border-color: #fecdd3;
-  --border-color-hover: #fda4af;
-  --border-color-focus: var(--color-primary-500);
-
-  --shadow-xs:  0 1px 2px rgba(244, 63, 94, 0.06);
-  --shadow-sm:  0 1px 3px rgba(244, 63, 94, 0.08), 0 1px 2px rgba(244, 63, 94, 0.04);
-  --shadow-md:  0 4px 6px rgba(244, 63, 94, 0.08), 0 2px 4px rgba(244, 63, 94, 0.04);
-  --shadow-lg:  0 10px 15px rgba(244, 63, 94, 0.1), 0 4px 6px rgba(244, 63, 94, 0.04);
-  --shadow-xl:  0 20px 25px rgba(244, 63, 94, 0.1), 0 10px 10px rgba(244, 63, 94, 0.04);
-  --shadow-glow: 0 0 20px rgba(244, 63, 94, 0.2);
-
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error:   #ef4444;
-  --color-info:    #f43f5e;
-}
-
-/* ============================================================
-   1d. 新緑モード トークン（5〜6月）
-   ============================================================ */
-[data-theme="shinryoku"] {
-  --color-primary-50:  #f0fdf4;
-  --color-primary-100: #dcfce7;
-  --color-primary-200: #bbf7d0;
-  --color-primary-300: #86efac;
-  --color-primary-400: #4ade80;
-  --color-primary-500: #22c55e;
-  --color-primary-600: #16a34a;
-  --color-primary-700: #15803d;
-  --color-primary-800: #166534;
-  --color-primary-900: #14532d;
-  --color-primary-500-rgb: 34, 197, 94;
-
-  --color-accent-50:  #ecfdf5;
-  --color-accent-100: #d1fae5;
-  --color-accent-200: #a7f3d0;
-  --color-accent-300: #6ee7b7;
-  --color-accent-400: #34d399;
-  --color-accent-500: #10b981;
-  --color-accent-600: #059669;
-  --color-accent-500-rgb: 16, 185, 129;
-
-  --surface-primary:   #fafffe;
-  --surface-secondary: #f0fdf4;
-  --surface-elevated:  #ffffff;
-  --surface-overlay:   rgba(34, 197, 94, 0.1);
-  --surface-card:      #ffffff;
-  --surface-card-hover: #f0fdf4;
-
-  --text-primary:    #14332a;
-  --text-secondary:  #3d6b5a;
-  --text-tertiary:   #72a28e;
-  --text-inverse:    #ffffff;
-  --text-link:       var(--color-primary-500);
-  --text-link-hover: var(--color-primary-600);
-
-  --border-color: #bbf7d0;
-  --border-color-hover: #86efac;
-  --border-color-focus: var(--color-primary-500);
-
-  --shadow-xs:  0 1px 2px rgba(34, 197, 94, 0.06);
-  --shadow-sm:  0 1px 3px rgba(34, 197, 94, 0.08), 0 1px 2px rgba(34, 197, 94, 0.04);
-  --shadow-md:  0 4px 6px rgba(34, 197, 94, 0.08), 0 2px 4px rgba(34, 197, 94, 0.04);
-  --shadow-lg:  0 10px 15px rgba(34, 197, 94, 0.1), 0 4px 6px rgba(34, 197, 94, 0.04);
-  --shadow-xl:  0 20px 25px rgba(34, 197, 94, 0.1), 0 10px 10px rgba(34, 197, 94, 0.04);
-  --shadow-glow: 0 0 20px rgba(34, 197, 94, 0.2);
-
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error:   #ef4444;
-  --color-info:    #22c55e;
-}
-
-/* ============================================================
    2. CSS Reset & Base Styles
    ============================================================ */
 *, *::before, *::after {
@@ -299,10 +185,6 @@ body {
   margin: 0;
   padding: 0;
 }
-
-
-
-
 
 a {
   color: var(--text-link);
@@ -379,11 +261,6 @@ img {
   background: rgba(15, 23, 42, 0.85);
 }
 
-[data-theme="sakura"] .app-header {
-  background: rgba(255, 245, 247, 0.88);
-  border-bottom-color: rgba(254, 205, 211, 0.6);
-}
-
 .app-header__brand {
   display: flex;
   align-items: center;
@@ -438,11 +315,6 @@ img {
   border-color: #334155;
 }
 
-[data-theme="sakura"] .theme-selector {
-  background: #fff0f3;
-  border-color: #fecdd3;
-}
-
 .theme-selector__btn {
   position: relative;
   display: flex;
@@ -480,23 +352,9 @@ img {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="sakura"] .theme-selector__btn.active {
-  background: white;
-  color: #e11d48;
-  box-shadow: 0 1px 4px rgba(244, 63, 94, 0.15);
-}
-
 .theme-selector__btn svg {
   width: 16px;
   height: 16px;
-}
-
-.theme-selector__btn--sakura svg {
-  color: inherit;
-}
-
-.theme-selector__btn--sakura.active svg {
-  color: #f43f5e;
 }
 
 /* ============================================================
@@ -592,11 +450,6 @@ img {
   background: rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="sakura"] .section__badge {
-  background: #fff0f3;
-  color: #c4728e;
-}
-
 /* 入力済み・完了状態のバッジ */
 .section__badge--success {
   color: var(--color-success);
@@ -608,11 +461,6 @@ img {
   color: var(--color-accent-300);
 }
 
-[data-theme="sakura"] .section__badge--success {
-  background: var(--color-accent-50);
-  color: var(--color-accent-600);
-}
-
 /* 入力されたがアクション待ちなどのアクティブ状態 */
 .section__badge--active {
   color: var(--color-primary-600);
@@ -622,11 +470,6 @@ img {
 [data-theme="dark"] .section__badge--active {
   background: rgba(59, 130, 246, 0.15);
   color: var(--color-primary-300);
-}
-
-[data-theme="sakura"] .section__badge--active {
-  background: #fff0f3;
-  color: #e11d48;
 }
 
 /* ============================================================
@@ -1767,11 +1610,6 @@ img {
   background: var(--surface-primary);
 }
 
-[data-theme="sakura"] .mode-tabs {
-  background: #fffbfc;
-  border-bottom-color: rgba(254, 205, 211, 0.5);
-}
-
 .mode-tab {
   display: inline-flex;
   align-items: center;
@@ -1798,11 +1636,6 @@ img {
   background: rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="sakura"] .mode-tab:hover {
-  background: #fff0f3;
-  color: #8b3a5a;
-}
-
 .mode-tab.active {
   color: var(--color-primary-700);
   background: var(--color-primary-100);
@@ -1815,13 +1648,6 @@ img {
   background: rgba(59, 130, 246, 0.2);
   border-color: var(--color-primary-400);
   box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
-}
-
-[data-theme="sakura"] .mode-tab.active {
-  color: #be123c;
-  background: #ffe4e6;
-  border-color: #fb7185;
-  box-shadow: 0 1px 3px rgba(244, 63, 94, 0.2);
 }
 
 .mode-tab svg {
@@ -1851,19 +1677,10 @@ img {
   border-color: rgba(59, 130, 246, 0.2);
 }
 
-[data-theme="sakura"] .carousel-template-bar {
-  background: #fff0f3;
-  border-color: #fecdd3;
-}
-
 .carousel-template-bar__label {
   font-size: var(--text-xs);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
-}
-
-[data-theme="sakura"] .carousel-template-bar__label {
-  color: #8b3a5a;
 }
 
 /* JSON入力テキストエリア */
@@ -2071,10 +1888,6 @@ img {
   box-shadow: var(--shadow-sm);
 }
 
-[data-theme="sakura"] .carousel-slide-card:hover {
-  border-color: #fda4af;
-}
-
 /* ページ番号バッジ */
 .carousel-slide-card__page {
   display: flex;
@@ -2089,11 +1902,6 @@ img {
   font-weight: var(--font-bold);
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(var(--color-primary-500-rgb), 0.3);
-}
-
-[data-theme="sakura"] .carousel-slide-card__page {
-  background: linear-gradient(135deg, #f43f5e, #ec4899);
-  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.3);
 }
 
 /* ロールバッジ */
@@ -2372,11 +2180,6 @@ img {
   box-shadow: 0 8px 24px rgba(var(--color-primary-500-rgb), 0.3);
 }
 
-[data-theme="sakura"] .line-login-card__icon {
-  background: linear-gradient(135deg, #f43f5e, #ec4899);
-  box-shadow: 0 8px 24px rgba(244, 63, 94, 0.3);
-}
-
 .line-login-card__icon svg {
   width: 36px;
   height: 36px;
@@ -2451,10 +2254,6 @@ img {
   border-top-color: var(--color-primary-500);
   border-radius: 50%;
   animation: lineSpinnerRotate 0.8s linear infinite;
-}
-
-[data-theme="sakura"] .line-login-loading__spinner {
-  border-top-color: #f43f5e;
 }
 
 @keyframes lineSpinnerRotate {
@@ -3535,12 +3334,6 @@ img {
   background: rgba(59, 130, 246, 0.1);
 }
 
-[data-theme="sakura"] .ai-settings-btn:hover {
-  background: #fff0f3;
-  color: #f43f5e;
-  border-color: #fda4af;
-}
-
 .ai-settings-btn svg {
   width: 16px;
   height: 16px;
@@ -3562,12 +3355,6 @@ img {
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(236, 72, 153, 0.12));
   border-color: rgba(168, 85, 247, 0.25);
   color: var(--text-primary);
-}
-
-[data-theme="sakura"] .ai-gen-hint {
-  background: linear-gradient(135deg, #fdf2f8, #fff0f3);
-  border-color: #fbcfe8;
-  color: #8b3a5a;
 }
 
 /* コントロール群（スライド枚数・トーン） */
@@ -3635,10 +3422,6 @@ img {
   border-color: var(--color-primary-500);
 }
 
-[data-theme="sakura"] .ai-gen-select:focus {
-  border-color: #f43f5e;
-}
-
 /* AI生成ボタン（ネイビーに統一） */
 .ai-generate-btn {
   background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
@@ -3689,10 +3472,6 @@ img {
 
 [data-theme="dark"] .carousel-template-details[open] {
   background: rgba(255, 255, 255, 0.02);
-}
-
-[data-theme="sakura"] .carousel-template-details[open] {
-  background: #fff8fa;
 }
 
 .carousel-template-details__summary {
@@ -3815,10 +3594,6 @@ img {
   background: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="sakura"] .provider-tabs {
-  background: #fff0f3;
-}
-
 .provider-tab {
   flex: 1;
   padding: var(--space-2) var(--space-3);
@@ -3841,10 +3616,6 @@ img {
   background: var(--surface-card);
   color: var(--color-primary-600);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="sakura"] .provider-tab.active {
-  color: #f43f5e;
 }
 
 [data-theme="dark"] .provider-tab.active {
@@ -3923,10 +3694,6 @@ img {
   text-decoration: underline;
 }
 
-[data-theme="sakura"] .api-key-modal__help {
-  color: #f43f5e;
-}
-
 .api-key-modal__footer {
   display: flex;
   justify-content: flex-end;
@@ -3938,10 +3705,6 @@ img {
 
 [data-theme="dark"] .api-key-modal__footer {
   background: rgba(255, 255, 255, 0.02);
-}
-
-[data-theme="sakura"] .api-key-modal__footer {
-  background: #fff8fa;
 }
 
 .api-key-modal__footer #apiKeyDeleteBtn {
@@ -3974,8 +3737,4 @@ img {
 .form-input:focus {
   outline: none;
   border-color: var(--color-primary-500);
-}
-
-[data-theme="sakura"] .form-input:focus {
-  border-color: #f43f5e;
 }

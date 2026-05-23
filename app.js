@@ -356,17 +356,17 @@
   const PLAN_FEATURES = {
     free: ['core.single'],
     standard: ['core.single', 'mode.carousel', 'ai.json'],
-    pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal'],
-    lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'theme.seasonal']
+    pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
+    lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen']
   };
 
   // タグによる個別解放 (プランより強い、上書き専用)
   // 'provider.pickaxe': Pickaxe (個人サブスク利用) を選べるかどうか。7月末のサブスク
   //   終了とともに使わなくなる予定。タグ持ちユーザー (=オーナー本人) のみ表示。
   const TAG_FEATURE_GRANTS = {
-    beta: ['ai.json', 'ai.imagegen', 'theme.seasonal'],
-    internal: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
-    vip: ['ai.json', 'ai.imagegen', 'theme.seasonal', 'mode.carousel'],
+    beta: ['ai.json', 'ai.imagegen'],
+    internal: ['ai.json', 'ai.imagegen', 'mode.carousel'],
+    vip: ['ai.json', 'ai.imagegen', 'mode.carousel'],
     pickaxe_internal: ['provider.pickaxe']
   };
 
@@ -374,8 +374,7 @@
   const FEATURE_REQUIRED_PLAN = {
     'mode.carousel': 'STANDARD',
     'ai.json': 'STANDARD',
-    'ai.imagegen': 'PRO',
-    'theme.seasonal': 'PRO'
+    'ai.imagegen': 'PRO'
   };
 
   function applyTheme(theme) {
