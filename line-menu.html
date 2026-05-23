@@ -60,10 +60,12 @@ button{font-family:inherit}
 .chip{border:1px solid var(--line-strong);background:#fff;color:var(--txt);border-radius:9px;padding:8px 12px;font-size:.84rem;font-weight:600;cursor:pointer;transition:.15s}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
 .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.hidden{display:none}
 
 .stepper{display:inline-flex;align-items:center;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
 .stepper button{width:38px;height:38px;border:0;background:#f7f9fc;color:var(--txt);font-size:1.2rem;cursor:pointer}
-.stepper button:hover{background:var(--accent-soft);color:var(--accent)}
+.stepper button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
+.stepper button:disabled{opacity:.35;cursor:not-allowed}
 .stepper span{min-width:42px;text-align:center;font-weight:800;font-size:1rem}
 .stepper-group{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px}
 .stepper-group > div{display:flex;align-items:center;gap:10px;font-size:.85rem;font-weight:700;color:var(--muted)}
@@ -437,7 +439,7 @@ let rowsStep,colsStep;
 function buildControls(){
   makeSeg($("#sizeSeg"),
     [{val:"large",label:"大 2500×1686"},{val:"small",label:"小 2500×843"}],
-    ()=>state.size,(v)=>{state.size=v;refresh();});
+    ()=>state.size,(v)=>onSizeChanged(v));
 
   // layout chips
   const chips=$("#layoutChips"); chips.innerHTML="";
@@ -510,6 +512,27 @@ function syncLayoutChips(){
   document.querySelectorAll('#layoutChips .chip').forEach(ch=>{
     ch.classList.toggle("active", +ch.dataset.r===state.rows && +ch.dataset.c===state.cols);
   });
+}
+function onSizeChanged(v){
+  state.size=v;
+  if(v==="small" && state.rows>1){
+    state.rows=1;
+    resizeCells();
+    if(rowsStepRef) rowsStepRef.textContent=state.rows;
+    buildCellsForm();
+  }
+  syncSizeConstraints();
+  syncLayoutChips();
+  refresh();
+}
+// 小サイズ(2500×843)は縦に薄い帯のため複数行を組めない → 2行以上の構成を非表示にして行数を1に固定
+function syncSizeConstraints(){
+  const small=state.size==="small";
+  document.querySelectorAll('#layoutChips .chip').forEach(ch=>{
+    ch.classList.toggle("hidden", small && +ch.dataset.r>=2);
+  });
+  const plus=$("#rowsStepper").querySelector(".stepper button:last-child");
+  if(plus) plus.disabled=small;
 }
 function selectPreset(id){
   state.preset=id;
@@ -669,7 +692,7 @@ function resetSample(){
   state.checkerboard=true; state.thickness="thick"; state.iconStyle="flat";
   state.cells=SAMPLE.map(c=>({...c}));
   buildControls(); rowsStepRef=$("#rowsStepper")._val; colsStepRef=$("#colsStepper")._val;
-  syncLayoutChips(); buildCellsForm(); refresh();
+  syncSizeConstraints(); syncLayoutChips(); buildCellsForm(); refresh();
 }
 
 /* ---------------- init ---------------- */
@@ -677,6 +700,7 @@ function init(){
   state.cells=SAMPLE.map(c=>({...c}));
   buildControls();
   rowsStepRef=$("#rowsStepper")._val; colsStepRef=$("#colsStepper")._val;
+  syncSizeConstraints();
   syncLayoutChips();
   buildCellsForm();
   refresh();
