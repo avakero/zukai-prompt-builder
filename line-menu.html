@@ -639,7 +639,7 @@ function buildCompact(){
   const mj = state.mjParams ? ` --ar ${sz.ar} --style raw` : "";
   return [
     `A clean, modern LINE official-account rich menu UI design, ${sz.label==="大"?"large":"compact"} format (${sz.px}), aspect ratio ${sz.ratio}.`,
-    `A ${state.rows}×${state.cols} grid of ${state.rows*state.cols} equal rectangular cells (${state.rows} ${rowW}, ${state.cols} ${colW}), separated by ${th.word} ${c.borderName} borders forming a clean grid.`,
+    `A ${state.rows}×${state.cols} grid of ${state.rows*state.cols} equal rectangular cells (${state.rows} ${rowW}, ${state.cols} ${colW}), separated by ${th.word} ${c.borderName} borders of perfectly uniform width, forming a precise grid with ruler-straight lines, even spacing, sharp right-angle corners and pixel-perfect alignment.`,
     tilePat,
     `Each cell shows one ${is.short} icon in ${c.iconName}, centered, with a bold sans-serif label beneath it in ${c.textName}.`,
     `Cells from left to right, top row to bottom row: ${list}.`,
@@ -655,7 +655,8 @@ function buildDetailed(){
   lines.push("- Horizontal mobile UI menu, flat vector design, high resolution","");
   lines.push("[GRID]");
   lines.push(`- ${state.rows} rows × ${state.cols} columns = ${state.rows*state.cols} equal rectangular cells`);
-  lines.push(`- Cells separated by ${th.word} ${c.borderName} borders; the background grid is also ${c.borderName}`,"");
+  lines.push(`- Cells separated by ${th.word} ${c.borderName} borders; the background grid is also ${c.borderName}`);
+  lines.push("- All gridlines perfectly straight and identical in thickness, evenly spaced, with sharp 90° corners and pixel-perfect alignment (no wavy, tapered or uneven lines)","");
   lines.push("[TILE COLORS]");
   lines.push(state.checkerboard
     ? `- Checkerboard pattern: tiles alternate between ${c.tileAName} and ${c.tileBName}`
