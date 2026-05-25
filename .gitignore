@@ -43,3 +43,6 @@ wordpress-embed.html
 # Temporary files
 *.tmp
 *.log
+
+# Generated images / prompts (kept on Desktop, not in repo)
+outputs/
