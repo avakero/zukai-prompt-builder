@@ -17,7 +17,9 @@
 //        504 { error: 'upstream_timeout' }
 //
 // 設計:
-//   - OPENAI_API_KEY env var からキーを取得 (ブラウザには絶対に渡さない)
+//   - APIキーは X-OpenAI-Key ヘッダ (BYOK: ユーザー自身の OpenAI キー) を最優先し、
+//     無ければ OPENAI_API_KEY env var にフォールバックする。ユーザーキーはメモリ上で
+//     OpenAI への中継にのみ使い、保存・ログは一切しない。
 //   - 返ってきた base64 画像は Supabase Storage 'generated-images' バケットに
 //     アップロードして公開 URL を応答に乗せる (data URL 直返しは応答が重く、
 //     共有・再訪 UX も組めないため)。
@@ -142,10 +144,13 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'internal_error' });
   }
 
-  // API キー
-  const apiKey = process.env.OPENAI_API_KEY;
+  // API キー（BYOK優先）
+  // ユーザーが X-OpenAI-Key ヘッダで自分のキーを渡してきたらそれを使う（保存・ログしない）。
+  // 未指定なら従来どおりサーバーの OPENAI_API_KEY env var にフォールバック。
+  const userKey = (req.headers['x-openai-key'] || '').toString().trim();
+  const apiKey = userKey || process.env.OPENAI_API_KEY;
   if (!apiKey || !apiKey.trim()) {
-    console.error('[api/openai-image] OPENAI_API_KEY env var missing');
+    console.error('[api/openai-image] no API key (X-OpenAI-Key header missing and OPENAI_API_KEY env unset)');
     res.statusCode = 500;
     return res.json({ error: 'key_not_configured' });
   }

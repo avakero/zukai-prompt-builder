@@ -50,6 +50,19 @@
     { id: 'claude-haiku-4-5-5', label: 'Claude Haiku 4.5（軽量Claude）' }
   ];
 
+  // OpenAI 直接（BYOK）。ユーザーが自分のキーを入れると JSON生成・画像生成の両方に使われ、
+  // 有料プラン未加入でも AI機能が解放される（キー＝課金の代替）。
+  // JSON生成はブラウザから OpenAI を直接呼ぶ。画像生成はサーバー(/api/openai-image)経由で
+  // このキーを X-OpenAI-Key ヘッダに載せて使う（保存・ログなし）。
+  const OPENAI_CHAT_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+  const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+  const OPENAI_CHAT_MODELS = [
+    { id: 'gpt-4o-mini',  label: 'GPT-4o mini（推奨・低コスト・JSON安定）' },
+    { id: 'gpt-4.1-mini', label: 'GPT-4.1 mini（バランス）' },
+    { id: 'gpt-4o',       label: 'GPT-4o（高品質）' },
+    { id: 'gpt-5-mini',   label: 'GPT-5 mini（新世代）' }
+  ];
+
   const PROVIDER_META = {
     straico: {
       label: 'Straico',
@@ -68,6 +81,15 @@
       helpUrl: 'https://aistudio.google.com/apikey',
       helpLabel: 'Google AI Studio でAPIキーを取得する',
       desc: 'Google AI Studio で取得した Gemini API キーを入力してください。<br>キーはお使いのブラウザ内（localStorage）にのみ保存され、Google以外には送信されません。'
+    },
+    openai: {
+      label: 'OpenAI 直接',
+      models: OPENAI_CHAT_MODELS,
+      defaultModel: OPENAI_DEFAULT_MODEL,
+      keyPlaceholder: 'sk-...',
+      helpUrl: 'https://platform.openai.com/api-keys',
+      helpLabel: 'OpenAI でAPIキーを取得する',
+      desc: 'OpenAI の API キー（sk-...）を入力してください。<b>JSON生成と画像生成の両方</b>にこのキーが使われ、有料プラン未加入でも AI機能が解放されます。<br>キーはお使いのブラウザ内（localStorage）に保存され、画像生成時のみ HTTPS でサーバー経由で OpenAI に送られます（保存・ログなし）。'
     }
   };
 
@@ -635,6 +657,8 @@ ${layoutDef.desc}
   const _lastGateToast = {};
   function gateOrToast(featureKey, displayName) {
     if (window.hasFeature(featureKey)) return true;
+    // BYOK: OpenAIキーを設定済みなら AI機能（JSON生成・画像生成）をプラン不問で解放する
+    if ((featureKey === 'ai.json' || featureKey === 'ai.imagegen') && hasOwnOpenAiKey()) return true;
     const now = Date.now();
     if (now - (_lastGateToast[featureKey] || 0) < 1500) return false;
     _lastGateToast[featureKey] = now;
@@ -1515,7 +1539,8 @@ ${layoutDef.desc}
     return {
       provider: 'straico',
       straico: { apiKey: '', model: STRAICO_DEFAULT_MODEL },
-      gemini: { apiKey: '', model: GEMINI_DEFAULT_MODEL }
+      gemini: { apiKey: '', model: GEMINI_DEFAULT_MODEL },
+      openai: { apiKey: '', model: OPENAI_DEFAULT_MODEL }
     };
   }
 
@@ -1525,7 +1550,7 @@ ${layoutDef.desc}
       const saved = localStorage.getItem(AI_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.provider === 'gemini' || parsed.provider === 'straico') {
+        if (parsed.provider === 'gemini' || parsed.provider === 'straico' || parsed.provider === 'openai') {
           cfg.provider = parsed.provider;
         }
         if (parsed.straico) {
@@ -1539,6 +1564,10 @@ ${layoutDef.desc}
         if (parsed.gemini) {
           cfg.gemini.apiKey = parsed.gemini.apiKey || '';
           cfg.gemini.model = parsed.gemini.model || GEMINI_DEFAULT_MODEL;
+        }
+        if (parsed.openai) {
+          cfg.openai.apiKey = parsed.openai.apiKey || '';
+          cfg.openai.model = parsed.openai.model || OPENAI_DEFAULT_MODEL;
         }
         return cfg;
       }
@@ -1569,7 +1598,19 @@ ${layoutDef.desc}
     if (provider === 'straico') {
       return cfg.straico.apiKey || STRAICO_DEFAULT_API_KEY;
     }
+    if (provider === 'openai') {
+      return cfg.openai.apiKey;
+    }
     return cfg.gemini.apiKey;
+  }
+
+  // ユーザーが自分のキーを設定しているか（内蔵デフォルトは除く＝BYOK判定用）
+  // OpenAIキーがあれば画像生成BYOK＋AI機能のプラン解除が有効になる。
+  function hasOwnOpenAiKey() {
+    try {
+      const cfg = loadAiConfig();
+      return !!(cfg.openai && cfg.openai.apiKey && cfg.openai.apiKey.trim());
+    } catch (_) { return false; }
   }
 
   // ============================================================
@@ -1596,7 +1637,9 @@ ${layoutDef.desc}
   function renderApiKeyModalForProvider(provider, cfg) {
     const meta = PROVIDER_META[provider];
     if (!meta) return;
-    const cur = (provider === 'straico') ? cfg.straico : cfg.gemini;
+    const cur = (provider === 'straico') ? cfg.straico
+              : (provider === 'openai') ? cfg.openai
+              : cfg.gemini;
 
     // タブ active 状態
     els.providerTabs.forEach(tab => {
@@ -1635,7 +1678,7 @@ ${layoutDef.desc}
   }
 
   function switchApiKeyModalProvider(provider) {
-    if (provider !== 'straico' && provider !== 'gemini') return;
+    if (provider !== 'straico' && provider !== 'gemini' && provider !== 'openai') return;
     apiKeyModalActiveProvider = provider;
     renderApiKeyModalForProvider(provider, loadAiConfig());
   }
@@ -1655,6 +1698,8 @@ ${layoutDef.desc}
     const cfg = loadAiConfig();
     if (apiKeyModalActiveProvider === 'straico') {
       cfg.straico = { apiKey, model };
+    } else if (apiKeyModalActiveProvider === 'openai') {
+      cfg.openai = { apiKey, model };
     } else {
       cfg.gemini = { apiKey, model };
     }
@@ -1676,6 +1721,8 @@ ${layoutDef.desc}
     const cfg = loadAiConfig();
     if (provider === 'straico') {
       cfg.straico = { apiKey: '', model: STRAICO_DEFAULT_MODEL };
+    } else if (provider === 'openai') {
+      cfg.openai = { apiKey: '', model: OPENAI_DEFAULT_MODEL };
     } else {
       cfg.gemini = { apiKey: '', model: GEMINI_DEFAULT_MODEL };
     }
@@ -1698,7 +1745,9 @@ ${layoutDef.desc}
       els.aiGenBadge.textContent = `${meta.label} (キー未設定)`;
       return;
     }
-    const model = cfg.provider === 'straico' ? cfg.straico.model : cfg.gemini.model;
+    const model = cfg.provider === 'straico' ? cfg.straico.model
+                : cfg.provider === 'openai' ? cfg.openai.model
+                : cfg.gemini.model;
     const shortModel = model.replace(/^google\//, '').replace(/^openai\//, '').replace(/^anthropic\//, '').replace(/^gemini-/, '');
     els.aiGenBadge.textContent = `${meta.label} • ${shortModel}`;
   }
@@ -1894,6 +1943,40 @@ ${theme}
     throw new Error('Straicoから想定外のレスポンス形式が返されました');
   }
 
+  // OpenAI Chat Completions: カルーセルJSON生成（ブラウザから直接呼び出し / BYOK）
+  // response_format json_object で JSON 出力を強制。temperature は gpt-5 系の
+  // reasoning モデルが既定値以外を拒否するケースがあるため送らない。
+  async function callOpenAiChatApi(apiKey, model, prompt) {
+    const res = await fetch(OPENAI_CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.error && errJson.error.message) errMsg = errJson.error.message;
+      } catch (e) { }
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content || '';
+    if (!text) {
+      throw new Error('APIから空のレスポンスが返されました');
+    }
+    return text;
+  }
+
   async function generateCarouselJsonWithAi() {
     if (!gateOrToast('ai.json', 'AIでカルーセルJSON生成')) return;
     const theme = els.aiThemeInput.value.trim();
@@ -1912,7 +1995,9 @@ ${theme}
       return;
     }
 
-    const model = provider === 'straico' ? cfg.straico.model : cfg.gemini.model;
+    const model = provider === 'straico' ? cfg.straico.model
+                : provider === 'openai' ? cfg.openai.model
+                : cfg.gemini.model;
     const slideCount = els.aiSlideCount.value;
     const tone = els.aiTone.value;
     const prompt = buildGeminiPrompt(theme, slideCount, tone);
@@ -1939,6 +2024,8 @@ ${theme}
             throw e;
           }
         }
+      } else if (provider === 'openai') {
+        text = await callOpenAiChatApi(apiKey, model, prompt);
       } else {
         text = await callGeminiApi(apiKey, model, prompt);
       }
@@ -2696,7 +2783,7 @@ ${layoutDef.desc}
   // 共通: 画像生成プロキシ POST ヘルパ。
   // どのプロバイダの endpoint でも、LIFF認証 + AbortController による
   // タイムアウト管理 + エラーレスポンス整形を統一する。
-  async function _postImageGenProxy(endpoint, body, timeoutMs) {
+  async function _postImageGenProxy(endpoint, body, timeoutMs, extraHeaders) {
     let token = null;
     try {
       token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
@@ -2713,7 +2800,8 @@ ${layoutDef.desc}
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-          ...temporaryProMaxHeaders()
+          ...temporaryProMaxHeaders(),
+          ...(extraHeaders || {})
         },
         body: JSON.stringify(body),
         signal: controller.signal
@@ -2767,7 +2855,14 @@ ${layoutDef.desc}
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
     }
-    return _postImageGenProxy('/api/openai-image', payload, OPENAI_REQUEST_TIMEOUT_MS);
+    // BYOK: ユーザーが OpenAI キーを設定していれば、それをサーバーに渡して使う。
+    // 未設定ならヘッダを付けず、サーバー側の OPENAI_API_KEY にフォールバックする。
+    let extraHeaders;
+    try {
+      const userKey = loadAiConfig().openai.apiKey;
+      if (userKey && userKey.trim()) extraHeaders = { 'X-OpenAI-Key': userKey.trim() };
+    } catch (_) {}
+    return _postImageGenProxy('/api/openai-image', payload, OPENAI_REQUEST_TIMEOUT_MS, extraHeaders);
   }
 
   // Gemini 1試行 (Imagen 3 / Gemini 2.5 Flash Image)
