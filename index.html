@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="文章を貼り付けてオプションを選ぶだけで、AI図解生成用の構造化プロンプトを自動作成できるWebツール。Nano Banana Pro専用。">
-  <title>図解ビルダーPRO MAX</title>
+  <meta name="description" content="文章を貼り付けてオプションを選ぶだけで、AI図解生成用の構造化プロンプトを自動作成できるWebツール。">
+  <title>図解ビルダー</title>
   <link rel="stylesheet" href="index.css">
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -32,7 +32,7 @@
 
     <!-- 状態2: ログインボタン -->
     <div class="line-login-state" id="lineStateLogin">
-      <h2 class="line-login-card__title">図解ビルダーPRO MAX</h2>
+      <h2 class="line-login-card__title">図解ビルダー</h2>
       <p class="line-login-card__desc">このツールはLINE公式アカウントの友だち限定です。<br>LINEアカウントでログインしてください。</p>
       <button class="line-login-btn" id="lineLoginBtn" type="button">
         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -87,7 +87,7 @@
         </svg>
       </div>
       <div>
-        <h1 class="app-header__title">図解ビルダーPRO MAX</h1>
+        <h1 class="app-header__title">図解ビルダー</h1>
       </div>
     </div>
     <!-- 匿名ユーザー向け CTA (LINE 友だち追加 → ログイン) -->
@@ -98,15 +98,6 @@
       <span>友だち追加 / ログイン</span>
     </a>
 
-    <!-- LINEユーザープロフィール (ログイン後のみ表示) -->
-    <div class="line-user-profile" id="lineUserProfile" style="display: none;">
-      <span class="line-user-profile__plan" id="lineUserPlanBadge">FREE</span>
-      <button class="line-user-profile__logout" id="lineLogoutBtn" type="button" aria-label="ログアウト" title="ログアウト">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </button>
-    </div>
     <div class="theme-selector" id="themeSelector" role="radiogroup" aria-label="テーマ切り替え">
       <button class="theme-selector__btn theme-selector__btn--light active" data-theme="light" type="button" aria-label="ライトモード" role="radio" aria-checked="true" title="ライト">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,6 +107,15 @@
       <button class="theme-selector__btn theme-selector__btn--dark" data-theme="dark" type="button" aria-label="ダークモード" role="radio" aria-checked="false" title="ダーク">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+    <!-- LINEユーザープロフィール (ログイン後のみ表示) -->
+    <div class="line-user-profile" id="lineUserProfile" style="display: none;">
+      <span class="line-user-profile__plan" id="lineUserPlanBadge">FREE</span>
+      <button class="line-user-profile__logout" id="lineLogoutBtn" type="button" aria-label="ログアウト" title="ログアウト">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
         </svg>
       </button>
     </div>
@@ -257,7 +257,7 @@
           <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2L9.4 8.6 2 9.27l5.45 4.74L5.82 21 12 17.27 18.18 21l-1.63-6.99L22 9.27l-7.4-.67L12 2z"/>
           </svg>
-          <h2 class="section__title">AIでカルーセルJSON生成</h2>
+          <h2 class="section__title">投稿内容を作る</h2>
           <button class="ai-settings-btn" id="aiSettingsBtn" type="button" aria-label="APIキー設定" title="APIキー設定">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -265,22 +265,45 @@
           </button>
         </div>
 
+        <div class="carousel-flow" aria-label="カルーセル作成の流れ">
+          <div class="carousel-flow__step carousel-flow__step--active">
+            <span class="carousel-flow__num">1</span>
+            <span class="carousel-flow__label">テーマ入力</span>
+          </div>
+          <div class="carousel-flow__line" aria-hidden="true"></div>
+          <div class="carousel-flow__step" id="carouselFlowGenerated">
+            <span class="carousel-flow__num">2</span>
+            <span class="carousel-flow__label">AI構成</span>
+          </div>
+          <div class="carousel-flow__line" aria-hidden="true"></div>
+          <div class="carousel-flow__step" id="carouselFlowExpanded">
+            <span class="carousel-flow__num">3</span>
+            <span class="carousel-flow__label">確認</span>
+          </div>
+        </div>
+
         <div class="textarea-wrapper">
           <label for="aiThemeInput" class="sr-only">カルーセルのテーマ・元文章</label>
           <textarea
             id="aiThemeInput"
             class="form-textarea"
-            placeholder="カルーセル投稿のテーマや元になる文章を入力してください。&#10;&#10;例: 「初心者向けに、ChatGPTを仕事で使う5つのコツを紹介したい」&#10;または、ブログ記事の全文をそのまま貼り付けてもOK"
+            placeholder="作りたい投稿のテーマ、読者、伝えたい結論を書いてください。&#10;&#10;例: 初心者向けに、ChatGPTを仕事で使う5つのコツを紹介したい。読者は事務職の人。保存したくなる実用系にしたい。&#10;&#10;ブログ記事やメモをそのまま貼り付けてもOKです。"
             rows="5"
           ></textarea>
+        </div>
+
+        <div class="ai-gen-examples" aria-label="入力例">
+          <button class="ai-gen-example" type="button" data-example="副業を始めたい会社員向けに、最初の30日でやることを5枚のカルーセルにしたい。実用的で背中を押すトーン。">副業の始め方</button>
+          <button class="ai-gen-example" type="button" data-example="美容サロンのInstagram投稿として、梅雨の髪の広がり対策を紹介したい。20代から40代女性向け。やさしく信頼感のある雰囲気。">サロン投稿</button>
+          <button class="ai-gen-example" type="button" data-example="採用広報向けに、未経験エンジニアが入社後に成長できる理由を伝えるカルーセルを作りたい。誠実で具体的なトーン。">採用広報</button>
         </div>
 
         <div class="ai-gen-controls ai-gen-controls--3col">
           <div class="ai-gen-control-group">
             <label class="ai-gen-control-label" for="aiProvider">AIプロバイダ</label>
             <select id="aiProvider" class="ai-gen-select">
-              <option value="straico" selected>Straico</option>
-              <option value="gemini">Gemini 直接</option>
+              <option value="straico" class="provider-option--internal" data-internal="straico">Straico</option>
+              <option value="gemini" selected>Gemini 直接</option>
               <option value="openai">OpenAI 直接</option>
             </select>
           </div>
@@ -312,8 +335,19 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2L9.4 8.6 2 9.27l5.45 4.74L5.82 21 12 17.27 18.18 21l-1.63-6.99L22 9.27l-7.4-.67L12 2z"/>
           </svg>
-          <span id="aiGenerateBtnLabel">AIでJSONを生成する</span>
+          <span id="aiGenerateBtnLabel">AIで構成を作る</span>
         </button>
+
+        <div class="ai-manual-route">
+          <span class="ai-manual-route__divider">または</span>
+          <button class="ai-manual-route__btn" id="copyTemplateBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>手動で作るテンプレをコピー</span>
+          </button>
+        </div>
       </section>
 
       <!-- JSON入力 -->
@@ -322,34 +356,40 @@
           <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
-          <h2 class="section__title">カルーセルJSON入力</h2>
-          <span class="section__badge" id="carouselBadge">未入力</span>
+          <h2 class="section__title">構成を確認する</h2>
+          <span class="section__badge" id="carouselBadge">未作成</span>
         </div>
 
-        <!-- AIテンプレートコピー（手動でChatGPT等を使う場合） -->
-        <details class="carousel-template-details">
-          <summary class="carousel-template-details__summary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            手動でChatGPT等を使う場合のテンプレ
+        <div class="carousel-json-status" id="carouselJsonStatus">
+          <div class="carousel-json-status__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="16" y2="13"/>
+              <line x1="8" y1="17" x2="14" y2="17"/>
+            </svg>
+          </div>
+          <div>
+            <p class="carousel-json-status__title" id="carouselJsonStatusTitle">まだ構成がありません</p>
+          </div>
+        </div>
+
+        <details class="carousel-json-editor" id="carouselJsonEditor">
+          <summary class="carousel-json-editor__summary">
+            <span>JSONを表示・編集する</span>
+            <span class="carousel-json-editor__hint">手動貼り付けもここから</span>
           </summary>
-          <div class="carousel-template-bar">
-            <span class="carousel-template-bar__label">💡 AIにこのテンプレートを渡してJSONを生成させてください</span>
-            <button class="action-btn action-btn--copy" id="copyTemplateBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              テンプレをコピー
-            </button>
+
+          <div class="textarea-wrapper">
+            <label for="carouselJsonInput" class="sr-only">カルーセルJSONを入力</label>
+            <textarea
+              id="carouselJsonInput"
+              class="form-textarea carousel-json-textarea"
+              placeholder='AI生成後はここに自動で入ります。手動で作ったJSONを貼り付ける場合もこの欄を使ってください。&#10;&#10;例: {"title": "...", "style": "A", "slides": [...]}'
+              rows="8"
+            ></textarea>
           </div>
         </details>
-
-        <div class="textarea-wrapper">
-          <label for="carouselJsonInput" class="sr-only">カルーセルJSONを入力</label>
-          <textarea
-            id="carouselJsonInput"
-            class="form-textarea carousel-json-textarea"
-            placeholder='上のAI生成ボタンで自動入力されます。&#10;または、AIが生成したカルーセルJSONをここに貼り付けてください。&#10;&#10;例: {"title": "...", "style": "A", "slides": [...]}'
-            rows="8"
-          ></textarea>
-        </div>
 
         <button class="generate-btn carousel-expand-btn" id="expandCarouselBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -630,14 +670,14 @@
           <button class="color-swatch" data-color="ラベンダー＆パープル" style="background: linear-gradient(135deg, #c4b5fd, #7c3aed);" title="ラベンダー＆パープル" aria-label="ラベンダー＆パープル" role="radio" aria-checked="false" id="colorPreset6"></button>
           <button class="color-swatch" data-color="アクアブルー" style="background: linear-gradient(135deg, #38bdf8, #2563eb);" title="アクアブルー" aria-label="アクアブルー" role="radio" aria-checked="false" id="colorPreset7"></button>
           <button class="color-swatch" data-color="アースカラー" style="background: linear-gradient(135deg, #a3a380, #6b5b3e);" title="アースカラー" aria-label="アースカラー" role="radio" aria-checked="false" id="colorPreset8"></button>
-          <button class="color-swatch" data-color="ベビーピンク＆クリーム" style="background: linear-gradient(135deg, #fbb6ce, #fef3c7);" title="ベビーピンク＆クリーム" aria-label="ベビーピンク＆クリーム" role="radio" aria-checked="false" id="colorPreset9"></button>
-          <button class="color-swatch" data-color="ミント＆コーラル" style="background: linear-gradient(135deg, #99f6e4, #fda4af);" title="ミント＆コーラル" aria-label="ミント＆コーラル" role="radio" aria-checked="false" id="colorPreset10"></button>
-          <button class="color-swatch" data-color="ローズゴールド" style="background: linear-gradient(135deg, #e8b4b8, #daa520);" title="ローズゴールド" aria-label="ローズゴールド" role="radio" aria-checked="false" id="colorPreset11"></button>
-          <button class="color-swatch" data-color="ユニコーンパステル" style="background: linear-gradient(135deg, #c4b5fd, #fbcfe8, #a5f3fc);" title="ユニコーンパステル" aria-label="ユニコーンパステル" role="radio" aria-checked="false" id="colorPreset12"></button>
-          <button class="color-swatch" data-color="シャーベットオレンジ＆ピンク" style="background: linear-gradient(135deg, #fdba74, #f9a8d4);" title="シャーベットオレンジ＆ピンク" aria-label="シャーベットオレンジ＆ピンク" role="radio" aria-checked="false" id="colorPreset13"></button>
-          <button class="color-swatch" data-color="さくら＆抹茶" style="background: linear-gradient(135deg, #f9a8d4, #86efac);" title="さくら＆抹茶" aria-label="さくら＆抹茶" role="radio" aria-checked="false" id="colorPreset14"></button>
-          <button class="color-swatch" data-color="コットンキャンディ" style="background: linear-gradient(135deg, #f0abfc, #93c5fd);" title="コットンキャンディ" aria-label="コットンキャンディ" role="radio" aria-checked="false" id="colorPreset15"></button>
-          <button class="color-swatch" data-color="オーロラグラデーション" style="background: linear-gradient(135deg, #a78bfa, #67e8f9, #86efac);" title="オーロラグラデーション" aria-label="オーロラグラデーション" role="radio" aria-checked="false" id="colorPreset16"></button>
+          <button class="color-swatch" data-color="スレート＆シアン" style="background: linear-gradient(135deg, #334155, #22d3ee);" title="スレート＆シアン" aria-label="スレート＆シアン" role="radio" aria-checked="false" id="colorPreset9"></button>
+          <button class="color-swatch" data-color="フォレスト＆クリーム" style="background: linear-gradient(135deg, #166534, #fef3c7);" title="フォレスト＆クリーム" aria-label="フォレスト＆クリーム" role="radio" aria-checked="false" id="colorPreset10"></button>
+          <button class="color-swatch" data-color="ワイン＆ローズ" style="background: linear-gradient(135deg, #7f1d1d, #fda4af);" title="ワイン＆ローズ" aria-label="ワイン＆ローズ" role="radio" aria-checked="false" id="colorPreset11"></button>
+          <button class="color-swatch" data-color="インディゴ＆ミント" style="background: linear-gradient(135deg, #4338ca, #5eead4);" title="インディゴ＆ミント" aria-label="インディゴ＆ミント" role="radio" aria-checked="false" id="colorPreset12"></button>
+          <button class="color-swatch" data-color="コーラル＆チャコール" style="background: linear-gradient(135deg, #fb7185, #1f2937);" title="コーラル＆チャコール" aria-label="コーラル＆チャコール" role="radio" aria-checked="false" id="colorPreset13"></button>
+          <button class="color-swatch" data-color="和モダン（藍＆朱）" style="background: linear-gradient(135deg, #1e3a8a, #dc2626);" title="和モダン（藍＆朱）" aria-label="和モダン（藍＆朱）" role="radio" aria-checked="false" id="colorPreset14"></button>
+          <button class="color-swatch" data-color="レモン＆ネイビー" style="background: linear-gradient(135deg, #fde047, #1e3a8a);" title="レモン＆ネイビー" aria-label="レモン＆ネイビー" role="radio" aria-checked="false" id="colorPreset15"></button>
+          <button class="color-swatch" data-color="セージ＆テラコッタ" style="background: linear-gradient(135deg, #84a98c, #c2410c);" title="セージ＆テラコッタ" aria-label="セージ＆テラコッタ" role="radio" aria-checked="false" id="colorPreset16"></button>
         </div>
         <div class="color-custom-group">
           <div class="color-picker-wrapper">
@@ -777,7 +817,7 @@
 
   <!-- ===== フッター ===== -->
   <footer class="app-footer" role="contentinfo">
-    <p>図解ビルダーPRO MAX</p>
+    <p>図解ビルダー</p>
     <button class="app-footer__reset" id="resetAllBtn" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
       すべてリセット
@@ -789,7 +829,7 @@
     <div class="paste-queue__progress-bar">
       <div class="paste-queue__progress-fill" id="pasteProgressFill" style="width: 0%"></div>
     </div>
-    <div class="paste-queue__header">
+    <div class="paste-queue__header" id="pasteQueueHeader">
       <span class="paste-queue__title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         ペーストキュー
@@ -805,7 +845,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         次をコピー
       </button>
-      <div class="paste-queue__hint" id="pasteQueueHint">💡 Geminiに貼り付けたら次をコピーしてください</div>
+      <div class="paste-queue__hint" id="pasteQueueHint">💡 画像生成AIに貼り付けたら次をコピーしてください</div>
     </div>
   </div>
 
@@ -844,8 +884,8 @@
       <div class="api-key-modal__body">
         <!-- プロバイダタブ -->
         <div class="provider-tabs" role="tablist">
-          <button class="provider-tab active" data-provider="straico" role="tab" aria-selected="true" type="button">Straico</button>
-          <button class="provider-tab" data-provider="gemini" role="tab" aria-selected="false" type="button">Gemini 直接</button>
+          <button class="provider-tab provider-tab--internal" data-provider="straico" data-internal="straico" role="tab" aria-selected="false" type="button">Straico</button>
+          <button class="provider-tab active" data-provider="gemini" role="tab" aria-selected="true" type="button">Gemini 直接</button>
           <button class="provider-tab" data-provider="openai" role="tab" aria-selected="false" type="button">OpenAI 直接</button>
         </div>
 

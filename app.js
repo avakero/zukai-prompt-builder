@@ -176,7 +176,15 @@
     'サンセットオレンジ': 'サンセットオレンジ',
     'ラベンダー＆パープル': 'ラベンダー＆パープル',
     'アクアブルー': 'アクアブルー',
-    'アースカラー': 'アースカラー'
+    'アースカラー': 'アースカラー',
+    'スレート＆シアン': 'スレート＆シアン',
+    'フォレスト＆クリーム': 'フォレスト＆クリーム',
+    'ワイン＆ローズ': 'ワイン＆ローズ',
+    'インディゴ＆ミント': 'インディゴ＆ミント',
+    'コーラル＆チャコール': 'コーラル＆チャコール',
+    '和モダン（藍＆朱）': '和モダン（藍＆朱）',
+    'レモン＆ネイビー': 'レモン＆ネイビー',
+    'セージ＆テラコッタ': 'セージ＆テラコッタ'
   };
 
   // ============================================================
@@ -207,6 +215,7 @@
   // { type: 'text'|'image', label: string, content: string|Blob, thumb?: string }
   let pasteQueue = [];
   let pasteQueueIndex = 0;
+  let pasteQueueDrag = null;
 
   // 画像生成状態
   // デフォルトは OpenAI gpt-image-2 (2026-05-20 のスパイクで採用決定)。
@@ -257,6 +266,7 @@
     pasteQueueProgress: $('#pasteQueueProgress'),
     pasteQueueCta: $('#pasteQueueCta'),
     pasteQueueHint: $('#pasteQueueHint'),
+    pasteQueueHeader: $('#pasteQueueHeader'),
     pasteQueueClose: $('#pasteQueueClose'),
     pasteProgressFill: $('#pasteProgressFill'),
     // モード切替
@@ -314,6 +324,7 @@
     regenModelHint: $('#regenModelHint'),
     // AI生成（Gemini / Straico）
     aiThemeInput: $('#aiThemeInput'),
+    aiGenExamples: $$('.ai-gen-example'),
     aiProvider: $('#aiProvider'),
     aiSlideCount: $('#aiSlideCount'),
     aiTone: $('#aiTone'),
@@ -321,6 +332,11 @@
     aiGenerateBtnLabel: $('#aiGenerateBtnLabel'),
     aiSettingsBtn: $('#aiSettingsBtn'),
     aiGenBadge: $('#aiGenBadge'),
+    carouselFlowGenerated: $('#carouselFlowGenerated'),
+    carouselFlowExpanded: $('#carouselFlowExpanded'),
+    carouselJsonStatus: $('#carouselJsonStatus'),
+    carouselJsonStatusTitle: $('#carouselJsonStatusTitle'),
+    carouselJsonEditor: $('#carouselJsonEditor'),
     // APIキー設定モーダル
     apiKeyModalOverlay: $('#apiKeyModalOverlay'),
     apiKeyModalClose: $('#apiKeyModalClose'),
@@ -389,7 +405,7 @@
     beta: ['ai.json', 'ai.imagegen'],
     internal: ['ai.json', 'ai.imagegen', 'mode.carousel'],
     vip: ['ai.json', 'ai.imagegen', 'mode.carousel'],
-    pickaxe_internal: ['provider.pickaxe']
+    pickaxe_internal: ['provider.pickaxe', 'provider.straico']
   };
 
   // feature key → ユーザー向けに案内する必要プラン
@@ -536,7 +552,7 @@
       : '';
 
     // === 統一プロンプト（命令書 + 依頼内容を一体化） ===
-    const prompt = `# 命令書：万能・図解デザイナーAI（Nano Banana Pro専用）
+    const prompt = `# 命令書：万能・図解デザイナーAI
 あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
 
 ## ■基本方針
@@ -705,9 +721,10 @@ ${layoutDef.desc}
     carouselPrompts = [];
     if (els.carouselJsonInput) els.carouselJsonInput.value = '';
     if (els.carouselBadge) {
-      els.carouselBadge.textContent = '未入力';
+      els.carouselBadge.textContent = '未作成';
       els.carouselBadge.classList.remove('section__badge--active', 'section__badge--success');
     }
+    setCarouselJsonGuide('empty');
     if (els.carouselPreviewSection) els.carouselPreviewSection.style.display = 'none';
     if (els.carouselSlides) els.carouselSlides.innerHTML = '';
     if (els.carouselSlideCount) els.carouselSlideCount.textContent = '';
@@ -998,7 +1015,7 @@ ${layoutDef.desc}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         ✨ すべて完了！
       `;
-      els.pasteQueueHint.textContent = 'Geminiに貼り付けて図解を生成してください';
+      els.pasteQueueHint.textContent = '画像生成AIに貼り付けて図解を生成してください';
     } else {
       const currentItem = pasteQueue[pasteQueueIndex];
       const typeIcon = currentItem.type === 'image'
@@ -1010,9 +1027,9 @@ ${layoutDef.desc}
         コピー: ${currentItem.label}
       `;
       if (pasteQueueIndex === 0) {
-        els.pasteQueueHint.textContent = '💡 ボタンを押してGeminiにCtrl+Vで貼り付けてください';
+        els.pasteQueueHint.textContent = '💡 ボタンを押して画像生成AIにCtrl+Vで貼り付けてください';
       } else {
-        els.pasteQueueHint.textContent = '💡 Geminiに貼り付けたら次をコピーしてください';
+        els.pasteQueueHint.textContent = '💡 画像生成AIに貼り付けたら次をコピーしてください';
       }
     }
   }
@@ -1083,6 +1100,64 @@ ${layoutDef.desc}
     pasteQueueIndex = 0;
   }
 
+  function clampPasteQueuePosition(left, top) {
+    const queue = els.pasteQueue;
+    if (!queue) return { left, top };
+
+    const rect = queue.getBoundingClientRect();
+    const margin = 8;
+    return {
+      left: Math.min(Math.max(margin, left), window.innerWidth - rect.width - margin),
+      top: Math.min(Math.max(margin, top), window.innerHeight - rect.height - margin)
+    };
+  }
+
+  function movePasteQueue(left, top) {
+    const queue = els.pasteQueue;
+    if (!queue) return;
+
+    const pos = clampPasteQueuePosition(left, top);
+    queue.style.left = `${pos.left}px`;
+    queue.style.top = `${pos.top}px`;
+  }
+
+  function startPasteQueueDrag(e) {
+    if (!els.pasteQueue || e.button !== 0 || e.target.closest('button')) return;
+
+    const rect = els.pasteQueue.getBoundingClientRect();
+    pasteQueueDrag = {
+      pointerId: e.pointerId,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top
+    };
+
+    els.pasteQueue.classList.add('is-positioned', 'is-dragging');
+    els.pasteQueue.setPointerCapture(e.pointerId);
+    movePasteQueue(rect.left, rect.top);
+    e.preventDefault();
+  }
+
+  function dragPasteQueue(e) {
+    if (!pasteQueueDrag || !els.pasteQueue || e.pointerId !== pasteQueueDrag.pointerId) return;
+    movePasteQueue(e.clientX - pasteQueueDrag.offsetX, e.clientY - pasteQueueDrag.offsetY);
+  }
+
+  function endPasteQueueDrag(e) {
+    if (!pasteQueueDrag || !els.pasteQueue || e.pointerId !== pasteQueueDrag.pointerId) return;
+
+    els.pasteQueue.classList.remove('is-dragging');
+    if (els.pasteQueue.hasPointerCapture(e.pointerId)) {
+      els.pasteQueue.releasePointerCapture(e.pointerId);
+    }
+    pasteQueueDrag = null;
+  }
+
+  function keepPasteQueueInView() {
+    if (!els.pasteQueue || !els.pasteQueue.classList.contains('is-positioned')) return;
+    const rect = els.pasteQueue.getBoundingClientRect();
+    movePasteQueue(rect.left, rect.top);
+  }
+
   // ============================================================
   // UI状態の復元
   // ============================================================
@@ -1110,6 +1185,10 @@ ${layoutDef.desc}
       if (swatch) {
         swatch.classList.add('active');
         swatch.setAttribute('aria-checked', 'true');
+      } else {
+        state.colorMode = 'auto';
+        state.colorValue = '';
+        els.colorAutoBtn.classList.add('active');
       }
     } else if (state.colorMode === 'custom') {
       els.customColorPicker.classList.add('active');
@@ -1254,6 +1333,14 @@ ${layoutDef.desc}
 
     els.pasteQueueClose.addEventListener('click', closePasteQueue);
 
+    if (els.pasteQueueHeader) {
+      els.pasteQueueHeader.addEventListener('pointerdown', startPasteQueueDrag);
+      els.pasteQueue.addEventListener('pointermove', dragPasteQueue);
+      els.pasteQueue.addEventListener('pointerup', endPasteQueueDrag);
+      els.pasteQueue.addEventListener('pointercancel', endPasteQueueDrag);
+      window.addEventListener('resize', keepPasteQueueInView);
+    }
+
     // ===== モード切替 =====
     if (els.modeTabs) {
       els.modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
@@ -1285,19 +1372,29 @@ ${layoutDef.desc}
     if (els.carouselJsonInput && els.carouselBadge) {
       els.carouselJsonInput.addEventListener('input', () => {
         const hasValue = els.carouselJsonInput.value.trim().length > 0;
-        // 既に「success（X枚）」状態なら触らない
-        if (els.carouselBadge.classList.contains('section__badge--success')) return;
         if (hasValue) {
           els.carouselBadge.textContent = '入力中';
+          els.carouselBadge.classList.remove('section__badge--success');
           els.carouselBadge.classList.add('section__badge--active');
+          setCarouselJsonGuide('editing');
         } else {
-          els.carouselBadge.textContent = '未入力';
-          els.carouselBadge.classList.remove('section__badge--active');
+          els.carouselBadge.textContent = '未作成';
+          els.carouselBadge.classList.remove('section__badge--active', 'section__badge--success');
+          setCarouselJsonGuide('empty');
         }
       });
     }
 
     // ===== AI生成（Gemini） =====
+    if (els.aiGenExamples && els.aiGenExamples.forEach) {
+      els.aiGenExamples.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!els.aiThemeInput) return;
+          els.aiThemeInput.value = btn.dataset.example || btn.textContent.trim();
+          els.aiThemeInput.focus();
+        });
+      });
+    }
     if (els.aiGenerateBtn) {
       els.aiGenerateBtn.addEventListener('click', generateCarouselJsonWithAi);
     }
@@ -1471,8 +1568,23 @@ ${layoutDef.desc}
   // カルーセル：AIテンプレートコピー
   // ============================================================
 
-  const CAROUSEL_TEMPLATE = `以下のJSON形式で、カルーセル投稿用のデータを生成してください。
+  function buildCarouselTemplateForCopy() {
+    const theme = els.aiThemeInput && els.aiThemeInput.value.trim()
+      ? els.aiThemeInput.value.trim()
+      : '【ここにテーマを記入】';
+    const slideCount = els.aiSlideCount ? els.aiSlideCount.value : 'auto';
+    const slideCountLabel = slideCount === 'auto' ? 'おまかせ' : `${slideCount}枚`;
+    const toneSelect = els.aiTone;
+    const toneLabel = toneSelect && toneSelect.selectedOptions && toneSelect.selectedOptions[0]
+      ? toneSelect.selectedOptions[0].textContent.trim()
+      : '親しみやすい';
+
+    return `以下のJSON形式で、カルーセル投稿用のデータを生成してください。
 そのままコピーして使えるよう、余計な説明は不要で、JSONだけを出力してください。
+
+## 作成条件
+- スライド枚数: ${slideCountLabel}
+- トーン: ${toneLabel}
 
 ## JSON仕様
 \`\`\`json
@@ -1512,22 +1624,24 @@ ${layoutDef.desc}
 ## 依頼内容
 以下のテーマでカルーセル投稿を作成してください：
 
-【ここにテーマを記入】`;
+${theme}`;
+  }
 
   async function copyCarouselTemplate() {
+    const template = buildCarouselTemplateForCopy();
     try {
-      await navigator.clipboard.writeText(CAROUSEL_TEMPLATE);
-      showToast('📋 AIテンプレートをコピーしました！');
+      await navigator.clipboard.writeText(template);
+      showToast('📋 手動作成用テンプレートをコピーしました。他のAIに貼り付けてください');
     } catch (err) {
       const textarea = document.createElement('textarea');
-      textarea.value = CAROUSEL_TEMPLATE;
+      textarea.value = template;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      showToast('📋 テンプレートをコピーしました！');
+      showToast('📋 手動作成用テンプレートをコピーしました。他のAIに貼り付けてください');
     }
   }
 
@@ -1537,7 +1651,7 @@ ${layoutDef.desc}
 
   function defaultAiConfig() {
     return {
-      provider: 'straico',
+      provider: 'gemini',
       straico: { apiKey: '', model: STRAICO_DEFAULT_MODEL },
       gemini: { apiKey: '', model: GEMINI_DEFAULT_MODEL },
       openai: { apiKey: '', model: OPENAI_DEFAULT_MODEL }
@@ -1613,15 +1727,67 @@ ${layoutDef.desc}
     } catch (_) { return false; }
   }
 
+  function setCarouselJsonGuide(stateName, meta = {}) {
+    const status = els.carouselJsonStatus;
+    if (!status || !els.carouselJsonStatusTitle) return;
+
+    status.classList.toggle('carousel-json-status--ready', stateName === 'ready' || stateName === 'expanded');
+
+    if (els.carouselFlowGenerated) {
+      els.carouselFlowGenerated.classList.toggle('carousel-flow__step--done', stateName === 'ready' || stateName === 'expanded');
+      els.carouselFlowGenerated.classList.toggle('carousel-flow__step--active', stateName === 'editing');
+    }
+    if (els.carouselFlowExpanded) {
+      els.carouselFlowExpanded.classList.toggle('carousel-flow__step--done', stateName === 'expanded');
+      els.carouselFlowExpanded.classList.toggle('carousel-flow__step--active', stateName === 'ready');
+    }
+
+    if (stateName === 'expanded') {
+      const slides = meta.slides || 0;
+      els.carouselJsonStatusTitle.textContent = `${slides}枚のスライドに展開しました`;
+      return;
+    }
+
+    if (stateName === 'ready') {
+      const slides = meta.slides || 0;
+      els.carouselJsonStatusTitle.textContent = `${slides}枚の構成ができました`;
+      return;
+    }
+
+    if (stateName === 'editing') {
+      els.carouselJsonStatusTitle.textContent = '構成データを入力中です';
+      return;
+    }
+
+    els.carouselJsonStatusTitle.textContent = 'まだ構成がありません';
+  }
+
+  function canUseStraicoProvider() {
+    return !!(window.hasFeature && window.hasFeature('provider.straico'));
+  }
+
+  function getFallbackAiProvider() {
+    return 'gemini';
+  }
+
+  function normalizeAiProvider(provider) {
+    if (provider === 'straico' && !canUseStraicoProvider()) {
+      return getFallbackAiProvider();
+    }
+    return (provider === 'straico' || provider === 'gemini' || provider === 'openai')
+      ? provider
+      : getFallbackAiProvider();
+  }
+
   // ============================================================
   // APIキー設定モーダル
   // ============================================================
 
-  let apiKeyModalActiveProvider = 'straico'; // モーダル内で現在編集中のプロバイダ
+  let apiKeyModalActiveProvider = 'gemini'; // モーダル内で現在編集中のプロバイダ
 
   function openApiKeyModal() {
     const cfg = loadAiConfig();
-    apiKeyModalActiveProvider = cfg.provider;
+    apiKeyModalActiveProvider = normalizeAiProvider(cfg.provider);
     renderApiKeyModalForProvider(apiKeyModalActiveProvider, cfg);
     els.apiKeyModalOverlay.classList.add('active');
     setTimeout(() => els.apiKeyInput.focus(), 100);
@@ -1679,11 +1845,14 @@ ${layoutDef.desc}
 
   function switchApiKeyModalProvider(provider) {
     if (provider !== 'straico' && provider !== 'gemini' && provider !== 'openai') return;
+    if (provider === 'straico' && !canUseStraicoProvider()) return;
     apiKeyModalActiveProvider = provider;
     renderApiKeyModalForProvider(provider, loadAiConfig());
   }
 
   function saveApiKeyFromModal() {
+    if (apiKeyModalActiveProvider === 'straico' && !canUseStraicoProvider()) return;
+
     const apiKey = els.apiKeyInput.value.trim();
     const model = els.apiModelSelect.value || PROVIDER_META[apiKeyModalActiveProvider].defaultModel;
 
@@ -1739,14 +1908,15 @@ ${layoutDef.desc}
   function updateAiBadge() {
     if (!els.aiGenBadge) return;
     const cfg = loadAiConfig();
-    const apiKey = getEffectiveApiKey(cfg.provider, cfg);
-    const meta = PROVIDER_META[cfg.provider];
+    const provider = normalizeAiProvider(cfg.provider);
+    const apiKey = getEffectiveApiKey(provider, cfg);
+    const meta = PROVIDER_META[provider];
     if (!apiKey) {
       els.aiGenBadge.textContent = `${meta.label} (キー未設定)`;
       return;
     }
-    const model = cfg.provider === 'straico' ? cfg.straico.model
-                : cfg.provider === 'openai' ? cfg.openai.model
+    const model = provider === 'straico' ? cfg.straico.model
+                : provider === 'openai' ? cfg.openai.model
                 : cfg.gemini.model;
     const shortModel = model.replace(/^google\//, '').replace(/^openai\//, '').replace(/^anthropic\//, '').replace(/^gemini-/, '');
     els.aiGenBadge.textContent = `${meta.label} • ${shortModel}`;
@@ -1756,10 +1926,11 @@ ${layoutDef.desc}
    * メイン画面のプロバイダ選択変更時
    */
   function onAiProviderChange() {
-    const newProvider = els.aiProvider.value;
+    const newProvider = normalizeAiProvider(els.aiProvider.value);
     const cfg = loadAiConfig();
     cfg.provider = newProvider;
     saveAiConfig(cfg);
+    els.aiProvider.value = newProvider;
     updateAiBadge();
   }
 
@@ -1978,7 +2149,7 @@ ${theme}
   }
 
   async function generateCarouselJsonWithAi() {
-    if (!gateOrToast('ai.json', 'AIでカルーセルJSON生成')) return;
+    if (!gateOrToast('ai.json', 'AIで投稿構成を作成')) return;
     const theme = els.aiThemeInput.value.trim();
     if (!theme) {
       showToast('⚠️ テーマや元文章を入力してください');
@@ -1987,7 +2158,12 @@ ${theme}
     }
 
     const cfg = loadAiConfig();
-    const provider = cfg.provider;
+    const provider = normalizeAiProvider(cfg.provider);
+    if (cfg.provider !== provider) {
+      cfg.provider = provider;
+      saveAiConfig(cfg);
+      if (els.aiProvider) els.aiProvider.value = provider;
+    }
     const apiKey = getEffectiveApiKey(provider, cfg);
     if (!apiKey) {
       showToast('🔑 まずAPIキーを設定してください');
@@ -2040,6 +2216,10 @@ ${theme}
 
       // JSON入力欄に整形して挿入
       els.carouselJsonInput.value = JSON.stringify(extracted.parsed, null, 2);
+      els.carouselBadge.textContent = `${extracted.parsed.slides.length}枚`;
+      els.carouselBadge.classList.remove('section__badge--active');
+      els.carouselBadge.classList.add('section__badge--success');
+      setCarouselJsonGuide('ready', { slides: extracted.parsed.slides.length });
 
       const hasCaption = typeof extracted.parsed.caption === 'string' && extracted.parsed.caption.trim();
       const tagCount = Array.isArray(extracted.parsed.hashtags) ? extracted.parsed.hashtags.length : 0;
@@ -2047,7 +2227,7 @@ ${theme}
       if (hasCaption) extras.push('キャプション');
       if (tagCount) extras.push(`#タグ${tagCount}`);
       const extraLabel = extras.length ? ` + ${extras.join(' / ')}` : '';
-      showToast(`✨ JSONを生成しました（${extracted.parsed.slides.length}枚${extraLabel}）`);
+      showToast(`✨ 投稿構成を作成しました（${extracted.parsed.slides.length}枚${extraLabel}）`);
 
       // そのまま自動展開
       expandCarousel();
@@ -2101,6 +2281,7 @@ ${theme}
     els.carouselBadge.textContent = `${data.slides.length}枚`;
     els.carouselBadge.classList.remove('section__badge--active');
     els.carouselBadge.classList.add('section__badge--success');
+    setCarouselJsonGuide('expanded', { slides: data.slides.length });
 
     // JSONの値をUIに反映
     applyJsonToUI(data);
@@ -2144,12 +2325,16 @@ ${theme}
         els.customColorPicker.value = data.color;
         els.customColorPicker.classList.add('active');
       } else {
-        state.colorMode = 'preset';
-        state.colorValue = data.color;
         const swatch = $(`.color-swatch[data-color="${data.color}"]`);
         if (swatch) {
+          state.colorMode = 'preset';
+          state.colorValue = data.color;
           swatch.classList.add('active');
           swatch.setAttribute('aria-checked', 'true');
+        } else {
+          state.colorMode = 'auto';
+          state.colorValue = '';
+          els.colorAutoBtn.classList.add('active');
         }
       }
     }
@@ -2473,7 +2658,7 @@ ${theme}
 * 添付画像${characterImages.length}枚`;
     }
 
-    return `# 命令書：万能・図解デザイナーAI（Nano Banana Pro専用）
+    return `# 命令書：万能・図解デザイナーAI
 あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
 
 ## ■基本方針
@@ -3803,6 +3988,25 @@ ${layoutDef.desc}
   // デフォルト (gpt-image-2) にリセットして無効選択を回避する。
   function applyProviderGate() {
     const showPickaxe = !!(window.hasFeature && window.hasFeature('provider.pickaxe'));
+    const showStraico = canUseStraicoProvider();
+
+    document.querySelectorAll('[data-internal="straico"]').forEach(el => {
+      el.classList.toggle('is-visible', showStraico);
+      el.hidden = !showStraico;
+    });
+
+    const cfg = loadAiConfig();
+    if (!showStraico && cfg.provider === 'straico') {
+      cfg.provider = getFallbackAiProvider();
+      saveAiConfig(cfg);
+    }
+    if (els.aiProvider) {
+      els.aiProvider.value = normalizeAiProvider(cfg.provider);
+    }
+    if (apiKeyModalActiveProvider === 'straico' && !showStraico) {
+      apiKeyModalActiveProvider = getFallbackAiProvider();
+    }
+
     // メインのモデル選択カード
     document.querySelectorAll('.selection-card--internal[data-internal="pickaxe"]').forEach(card => {
       card.style.display = showPickaxe ? '' : 'none';
@@ -3820,7 +4024,8 @@ ${layoutDef.desc}
       try { localStorage.setItem('zukai-debug-model', 'gpt-image-2'); } catch (_) {}
       if (typeof activateCard === 'function') activateCard('model', 'gpt-image-2');
     }
-    console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ active model =', imageGenState.model);
+    updateAiBadge();
+    console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ showStraico =', showStraico, '/ active model =', imageGenState.model);
   }
 
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
@@ -4223,6 +4428,7 @@ ${layoutDef.desc}
         source:        source
       };
       init();
+      applyProviderGate();
       applyHeaderForProfile();
       return;
     }
@@ -4241,6 +4447,7 @@ ${layoutDef.desc}
       source:        'anonymous'
     };
     init();
+    applyProviderGate();
     applyHeaderForProfile();
     initLiff();
   }
