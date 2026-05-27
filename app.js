@@ -141,22 +141,28 @@
 
   const STYLE_DEFS = {
     A: {
-      label: '手書き風（アナログ）',
+      label: '手書き風',
       desc: '色鉛筆や水彩のタッチ。温かみのあるパステル調。線画はラフに、塗りはムラを残す。デジタル感を排除する。'
     },
     B: {
-      label: 'ビジネス風（フラットデザイン）',
+      label: 'ビジネス風',
       desc: '直線的で整ったベクター調。信頼感のある寒色系やモノトーン。無駄な装飾を省き、情報の視認性を最優先する。'
     },
     C: {
-      label: 'ポップ・コミック',
+      label: 'ポップ',
       desc: '太い主線、鮮やかな原色使い。アメコミや元気な印象。'
     },
     D: {
-      label: 'シンプル・ミニマル',
+      label: 'ミニマル',
       desc: '線画のみ、または最低限の色数。洗練された印象。'
     }
   };
+
+  function buildStyleDefinitionText() {
+    return Object.entries(STYLE_DEFS)
+      .map(([key, def]) => `* **${key}：${def.label}** — ${def.desc}`)
+      .join('\n');
+  }
 
   const LAYOUT_DEFS = {
     A: { label: '並列リスト', desc: '要点まとめ' },
@@ -451,7 +457,7 @@
   function updateBadges() {
     if (els.styleBadge) {
       const styleDef = STYLE_DEFS[state.style];
-      els.styleBadge.textContent = `${state.style}: ${styleDef.label.split('（')[0]}`;
+      els.styleBadge.textContent = `${state.style}: ${styleDef.label}`;
     }
 
     if (els.layoutBadge) {
@@ -561,10 +567,7 @@
 * 不明点があれば確認の質問をする。
 
 ## ■スタイル定義
-* **A：手書き風** — 色鉛筆や水彩のタッチ。温かみのあるパステル調。
-* **B：ビジネス風** — フラットデザイン。信頼感のある寒色系。
-* **C：ポップ** — 太い主線、鮮やかな原色。元気な印象。
-* **D：ミニマル** — 線画のみ、最低限の色数。洗練された印象。
+${buildStyleDefinitionText()}
 
 ## ■レイアウト定義
 * **A：並列リスト**（要点まとめ）
@@ -2620,6 +2623,19 @@ ${theme}
     return div.innerHTML;
   }
 
+  function getCarouselPromptStyle() {
+    const presetId = imageGenState.selectedPreset || 'handdrawn';
+    const preset = IMAGE_GEN_STYLE_PRESETS[presetId] || IMAGE_GEN_STYLE_PRESETS.handdrawn;
+    const customPrompt = els.imageGenCustomStyle ? els.imageGenCustomStyle.value.trim() : '';
+    return {
+      id: presetId,
+      label: preset.label,
+      desc: presetId === 'custom'
+        ? (customPrompt || 'ユーザーが入力したカスタムスタイル指示に従う。')
+        : preset.prompt
+    };
+  }
+
   // ============================================================
   // カルーセル：スライドプロンプト構築
   // ============================================================
@@ -2627,12 +2643,16 @@ ${theme}
   function buildSlidePrompt(slide, index) {
     if (!carouselData) return '';
 
-    // UIの設定値を使用（JSON展開時にUIに反映済み）
-    const globalStyle = state.style;
+    // カルーセルでは「画像生成スタイル」プリセットをスタイル指定として使う。
+    const carouselStyle = getCarouselPromptStyle();
+    const globalStyle = carouselStyle.id;
     const globalFormat = state.format;
     const totalSlides = carouselData.slides.length;
 
-    const styleDef = STYLE_DEFS[globalStyle] || STYLE_DEFS['A'];
+    const styleDef = {
+      label: carouselStyle.label,
+      desc: carouselStyle.desc
+    };
     const role = slide.role || 'body';
     const roleLabel = ROLE_LABELS[role] || role;
     const layout = slide.layout || (role === 'body' ? state.layout : 'G');
@@ -2666,11 +2686,8 @@ ${theme}
 * ユーザーの指定した「スタイル」に合わせて画風を完全に切り替える。
 * 不明点があれば確認の質問をする。
 
-## ■スタイル定義
-* **A：手書き風** — 色鉛筆や水彩のタッチ。温かみのあるパステル調。
-* **B：ビジネス風** — フラットデザイン。信頼感のある寒色系。
-* **C：ポップ** — 太い主線、鮮やかな原色。元気な印象。
-* **D：ミニマル** — 線画のみ、最低限の色数。洗練された印象。
+## ■指定スタイル
+* **${globalStyle}：${styleDef.label}** — ${styleDef.desc}
 
 ## ■レイアウト定義
 * **A：並列リスト**（要点まとめ）
