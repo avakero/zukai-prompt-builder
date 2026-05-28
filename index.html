@@ -6,7 +6,12 @@
   <meta name="description" content="文章を貼り付けてオプションを選ぶだけで、AI図解生成用の構造化プロンプトを自動作成できるWebツール。">
   <title>図解ビルダー</title>
   <link rel="stylesheet" href="index.css">
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- LINE 関連ドメインへ事前接続して初回ログイン時の DNS/TLS ハンドシェイクを並列化 -->
+  <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+  <link rel="preconnect" href="https://access.line.me">
+  <link rel="preconnect" href="https://api.line.me">
+  <!-- LIFF SDK は async でロードしてレンダリングをブロックしない (app.js の waitForLiffSdk が出現を待つ) -->
+  <script charset="utf-8" async src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 

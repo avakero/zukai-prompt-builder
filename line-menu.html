@@ -166,7 +166,11 @@ textarea#promptText:focus{outline:none;border-color:var(--accent);box-shadow:0 0
 .lm-gate__state{display:none}
 .lm-gate__state.active{display:block}
 </style>
-<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<!-- LINE 関連ドメインへ事前接続 (DNS/TLS 並列化) -->
+<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+<link rel="preconnect" href="https://access.line.me">
+<link rel="preconnect" href="https://api.line.me">
+<script charset="utf-8" async src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 
@@ -229,6 +233,36 @@ textarea#promptText:focus{outline:none;border-color:var(--accent);box-shadow:0 0
     return;
   }
 
+  // ─── 高速パス: 直近ログイン済みフラグがあれば即ゲートを下げる ───────────────
+  // LIFF init は裏で走らせ、整合性確認後に必要なら再ゲート表示する。
+  // フラグは index.html 側の /api/me 成功時にも別キー (zukai-profile-v1) で持つが、
+  // ここでは LIFF ログイン状態 + 1時間 TTL の軽量フラグだけで十分。
+  var LM_GATE_FLAG_KEY = 'zukai-line-menu-loggedin-v1';
+  var LM_GATE_TTL_MS = 60 * 60 * 1000;
+  function readFlag() {
+    try {
+      var raw = localStorage.getItem(LM_GATE_FLAG_KEY);
+      if (!raw) return false;
+      var ts = parseInt(raw, 10);
+      if (!isFinite(ts) || Date.now() - ts > LM_GATE_TTL_MS) return false;
+      return true;
+    } catch (_) { return false; }
+  }
+  function writeFlag() {
+    try { localStorage.setItem(LM_GATE_FLAG_KEY, String(Date.now())); } catch (_) {}
+  }
+  function clearFlag() {
+    try { localStorage.removeItem(LM_GATE_FLAG_KEY); } catch (_) {}
+  }
+  // LIFF コールバック直後 (URL に code/state あり) はキャッシュを使わない。
+  // 別アカウントに切り替えた直後に古い状態で起動するのを防ぐ。
+  function isLiffCallback() {
+    try { var qs = new URLSearchParams(location.search); return qs.has('code') && qs.has('state'); }
+    catch (_) { return false; }
+  }
+  var fastPath = !isLiffCallback() && readFlag();
+  if (fastPath) hideGate(); // 即非表示。整合性確認は裏で。
+
   // LIFF SDK のロードを待機 (最大8秒)
   function waitForLiff(timeoutMs) {
     return new Promise(function (resolve, reject) {
@@ -249,16 +283,24 @@ textarea#promptText:focus{outline:none;border-color:var(--accent);box-shadow:0 0
   var retryBtn = el('lmGateRetryBtn');
   if (retryBtn) retryBtn.addEventListener('click', function () { location.reload(); });
 
-  setState('loading');
+  if (!fastPath) setState('loading');
   waitForLiff(8000)
     .then(function () { return liff.init({ liffId: LINE_MENU_LIFF_ID }); })
     .then(function () {
-      if (liff.isLoggedIn()) { hideGate(); }
-      else { setState('login'); }
+      if (liff.isLoggedIn()) {
+        writeFlag();
+        hideGate();
+      } else {
+        // フラグはあったが LIFF はログアウト状態 → 整合性が崩れたのでゲートを再表示
+        clearFlag();
+        var g = el('lmGate'); if (g) g.classList.remove('hidden');
+        setState('login');
+      }
     })
     .catch(function (e) {
       console.error('[line-menu LIFF] init failed:', e && e.message);
-      showError('認証の初期化に失敗しました。' + (e && e.message ? ' (' + e.message + ')' : ''));
+      // 高速パスで既に裏に下げている場合はそのまま (キャッシュ信頼) でユーザー操作を止めない
+      if (!fastPath) showError('認証の初期化に失敗しました。' + (e && e.message ? ' (' + e.message + ')' : ''));
     });
 })();
 </script>

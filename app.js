@@ -896,10 +896,7 @@ ${layoutDef.desc}
   async function uploadOneCharacterImage(img) {
     if (img.publicUrl) return img.publicUrl;
 
-    let token = null;
-    try {
-      token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
-    } catch (_) { token = null; }
+    const token = _getLiffToken();
     if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
 
     // 大きい画像は送信前に縮小
@@ -2986,10 +2983,7 @@ ${layoutDef.desc}
   // どのプロバイダの endpoint でも、LIFF認証 + AbortController による
   // タイムアウト管理 + エラーレスポンス整形を統一する。
   async function _postImageGenProxy(endpoint, body, timeoutMs, extraHeaders) {
-    let token = null;
-    try {
-      token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
-    } catch (_) { token = null; }
+    const token = _getLiffToken();
     if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
 
     const controller = new AbortController();
@@ -3289,10 +3283,46 @@ ${layoutDef.desc}
   //   フェーズ1 では生成フロー自体に影響を与えず、観測データだけを蓄積する。
   // 失敗時の挙動: console.warn を出して黙って続行する。画像生成は止めない。
 
+  // ID Token (JWT) を優先取得する。サーバーは JWKS でオフライン検証するため
+  // LINE API への往復が消える。ID Token が無ければ旧 access token にフォールバック
+  // (移行期間中、_lib/line.js が両方を受け付けるのでどちらでも動く)。
   function _getLiffToken() {
+    if (typeof liff === 'undefined') return null;
     try {
-      return (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+      if (typeof liff.getIDToken === 'function') {
+        const idt = liff.getIDToken();
+        if (idt) return idt;
+      }
+    } catch (_) { /* fallthrough */ }
+    try {
+      return (liff.getAccessToken ? liff.getAccessToken() : null);
     } catch (_) { return null; }
+  }
+
+  // ID Token の exp が近い (or 切れている) ときに黙って再ログインしてリフレッシュする。
+  // LIFF SDK は ID Token を自動更新しないため、401 (expired_token) を踏んだら
+  // この関数で liff.login() を呼んでフルリフレッシュする。
+  // sessionStorage で再試行回数を管理し、無限ループを防ぐ。
+  function _trySilentLineReLogin(reason) {
+    const KEY = 'zukai-relogin-attempts';
+    let attempts = 0;
+    try { attempts = parseInt(sessionStorage.getItem(KEY) || '0', 10) || 0; } catch (_) {}
+    if (attempts >= 1) {
+      console.warn('[LIFF] silent re-login already attempted, giving up. reason=', reason);
+      return false;
+    }
+    if (typeof liff === 'undefined' || typeof liff.login !== 'function') return false;
+    if (!liff.isLoggedIn || !liff.isLoggedIn()) return false;
+    try { sessionStorage.setItem(KEY, String(attempts + 1)); } catch (_) {}
+    console.log('[LIFF] silent re-login triggered. reason=', reason);
+    try { liff.login(); } catch (e) {
+      console.warn('[LIFF] silent re-login failed:', e && e.message);
+      return false;
+    }
+    return true;
+  }
+  function _clearReLoginAttempts() {
+    try { sessionStorage.removeItem('zukai-relogin-attempts'); } catch (_) {}
   }
 
   async function logGenerationStart(jobId, payload) {
@@ -4090,7 +4120,10 @@ ${layoutDef.desc}
   // (local-dev もテスト目的で認証済み扱い、 anonymous / open-access / fallback は未認証扱い)
   function isProfileAuthenticated(profile) {
     if (!profile) return false;
-    return profile.source === 'api' || profile.source === 'local-dev' || profile.source === 'temporary-pro-max';
+    return profile.source === 'api'
+        || profile.source === 'api-cache'
+        || profile.source === 'local-dev'
+        || profile.source === 'temporary-pro-max';
   }
 
   // 現在のプロファイルに応じてヘッダの CTA / ユーザープロフィール表示を切替
@@ -4142,14 +4175,82 @@ ${layoutDef.desc}
     };
   }
 
+  // ----------------------------------------------------------------
+  // /api/me のクライアントキャッシュ (stale-while-revalidate)
+  // ----------------------------------------------------------------
+  // - 成功時にプロファイルを localStorage に保存する。
+  // - 起動時は new fetch を待たずに即座にキャッシュを適用し、裏で再取得する。
+  // - 5分以内ならゲートが瞬時に解除される (リピート訪問の体感が劇的に変わる)。
+  // - 401 を踏んだとき (関連アカウント変更, plan 失効, expired_token) は破棄される。
+  const PROFILE_CACHE_KEY = 'zukai-profile-v1';
+  const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+
+  function _saveProfileCache(profile) {
+    if (!profile || profile.source !== 'api') return;
+    try {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        profile
+      }));
+    } catch (_) { /* localStorage 不可 (Safari Private 等) → 無視 */ }
+  }
+
+  function _readProfileCache() {
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || !data.profile || typeof data.savedAt !== 'number') return null;
+      if (Date.now() - data.savedAt > PROFILE_CACHE_TTL_MS) {
+        // TTL 切れ。古すぎるので破棄。次回ログイン時に新規取得。
+        try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
+        return null;
+      }
+      // source は 'api' で保存しているが、キャッシュから復元したものは別ソースとして識別
+      return Object.assign({}, data.profile, { source: 'api-cache' });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // LIFF コールバック直後 (URL に code/state が付いている) はキャッシュを使わない。
+  // 別アカウントへ切り替えた場合に古いプランで一瞬起動するのを防ぐ。
+  function _isLiffCallbackUrl() {
+    try {
+      const qs = new URLSearchParams(location.search);
+      return qs.has('code') && qs.has('state');
+    } catch (_) { return false; }
+  }
+
+  // 起動時に呼ぶ: キャッシュがあれば即 __USER_PROFILE__ に注入し UI を解除する。
+  // 裏で fetchUserProfile が走って差分が出ればもう一度 applyProviderGate / applyHeaderForProfile が呼ばれる。
+  function _hydrateFromProfileCache() {
+    if (_isLiffCallbackUrl()) {
+      console.log('[api/me] LIFF callback in URL → skip cache hydration (force fresh fetch)');
+      return false;
+    }
+    const cached = _readProfileCache();
+    if (!cached) return false;
+    window.__USER_PROFILE__ = cached;
+    console.log('[api/me] hydrated from cache:', { plan: cached.plan, tags: cached.tags });
+    try { applyProviderGate(); } catch (_) {}
+    try { applyHeaderForProfile(); } catch (_) {}
+    return true;
+  }
+
+  // isProfileAuthenticated は 'api-cache' も認証済み扱いにする (下で hook するため
+  // ここでは fn を上書きできるよう、ローカルに同等の判定を持つ)
+  // ※ isProfileAuthenticated 本体は次の Edit で 'api-cache' を含めるよう拡張する。
+
   // /api/me を叩いてプラン情報を取得する (失敗しても非ブロッキング)
+  // 戻り値: true=成功 / false=フォールバック / 'reauth'=再ログインへ遷移済み
   async function fetchUserProfile() {
     try {
-      const token = liff.getAccessToken();
+      const token = _getLiffToken();
       if (!token) {
-        console.warn('[api/me] no access token available; skipping');
+        console.warn('[api/me] no auth token available; skipping');
         window.__USER_PROFILE__ = buildFallbackProfile('fallback');
-        return;
+        return false;
       }
       const url = '/api/me?product=' + encodeURIComponent(PRODUCT_CODE);
       const res = await withTimeout(
@@ -4157,10 +4258,24 @@ ${layoutDef.desc}
         8000,
         '/api/me'
       );
+      // ID Token 期限切れ → silent re-login で復帰を試みる
+      if (res.status === 401) {
+        let errCode = null;
+        try { const errBody = await res.json(); errCode = errBody && errBody.error; } catch (_) {}
+        console.warn('[api/me] 401, errCode=', errCode);
+        try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
+        if (errCode === 'expired_token' || errCode === 'invalid_token') {
+          if (_trySilentLineReLogin('api/me ' + errCode)) {
+            return 'reauth';
+          }
+        }
+        window.__USER_PROFILE__ = buildFallbackProfile('fallback');
+        return false;
+      }
       if (!res.ok) {
         console.warn('[api/me] non-200 response:', res.status);
         window.__USER_PROFILE__ = buildFallbackProfile('fallback');
-        return;
+        return false;
       }
       const data = await res.json();
       const ent = data.entitlement || {};
@@ -4174,11 +4289,15 @@ ${layoutDef.desc}
         updatedAt: ent.updatedAt || null,
         source: 'api'
       };
+      _clearReLoginAttempts();
+      _saveProfileCache(window.__USER_PROFILE__);
       console.log('[api/me] loaded profile:', { plan: ent.plan, tags: data.tags });
       applyProviderGate();
+      return true;
     } catch (e) {
       console.warn('[api/me] failed:', e && e.message);
       window.__USER_PROFILE__ = buildFallbackProfile('fallback');
+      return false;
     }
   }
 
@@ -4192,9 +4311,9 @@ ${layoutDef.desc}
     try { lastJobId = localStorage.getItem(LAST_JOB_KEY); } catch (_) { return; }
     if (!lastJobId) return;
 
-    const token = (typeof liff !== 'undefined' && liff.getAccessToken) ? liff.getAccessToken() : null;
+    const token = _getLiffToken();
     if (!token) {
-      console.log('[restoreLastJob] no access token, skip');
+      console.log('[restoreLastJob] no auth token, skip');
       return;
     }
 
@@ -4321,13 +4440,15 @@ ${layoutDef.desc}
 
       if (liff.isLoggedIn()) {
         console.log('[LIFF] logged in → fetchUserProfile()');
-        await fetchUserProfile();
+        const result = await fetchUserProfile();
+        if (result === 'reauth') return; // silent re-login へリダイレクト中
         applyHeaderForProfile();
         // 前回の画像生成結果が 24時間以内にあれば自動復元する (失敗時は黙って続行)
         restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
       } else {
         console.log('[LIFF] not logged in → staying anonymous');
-        // 匿名のまま。ヘッダの CTA から手動でログインしてもらう。
+        // ログアウト状態 → キャッシュが残っていれば破棄 (古い情報が次回も使われないように)
+        try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
       }
     } catch (e) {
       console.warn('[LIFF] background init failed; staying anonymous:', e && e.message);
@@ -4373,6 +4494,9 @@ ${layoutDef.desc}
             liff.logout();
           }
         } catch (_) { /* noop */ }
+        // プロファイルキャッシュも破棄 (次回は匿名状態で起動)
+        try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
+        _clearReLoginAttempts();
         location.reload();
       });
     }
@@ -4453,16 +4577,20 @@ ${layoutDef.desc}
     // ③ 通常ルート (/): ログイン不要。匿名フリーで即起動し、
     //    既にLINEログイン済みなら裏で本物のプランに昇格 (ログインは強制しない)
     hideLoginGate();
-    window.__USER_PROFILE__ = {
-      lineUserId:    null,
-      product:       PRODUCT_CODE,
-      plan:          overridePlan || 'free',
-      status:        'active',
-      planExpiresAt: null,
-      tags:          overrideTags,
-      updatedAt:     null,
-      source:        'anonymous'
-    };
+    // キャッシュがあれば PRO/STANDARD バッジを最初から出すために先に hydrate を試みる。
+    // 失敗 (未ログイン or TTL 切れ) なら匿名フリーで起動する。
+    if (!_hydrateFromProfileCache()) {
+      window.__USER_PROFILE__ = {
+        lineUserId:    null,
+        product:       PRODUCT_CODE,
+        plan:          overridePlan || 'free',
+        status:        'active',
+        planExpiresAt: null,
+        tags:          overrideTags,
+        updatedAt:     null,
+        source:        'anonymous'
+      };
+    }
     init();
     applyProviderGate();
     applyHeaderForProfile();
@@ -4470,10 +4598,37 @@ ${layoutDef.desc}
   }
 
   // ログイン必須ルートのブートストラップ
-  //   1) ゲートを「確認中」で表示
-  //   2) LIFF init → 失敗なら「エラー」状態、未ログインなら「ログイン」状態で停止
-  //   3) ログイン済みなら本物のプラン情報を取得してからアプリ本体を起動
+  //   1) キャッシュがあれば即起動 (LIFF init を待たない)。裏で /api/me を更新。
+  //   2) キャッシュが無ければ従来通り: ゲート表示 → LIFF init → /api/me → 起動
   async function requireLoginThenStart() {
+    // ─── 高速パス: 直近5分以内に /api/me 成功していれば即起動 ─────────────────
+    if (_hydrateFromProfileCache()) {
+      console.log('[startup] fast path via profile cache');
+      hideLoginGate();
+      init();
+      // 裏で LIFF init + /api/me を回し、差分があれば applyProviderGate が再走する。
+      // ここで失敗してもキャッシュで起動済みなので体験はブロックしない。
+      (async () => {
+        try {
+          await waitForLiffSdk(8000);
+          await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
+          if (!liff.isLoggedIn()) {
+            // キャッシュは残っていたが LIFF はログアウト状態 → 次回起動で再ログインを要求
+            try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
+            return;
+          }
+          const result = await fetchUserProfile();
+          if (result === 'reauth') return;
+          applyHeaderForProfile();
+        } catch (e) {
+          console.warn('[startup] background refresh failed; staying on cache:', e && e.message);
+        }
+      })();
+      restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
+      return;
+    }
+
+    // ─── 通常パス: キャッシュなし。従来通りゲート→LIFF init→/api/me ──────────
     showLoginGate('loading');
     try {
       await waitForLiffSdk(8000);
@@ -4491,16 +4646,17 @@ ${layoutDef.desc}
     }
 
     // ログイン済み: 本物のプロファイルを取得してからアプリ起動 (失敗時は fallback で続行)
+    let result;
     try {
-      await fetchUserProfile();
+      result = await fetchUserProfile();
     } catch (e) {
       console.warn('[LIFF] fetchUserProfile failed; continuing with fallback:', e && e.message);
       if (!window.__USER_PROFILE__) window.__USER_PROFILE__ = buildFallbackProfile('fallback');
     }
+    if (result === 'reauth') return; // silent re-login へリダイレクト中
     hideLoginGate();
     init();
     applyHeaderForProfile();
-    // 前回の生成結果が 24時間以内にあれば自動復元 (失敗時は黙って続行)
     restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
   }
 
