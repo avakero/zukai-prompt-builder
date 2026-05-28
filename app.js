@@ -397,9 +397,11 @@
   window.__PRODUCT_CODE__ = PRODUCT_CODE;
 
   // 上位プランは下位プランの機能を全て継承する
+  // ai.json / ai.imagegen は API コストが運営負担になるため pro 以上に限定。
+  // standard ユーザーは BYOK (自分の OpenAI キーを設定) すれば両方使えるようになる。
   const PLAN_FEATURES = {
     free: ['core.single'],
-    standard: ['core.single', 'mode.carousel', 'ai.json'],
+    standard: ['core.single', 'mode.carousel'],
     pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen']
   };
@@ -417,7 +419,7 @@
   // feature key → ユーザー向けに案内する必要プラン
   const FEATURE_REQUIRED_PLAN = {
     'mode.carousel': 'STANDARD',
-    'ai.json': 'STANDARD',
+    'ai.json': 'PRO',
     'ai.imagegen': 'PRO'
   };
 
@@ -667,7 +669,7 @@ ${layoutDef.desc}
     els.toast.classList.add('visible');
     toastTimer = setTimeout(() => {
       els.toast.classList.remove('visible');
-    }, 2500);
+    }, 5000);
   }
 
   // 機能ゲート: hasFeature が true なら true を返し処理続行可、false ならトースト表示して false
@@ -684,9 +686,20 @@ ${layoutDef.desc}
     const profile = window.__USER_PROFILE__ || {};
     if (typeof isProfileAuthenticated === 'function' && !isProfileAuthenticated(profile)) {
       showToast(`🔒 ${displayName}は LINE公式の友だち追加 + ログインで利用できます`);
+    } else if (featureKey === 'ai.json' || featureKey === 'ai.imagegen') {
+      // AI機能はBYOK (APIキー設定) で解放できるため、プラン名ではなくBYOK導線を案内する
+      showToast(`🔒 ${displayName}は APIキー設定 (歯車アイコン) で利用できます`);
     } else {
       const plan = FEATURE_REQUIRED_PLAN[featureKey] || 'STANDARD';
-      showToast(`🔒 ${displayName}は ${plan} プラン以上で利用できます`);
+      if (plan === 'STANDARD') {
+        // STANDARD は LINEログイン済みなら自動付与される建付けなので、
+        // ここに来るのは entitlement.status が非アクティブになった
+        // (サブスク失効など) エッジケースに限られる。
+        // STANDARD という名称はユーザーに公開していないので露出させない。
+        showToast(`🔒 ${displayName}は現在ご利用いただけません。再ログインをお試しください`);
+      } else {
+        showToast(`🔒 ${displayName}は ${plan} プラン以上で利用できます`);
+      }
     }
     return false;
   }

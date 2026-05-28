@@ -11,8 +11,8 @@
 //        500 { error: 'internal_error' }
 //
 // 副作用 :
-//   - (line_user_id, product_code) が entitlements に無ければ plan='free' で upsert する
-//     → ログインしたユーザーが製品ごとに自動的に蓄積され、運用者は UPDATE で昇格できる
+//   - (line_user_id, product_code) が entitlements に無ければ plan='standard' で upsert する
+//     LINEログイン済み = standard 扱いが基本ポリシー (free は LINEログイン無しの匿名利用専用)
 //   - auth_audit_log に呼び出しを記録する (失敗しても応答には影響させない)
 
 const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
@@ -56,7 +56,7 @@ async function loadUserProfile(supabase, lineUserId, productCode) {
   const { error: upsertErr } = await supabase
     .from('entitlements')
     .upsert(
-      { line_user_id: lineUserId, product_code: productCode, plan: 'free', status: 'active' },
+      { line_user_id: lineUserId, product_code: productCode, plan: 'standard', status: 'active' },
       { onConflict: 'line_user_id,product_code', ignoreDuplicates: true }
     );
   if (upsertErr) {
