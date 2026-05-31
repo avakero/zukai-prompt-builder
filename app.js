@@ -3307,6 +3307,15 @@ ${layoutDef.desc}
         if (idt) return idt;
       }
     } catch (_) { /* fallthrough */ }
+    return _getLiffAccessToken();
+  }
+
+  // Access Token を明示的に取得する。
+  // ID Token は exp が固定で LIFF が自動更新しないため、expired_token を
+  // 踏んだら LIFF が自動更新する Access Token にフォールバックする。
+  // サーバ側 (api/_lib/line.js) は不透明トークンを path B で検証できる。
+  function _getLiffAccessToken() {
+    if (typeof liff === 'undefined') return null;
     try {
       return (liff.getAccessToken ? liff.getAccessToken() : null);
     } catch (_) { return null; }
@@ -4266,16 +4275,38 @@ ${layoutDef.desc}
         return false;
       }
       const url = '/api/me?product=' + encodeURIComponent(PRODUCT_CODE);
-      const res = await withTimeout(
-        fetch(url, { headers: { Authorization: 'Bearer ' + token } }),
+      const callMe = (tok) => withTimeout(
+        fetch(url, { headers: { Authorization: 'Bearer ' + tok } }),
         8000,
         '/api/me'
       );
-      // ID Token 期限切れ → silent re-login で復帰を試みる
+
+      let res = await callMe(token);
+
+      // 401 の復旧戦略:
+      //   1) expired_token/invalid_token なら、まず Access Token で1回リトライ。
+      //      (ID Token は LIFF が自動更新しないが Access Token は更新されるため、
+      //       フルページ再ログインを避けて静かに復帰できる)
+      //   2) それでも 401 なら従来の silent re-login (liff.login() リダイレクト)。
+      if (res.status === 401) {
+        let errCode = null;
+        try { const errBody = await res.clone().json(); errCode = errBody && errBody.error; } catch (_) {}
+        console.warn('[api/me] 401, errCode=', errCode);
+
+        if (errCode === 'expired_token' || errCode === 'invalid_token') {
+          const accessToken = _getLiffAccessToken();
+          if (accessToken && accessToken !== token) {
+            console.log('[api/me] retrying with access token after', errCode);
+            try { res = await callMe(accessToken); } catch (_) { /* keep 401 res */ }
+          }
+        }
+      }
+
+      // Access Token フォールバックでも 401 が残った場合の最終復旧
       if (res.status === 401) {
         let errCode = null;
         try { const errBody = await res.json(); errCode = errBody && errBody.error; } catch (_) {}
-        console.warn('[api/me] 401, errCode=', errCode);
+        console.warn('[api/me] 401 after retry, errCode=', errCode);
         try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
         if (errCode === 'expired_token' || errCode === 'invalid_token') {
           if (_trySilentLineReLogin('api/me ' + errCode)) {
