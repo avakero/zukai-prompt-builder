@@ -3337,7 +3337,13 @@ ${layoutDef.desc}
     if (!liff.isLoggedIn || !liff.isLoggedIn()) return false;
     try { sessionStorage.setItem(KEY, String(attempts + 1)); } catch (_) {}
     console.log('[LIFF] silent re-login triggered. reason=', reason);
-    try { liff.login(); } catch (e) {
+    try {
+      // 重要: liff.login() は「ログイン済み」状態だと no-op になり、
+      // 期限切れの ID Token を更新できない (401 が無限に続く原因)。
+      // 先に logout() でセッションを破棄し、強制的にフルログインさせる。
+      if (typeof liff.logout === 'function') liff.logout();
+      liff.login();
+    } catch (e) {
       console.warn('[LIFF] silent re-login failed:', e && e.message);
       return false;
     }
@@ -4283,35 +4289,34 @@ ${layoutDef.desc}
 
       let res = await callMe(token);
 
-      // 401 の復旧戦略:
+      // 認証復旧戦略:
       //   1) expired_token/invalid_token なら、まず Access Token で1回リトライ。
-      //      (ID Token は LIFF が自動更新しないが Access Token は更新されるため、
-      //       フルページ再ログインを避けて静かに復帰できる)
-      //   2) それでも 401 なら従来の silent re-login (liff.login() リダイレクト)。
+      //      (Access Token がまだ生きていればフルページ再ログインを避けて静かに復帰)
+      //   2) それでも認証できない (401 残り / Access Token パスが 502 等で失敗) なら
+      //      logout()+login() による強制再ログインに落とす。
+      let authExpired = false;
       if (res.status === 401) {
         let errCode = null;
         try { const errBody = await res.clone().json(); errCode = errBody && errBody.error; } catch (_) {}
         console.warn('[api/me] 401, errCode=', errCode);
 
         if (errCode === 'expired_token' || errCode === 'invalid_token') {
+          authExpired = true;
           const accessToken = _getLiffAccessToken();
           if (accessToken && accessToken !== token) {
             console.log('[api/me] retrying with access token after', errCode);
-            try { res = await callMe(accessToken); } catch (_) { /* keep 401 res */ }
+            try { res = await callMe(accessToken); } catch (_) { /* keep prev res */ }
           }
         }
       }
 
-      // Access Token フォールバックでも 401 が残った場合の最終復旧
-      if (res.status === 401) {
-        let errCode = null;
-        try { const errBody = await res.json(); errCode = errBody && errBody.error; } catch (_) {}
-        console.warn('[api/me] 401 after retry, errCode=', errCode);
+      // 401 が残った、または認証期限切れなのにリトライでも復帰できなかった (502 等) 場合は
+      // 強制再ログインへ。これを通さないと expired セッションから抜け出せない。
+      if (res.status === 401 || (authExpired && !res.ok)) {
+        console.warn('[api/me] auth recovery needed, status=', res.status);
         try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
-        if (errCode === 'expired_token' || errCode === 'invalid_token') {
-          if (_trySilentLineReLogin('api/me ' + errCode)) {
-            return 'reauth';
-          }
+        if (_trySilentLineReLogin('api/me auth expired')) {
+          return 'reauth';
         }
         window.__USER_PROFILE__ = buildFallbackProfile('fallback');
         return false;
