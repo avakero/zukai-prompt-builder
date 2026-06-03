@@ -206,7 +206,8 @@
     colorValue: '',
     customColor: '#3b82f6',
     theme: 'light',
-    mode: 'single' // 'single' | 'carousel'
+    mode: 'single', // 'single' | 'carousel'
+    carouselPageNumbers: true
   };
 
   // カルーセル状態
@@ -301,6 +302,7 @@
     carouselGenerateBtn: $('#carouselGenerateBtn'),
     carouselOutputSection: $('#carouselOutputSection'),
     carouselOutputCards: $('#carouselOutputCards'),
+    carouselPageNumberToggle: $('#carouselPageNumberToggle'),
     // モード出力
     modeContentSingleOutput: $('#modeContentSingleOutput'),
     modeContentCarouselOutput: $('#modeContentCarouselOutput'),
@@ -582,6 +584,7 @@ ${buildStyleDefinitionText()}
 
 ## ■禁止事項
 * 指定されたキャラの外見変更（キャラ使用時）
+* 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターの描写
 * 意味のない英語の羅列
 * 実在ブランドのロゴ描写
 
@@ -719,7 +722,8 @@ ${layoutDef.desc}
       colorValue: '',
       customColor: '#3b82f6',
       theme: state.theme, // テーマはリセットしない
-      mode: 'single'
+      mode: 'single',
+      carouselPageNumbers: true
     };
 
     els.contentText.value = '';
@@ -757,6 +761,7 @@ ${layoutDef.desc}
 
     // ===== AI生成 入力欄 =====
     if (els.aiThemeInput) els.aiThemeInput.value = '';
+    if (els.carouselPageNumberToggle) els.carouselPageNumberToggle.checked = true;
 
     // ===== 画像生成 state / UI =====
     imageGenState.generatedImages = [];
@@ -1212,6 +1217,10 @@ ${layoutDef.desc}
     updateBadges();
     updateCharCount();
 
+    if (els.carouselPageNumberToggle) {
+      els.carouselPageNumberToggle.checked = state.carouselPageNumbers !== false;
+    }
+
     // モード復元
     if (state.mode && state.mode !== 'single') {
       switchMode(state.mode);
@@ -1372,6 +1381,12 @@ ${layoutDef.desc}
     }
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
+    }
+    if (els.carouselPageNumberToggle) {
+      els.carouselPageNumberToggle.addEventListener('change', () => {
+        state.carouselPageNumbers = els.carouselPageNumberToggle.checked;
+        saveState();
+      });
     }
     if (els.copyCaptionAllBtn) {
       els.copyCaptionAllBtn.addEventListener('click', copyCaptionAll);
@@ -2669,6 +2684,9 @@ ${theme}
     const layoutDef = LAYOUT_DEFS[layout] || LAYOUT_DEFS['G'];
     const content = slide.content || '';
     const page = slide.page || index + 1;
+    const pageNumberInstruction = state.carouselPageNumbers === false
+      ? '* ページ番号や「1/5」のような枚数表記は入れないでください'
+      : `* ページ番号「${page}/${totalSlides}」を右下に小さく入れてください`;
 
     // 配色はUIの設定を使用
     let colorInstruction = 'お任せ（内容に合った最適な配色を選んでください）';
@@ -2710,13 +2728,14 @@ ${theme}
 
 ## ■禁止事項
 * 指定されたキャラの外見変更（キャラ使用時）
+* 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターの描写
 * 意味のない英語の羅列
 * 実在ブランドのロゴ描写
 
 ## ■カルーセル投稿の注意事項
 * これはカルーセル投稿の **${page}枚目 / 全${totalSlides}枚** です
 * 全スライドで統一感のあるデザインにしてください
-* ページ番号「${page}/${totalSlides}」を右下に小さく入れてください
+${pageNumberInstruction}
 * このスライドの役割: **${roleLabel}**
 
 ---
@@ -2737,6 +2756,23 @@ ${layoutDef.desc}
 ### フォーマット: ${globalFormat}
 
 ### 配色: ${colorInstruction}${charImageNote}`;
+  }
+
+  function buildImageSlideContent(slide, index, totalSlides) {
+    const page = slide.page || index + 1;
+    const baseContent = slide.content || '';
+    const pageNumberInstruction = state.carouselPageNumbers === false
+      ? 'ページ番号や「1/5」のような枚数表記は入れない。'
+      : `右下にページ番号「${page}/${totalSlides}」を小さく入れる。`;
+
+    return [
+      baseContent,
+      '',
+      '## スライド条件',
+      `- これはカルーセル投稿の ${page}枚目 / 全${totalSlides}枚。`,
+      `- ${pageNumberInstruction}`,
+      '- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない。'
+    ].join('\n');
   }
 
   // ============================================================
@@ -3168,6 +3204,7 @@ ${layoutDef.desc}
         `- 1枚の完結したイラストとして仕上げる(複数コマや分割はしない)`,
         `- 図解内のテキストは日本語(漢字・ひらがな・カタカナ)で記載し、文字が崩れないよう丁寧に描画`,
         `- 装飾的な枠線・外枠・ロゴ・ウォーターマークは入れない`,
+        `- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない`,
         `- 背景は上記の画風スタイルに合うシンプルなものに`,
         `- 上記スタイルから外れず、忠実に従うこと`
       ].join('\n');
@@ -3179,7 +3216,7 @@ ${layoutDef.desc}
     return `${styleHeader}\n\n` +
       `上記の画風スタイルを必ず厳守してください。他のスタイルに勝手に変えないこと。\n\n` +
       `## コンテンツ\n以下の内容を図解画像として生成してください:\n${slideContent}\n\n` +
-      `## 注意事項\n- 図解内のテキストは日本語で記載すること\n- ページ全体を1枚の画像として完成させること\n- 装飾的な枠線やロゴは不要\n\n` +
+      `## 注意事項\n- 図解内のテキストは日本語で記載すること\n- ページ全体を1枚の画像として完成させること\n- 装飾的な枠線やロゴは不要\n- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない\n\n` +
       `## 最終再確認\n画風は必ず「${presetLabel || 'ユーザー指定'}」: ${stylePrompt}`;
   }
 
@@ -3466,7 +3503,7 @@ ${layoutDef.desc}
       slideIndex: i,
       imageUrl: null,
       stylePrompt: stylePrompt,
-      contentPrompt: slide.content || '',
+      contentPrompt: buildImageSlideContent(slide, i, total),
       model: imageGenState.model,
       status: 'loading',
       error: null,
@@ -3549,7 +3586,7 @@ ${layoutDef.desc}
       const initialDelay = (i < _activeConcurrency) ? i * STAGGER_DELAY_MS : 0;
       if (initialDelay > 0) await sleep(initialDelay);
 
-      const content = slide.content || '';
+      const content = buildImageSlideContent(slide, i, total);
       const fullPrompt = buildImagePrompt(content, stylePrompt, presetLabel, _activeProvider);
       const assignedKeyIndex = i % PICKAXE_WORKSPACE_COUNT;
       if (i === 0) console.log('[ImageGen] sample full prompt (slide 1):\n', fullPrompt);
