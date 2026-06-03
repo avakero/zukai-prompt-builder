@@ -297,11 +297,18 @@
           ></textarea>
         </div>
 
-        <div class="ai-gen-examples" aria-label="入力例">
-          <button class="ai-gen-example" type="button" data-example="副業を始めたい会社員向けに、最初の30日でやることを5枚のカルーセルにしたい。実用的で背中を押すトーン。">副業の始め方</button>
-          <button class="ai-gen-example" type="button" data-example="美容サロンのInstagram投稿として、梅雨の髪の広がり対策を紹介したい。20代から40代女性向け。やさしく信頼感のある雰囲気。">サロン投稿</button>
-          <button class="ai-gen-example" type="button" data-example="採用広報向けに、未経験エンジニアが入社後に成長できる理由を伝えるカルーセルを作りたい。誠実で具体的なトーン。">採用広報</button>
-        </div>
+        <label class="carousel-option">
+          <input
+            class="carousel-option__checkbox"
+            id="carouselPageNumberToggle"
+            type="checkbox"
+            checked
+          >
+          <span class="carousel-option__body">
+            <span class="carousel-option__title">右下にページ番号を入れる</span>
+            <span class="carousel-option__hint">note・ブログ・Kindle用途では外せます</span>
+          </span>
+        </label>
 
         <div class="ai-gen-controls ai-gen-controls--3col">
           <div class="ai-gen-control-group">
@@ -762,18 +769,6 @@
 
       <!-- プロンプト生成ボタン -->
       <section class="section" id="carouselGenerateSection">
-        <label class="carousel-option">
-          <input
-            class="carousel-option__checkbox"
-            id="carouselPageNumberToggle"
-            type="checkbox"
-            checked
-          >
-          <span class="carousel-option__body">
-            <span class="carousel-option__title">右下にページ番号を入れる</span>
-            <span class="carousel-option__hint">note・ブログ・Kindle用途では外せます</span>
-          </span>
-        </label>
         <button class="generate-btn" id="carouselGenerateBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
