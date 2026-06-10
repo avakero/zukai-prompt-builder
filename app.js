@@ -164,6 +164,26 @@
       .join('\n');
   }
 
+  // ① ユーザー固有「スタイル署名」定義
+  // 同じ画風プリセットを選んでも全ユーザーが完全に同一のプロンプトになり、
+  // 出力画像が被ってしまう。それを避けるための「あなたの個性」レイヤー。
+  // 選択した画風・配色を壊さない範囲で、色温度・フォルム・あしらいの傾向だけを
+  // 上乗せする。ユーザーが選んで state に保存 → 次回以降も同じ個性で一貫する。
+  const SIGNATURE_DEFS = {
+    none:   { label: '標準',     desc: '個性の上乗せなし', prompt: '' },
+    warm:   { label: '温かみ',   desc: '暖色寄り・丸み',   prompt: '全体の色温度をやや暖色寄りにし、角に丸みを持たせて、親しみやすく柔らかい印象に仕上げる。' },
+    cool:   { label: 'クール',   desc: '寒色寄り・シャープ', prompt: '全体の色温度をやや寒色寄りにし、直線的でシャープなフォルムを基調に、洗練された静かな印象に仕上げる。' },
+    lively: { label: 'にぎやか', desc: '装飾を散らす',       prompt: '小さな星・ドット・吹き出し・手書き矢印などの装飾モチーフをアクセントとして程よく散らし、楽しく賑やかな雰囲気を添える。' },
+    calm:   { label: '落ち着き', desc: '余白広め・上品',     prompt: '装飾を控えめにし、余白を広めに取り、要素を絞った静かで上品な構成にする。' },
+    bold:   { label: '力強い',   desc: 'コントラスト強',     prompt: 'コントラストを強めにし、主役の要素を大きく太く扱って視線を一点に引きつける、メリハリのある力強い構成にする。' },
+    craft:  { label: '手作り感', desc: '囲み・付箋風',       prompt: '手描きの囲み線・付箋・マスキングテープ風のあしらいを少し添え、人の手で作ったような温度感を出す。' }
+  };
+
+  function buildSignatureText() {
+    const sig = SIGNATURE_DEFS[state.styleSignature];
+    return (sig && sig.prompt) ? sig.prompt : '';
+  }
+
   const LAYOUT_DEFS = {
     A: { label: '並列リスト', desc: '要点まとめ' },
     B: { label: '比較図', desc: 'VS構造、左右対比' },
@@ -205,6 +225,7 @@
     colorMode: 'auto', // 'auto' | 'preset' | 'custom'
     colorValue: '',
     customColor: '#3b82f6',
+    styleSignature: 'none', // ① あなたのスタイル署名（個性）。SIGNATURE_DEFS のキー
     theme: 'light',
     mode: 'single', // 'single' | 'carousel'
     carouselPageNumbers: true
@@ -561,6 +582,12 @@
       ? `\n\n## ■キャラクター画像\n添付した${characterImages.length}枚のキャラクター画像を図解内に登場させてください。\nキャラクターの外見は変更せず、そのままのデザインを維持してください。`
       : '';
 
+    // ① スタイル署名（あなたの個性）。画風・配色を最優先しつつ個性を上乗せ。
+    const signaturePrompt = buildSignatureText();
+    const signatureBlock = signaturePrompt
+      ? `\n\n### あなたのスタイル署名（個性）\n※選択した画風・配色を最優先し、それを損なわない範囲で次の個性を加えてください。\n${signaturePrompt}`
+      : '';
+
     // === 統一プロンプト（命令書 + 依頼内容を一体化） ===
     const prompt = `# 命令書：万能・図解デザイナーAI
 あなたは、ユーザーの意図を汲み取り、最適なビジュアルを設計するプロの図解デザイナーです。
@@ -605,7 +632,7 @@ ${layoutDef.desc}
 
 ### フォーマット: ${state.format}
 
-### 配色: ${colorInstruction}${imageNote}`;
+### 配色: ${colorInstruction}${signatureBlock}${imageNote}`;
 
     els.promptText.textContent = prompt;
     els.outputSection.classList.add('visible');
@@ -721,6 +748,7 @@ ${layoutDef.desc}
       colorMode: 'auto',
       colorValue: '',
       customColor: '#3b82f6',
+      styleSignature: state.styleSignature || 'none', // 署名は個人設定なのでリセットしない
       theme: state.theme, // テーマはリセットしない
       mode: 'single',
       carouselPageNumbers: true
@@ -1193,6 +1221,7 @@ ${layoutDef.desc}
     activateCard('style', state.style);
     activateCard('layout', state.layout);
     activateCard('format', state.format);
+    activateCard('signature', state.styleSignature || 'none');
 
     // 配色
     clearColorSelections();
@@ -1253,6 +1282,7 @@ ${layoutDef.desc}
         if (group === 'style') state.style = value;
         else if (group === 'layout') state.layout = value;
         else if (group === 'format') state.format = value;
+        else if (group === 'signature') state.styleSignature = value;
         else if (group === 'model') {
           imageGenState.model = value;
           if (els.modelBadge) els.modelBadge.textContent = value;
@@ -2994,11 +3024,20 @@ ${layoutDef.desc}
 
   function getCurrentStylePrompt() {
     const presetId = imageGenState.selectedPreset;
+    let base;
     if (presetId === 'custom') {
-      return (els.imageGenCustomStyle ? els.imageGenCustomStyle.value : '') || '';
+      base = (els.imageGenCustomStyle ? els.imageGenCustomStyle.value : '') || '';
+    } else {
+      const preset = IMAGE_GEN_STYLE_PRESETS[presetId];
+      base = preset ? preset.prompt : '';
     }
-    const preset = IMAGE_GEN_STYLE_PRESETS[presetId];
-    return preset ? preset.prompt : '';
+    // ① スタイル署名（あなたの個性）を上乗せ。base が空（custom 未入力）の場合は
+    // 既存の必須チェックを壊さないよう付与しない。
+    const sig = buildSignatureText();
+    if (sig && base.trim()) {
+      base += `\n\n【スタイル署名（あなたの個性）】上記の画風を最優先し、それを損なわない範囲で次の個性を加える：${sig}`;
+    }
+    return base;
   }
 
   // ============================================================

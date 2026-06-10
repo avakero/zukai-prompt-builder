@@ -665,6 +665,69 @@
       </div>
     </section>
 
+    <!-- 4.5 あなたのスタイル署名（個性） -->
+    <section class="section" id="sectionSignature">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17c3-1 4-8 6-8s2 6 4 6 2-4 4-4"/><path d="M3 21h18"/>
+        </svg>
+        <h2 class="section__title">あなたのスタイル署名</h2>
+      </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">他の人と画像が被らないための「あなたの個性」。一度選ぶと次回以降も保存され、投稿の世界観が揃います。</p>
+      <div class="selection-grid" role="radiogroup" aria-label="スタイル署名選択">
+
+        <div class="selection-card active" data-group="signature" data-value="none" role="radio" aria-checked="true" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="selection-card__label">標準</span>
+          <span class="selection-card__desc">個性なし</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="warm" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></span>
+          <span class="selection-card__label">温かみ</span>
+          <span class="selection-card__desc">暖色・丸み</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="cool" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></span>
+          <span class="selection-card__label">クール</span>
+          <span class="selection-card__desc">寒色・直線</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="lively" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9 9 12 2"/></svg></span>
+          <span class="selection-card__label">にぎやか</span>
+          <span class="selection-card__desc">装飾を散らす</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="calm" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg></span>
+          <span class="selection-card__label">落ち着き</span>
+          <span class="selection-card__desc">余白・上品</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="bold" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9 13 2"/></svg></span>
+          <span class="selection-card__label">力強い</span>
+          <span class="selection-card__desc">コントラスト強</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="craft" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></span>
+          <span class="selection-card__label">手作り感</span>
+          <span class="selection-card__desc">囲み・付箋風</span>
+        </div>
+
+      </div>
+    </section>
+
     <!-- 5. 配色 -->
     <section class="section" id="sectionColor">
       <div class="section__header">
