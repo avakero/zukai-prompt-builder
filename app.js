@@ -2794,9 +2794,11 @@ ${theme}
     let charImageNote = '';
     if (characterImages.length > 0) {
       charImageNote = `\n\n### キャラクター画像
-添付したキャラクター画像を図解内に配置してください。
-* キャラクターの外見（髪型・服装・体型）は変えずそのまま使用すること。
-* 図解の内容とマッチしたポーズや表情をつけること。
+添付したキャラクター画像を主役または案内役として図解内に必ず配置してください。
+* キャラクターの外見（輪郭・顔・目・口・色・服装・体型・特徴的な小物）は変更せず、参照画像と同一キャラクターとして認識できるように描くこと。
+* 新しい別キャラクターに置き換えないこと。人間化・リアル化・別マスコット化・抽象アイコン化もしないこと。
+* 図解の内容とマッチしたポーズや表情は付けてよいが、デザイン上の特徴は維持すること。
+* キャラクターは小さな飾りではなく、画面内で視認できるサイズ（画像幅の15〜30%程度）で配置すること。
 * 添付画像${characterImages.length}枚`;
     }
 
@@ -2858,6 +2860,13 @@ ${layoutDef.desc}
     const pageNumberInstruction = state.carouselPageNumbers === false
       ? 'ページ番号や「1/5」のような枚数表記は入れない。'
       : `右下にページ番号「${page}/${totalSlides}」を小さく入れる。`;
+    const characterInstruction = characterImages.length > 0
+      ? [
+          '- 添付された参照キャラクター画像を、このスライド内に必ず登場させる。',
+          '- 参照キャラクターの輪郭・顔・目・口・色・服装・体型・特徴的な小物を維持し、別キャラクター化しない。',
+          '- キャラクターは情報を案内する役として、画像幅の15〜30%程度の視認できるサイズで配置する。'
+        ]
+      : [];
 
     return [
       baseContent,
@@ -2865,6 +2874,7 @@ ${layoutDef.desc}
       '## スライド条件',
       `- これはカルーセル投稿の ${page}枚目 / 全${totalSlides}枚。`,
       `- ${pageNumberInstruction}`,
+      ...characterInstruction,
       '- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない。'
     ].join('\n');
   }
@@ -3282,12 +3292,25 @@ ${layoutDef.desc}
   // ============================================================
 
   function buildImagePrompt(slideContent, stylePrompt, presetLabel, providerHint) {
+    const characterReferenceBlock = characterImages.length > 0
+      ? [
+          `## 最重要: 添付キャラクター参照画像の扱い`,
+          `- 添付された${characterImages.length}枚の参照画像は、生成画像に登場させるキャラクターの正本です。`,
+          `- 参照キャラクターの輪郭、顔、目、口、色、服装、体型、特徴的な小物を維持してください。`,
+          `- 新しい別キャラクターに置き換えないでください。人間化、リアル化、別マスコット化、抽象アイコン化は禁止です。`,
+          `- ポーズや表情はスライド内容に合わせて調整してよいですが、同一キャラクターと分かる外見を保ってください。`,
+          `- キャラクターは小さな飾りではなく、画面内で視認できる案内役として配置してください。`
+        ].join('\n')
+      : '';
+
     // OpenAI gpt-image-2 / Gemini は明示的かつ簡潔な指示が効きやすい。
     // 一方 Pickaxe ワークスペースは独自バイアスがあるため、スタイル指示を
     // 冒頭・末尾の両方で強調する従来フォーマットの方が安定する。
     // providerHint で経路ごとに最適化する。
     if (providerHint === 'openai' || providerHint === 'gemini') {
       return [
+        characterReferenceBlock,
+        characterReferenceBlock ? `` : null,
         `## 画風スタイル: ${presetLabel || 'カスタム'}`,
         stylePrompt,
         ``,
@@ -3301,13 +3324,14 @@ ${layoutDef.desc}
         `- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない`,
         `- 背景は上記の画風スタイルに合うシンプルなものに`,
         `- 上記スタイルから外れず、忠実に従うこと`
-      ].join('\n');
+      ].filter(line => line !== null).join('\n');
     }
     // Pickaxe (歴史的フォーマット、後方互換維持)
     const styleHeader = presetLabel
       ? `【最優先：画風スタイル＝「${presetLabel}」】\n${stylePrompt}`
       : `【最優先：画風スタイル】\n${stylePrompt}`;
-    return `${styleHeader}\n\n` +
+    return `${characterReferenceBlock ? characterReferenceBlock + '\n\n' : ''}` +
+      `${styleHeader}\n\n` +
       `上記の画風スタイルを必ず厳守してください。他のスタイルに勝手に変えないこと。\n\n` +
       `## コンテンツ\n以下の内容を図解画像として生成してください:\n${slideContent}\n\n` +
       `## 注意事項\n- 図解内のテキストは日本語で記載すること\n- ページ全体を1枚の画像として完成させること\n- 装飾的な枠線やロゴは不要\n- 既存のアニメ・漫画・ゲーム・映画・企業マスコットなど、著作権や商標で保護されたキャラクターは描写しない\n\n` +
