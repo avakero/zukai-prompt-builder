@@ -3231,7 +3231,7 @@ ${layoutDef.desc}
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
     }
-    return _postImageGenProxy('/api/pickaxe-proxy', payload, PICKAXE_REQUEST_TIMEOUT_MS);
+    return _postImageGenProxy('/api/pickaxe', payload, PICKAXE_REQUEST_TIMEOUT_MS);
   }
 
   // OpenAI 1試行 (gpt-image-2 / gpt-image-1 / dall-e-3)
