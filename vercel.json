@@ -1,31 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/me.js": {
-      "maxDuration": 10
-    },
-    "api/upload-character-image.js": {
-      "maxDuration": 10
-    },
-    "api/pickaxe-proxy.js": {
-      "maxDuration": 300
-    },
-    "api/log-generation.js": {
-      "maxDuration": 10
-    },
-    "api/log-slide.js": {
-      "maxDuration": 10
-    },
-    "api/job.js": {
-      "maxDuration": 10
-    },
-    "api/openai-image.js": {
-      "maxDuration": 180
-    },
-    "api/gemini-image.js": {
-      "maxDuration": 180
-    }
-  },
+  "fluid": true,
   "rewrites": [
     { "source": "/pro-max", "destination": "/index.html" },
     { "source": "/pro-max/", "destination": "/index.html" },
