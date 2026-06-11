@@ -1,37 +1,13 @@
-// Temporary public Pro Max access for the /pro-max route.
-// Remove this helper and the X-Temporary-Pro-Max-Access client headers when the campaign ends.
+// かつて /pro-max を LINE 認証なしで一時開放していた仕組み (temp-access) は廃止した。
+// 配布設計を「公開ページ (認証なし・機能制限) / マガジンページ (LINEログイン必須・全機能)」
+// の2経路に分けたため、認証バイパスは不要かつ有害 (ログイン必須と矛盾) になった。
 //
-// オプトイン方式: ENABLE_TEMP_PRO_MAX_ACCESS=1 が明示的に設定されている環境でのみ有効。
-// 未設定なら認証バイパスは常に無効 (キャンペーン継続中は Vercel 側でこの env var を設定すること)。
-const { authenticateFromAuthorizationHeader, VerificationError } = require('./line');
-
-const TEMP_PRO_MAX_HEADER = 'x-temporary-pro-max-access';
-const TEMP_PRO_MAX_LINE_USER_ID = 'Utemp-pro-max-open-access';
-
-function hasTemporaryProMaxAccess(req) {
-  if (process.env.ENABLE_TEMP_PRO_MAX_ACCESS !== '1') return false;
-  const value = req && req.headers ? req.headers[TEMP_PRO_MAX_HEADER] : null;
-  return value === '1' || value === 'true';
-}
+// 互換のため authenticateWithTemporaryProMax という名前は残すが、中身は通常の
+// LINE トークン検証そのもの (バイパスなし)。呼び出し側の改修を避けるための薄いエイリアス。
+const { authenticateFromAuthorizationHeader } = require('./line');
 
 async function authenticateWithTemporaryProMax(req) {
-  try {
-    return await authenticateFromAuthorizationHeader(req.headers.authorization);
-  } catch (e) {
-    if (e instanceof VerificationError && hasTemporaryProMaxAccess(req)) {
-      return {
-        lineUserId: TEMP_PRO_MAX_LINE_USER_ID,
-        clientId: 'temporary-pro-max',
-        expiresIn: null,
-        temporary: true
-      };
-    }
-    throw e;
-  }
+  return authenticateFromAuthorizationHeader(req.headers.authorization);
 }
 
-module.exports = {
-  authenticateWithTemporaryProMax,
-  hasTemporaryProMaxAccess,
-  TEMP_PRO_MAX_LINE_USER_ID
-};
+module.exports = { authenticateWithTemporaryProMax };

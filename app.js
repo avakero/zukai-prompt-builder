@@ -429,8 +429,13 @@
   // ai.json / ai.imagegen は API コストが運営負担になるため pro 以上に限定。
   // standard ユーザーは BYOK (自分の OpenAI キーを設定) すれば両方使えるようになる。
   const PLAN_FEATURES = {
+    // 公開ページ (/ と /free) 用の擬似プラン。単体＋手動カルーセルのみ、AI不可。
+    // (UI 側では applyPublicLimits() でスタイル/署名/配色も絞り、AIボタンを無効表示にする)
+    public: ['core.single', 'mode.carousel'],
     free: ['core.single'],
-    standard: ['core.single', 'mode.carousel'],
+    // LINEログイン済み (= マガジン購入者) は全機能を表示。AI の実利用は BYOK 必須
+    // (サーバー側 /api/*-image で検証)。購入者の絞り込みは /pro-max URL を知っていること=経路で行う。
+    standard: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen']
   };
@@ -952,7 +957,7 @@ ${layoutDef.desc}
     if (img.publicUrl) return img.publicUrl;
 
     const token = _getLiffToken();
-    if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
+    if (!token) throw new Error('LINE認証トークンが取得できません');
 
     // 大きい画像は送信前に縮小
     let dataUrlToSend;
@@ -967,8 +972,7 @@ ${layoutDef.desc}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-        ...temporaryProMaxHeaders()
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
       },
       body: JSON.stringify({ dataUrl: dataUrlToSend, filename: img.name })
     });
@@ -1319,6 +1323,8 @@ ${layoutDef.desc}
     // 選択カードクリック
     $$('.selection-card').forEach(card => {
       card.addEventListener('click', () => {
+        // 公開ページでロックされたカードはキーボード(Enter/Space→click)経由でも無効化
+        if (card.getAttribute('aria-disabled') === 'true') return;
         const group = card.dataset.group;
         const value = card.dataset.value;
 
@@ -2276,12 +2282,12 @@ ${theme}
    */
   async function callStraicoApi(apiKey, model, prompt) {
     // 独自キー未設定 (センチネル) のときはサーバープロキシ経由。
-    // プロキシは LINE 認証 (または /pro-max の一時アクセスヘッダ) を要求する。
+    // プロキシは LINE 認証を要求する (Straico は開発者タグ保有者のみ)。
     const useProxy = !apiKey || apiKey === STRAICO_SERVER_PROXY;
     const token = useProxy ? _getLiffToken() : null;
-    // プロキシ経由には LINE 認証 (または /pro-max 一時アクセス) が必要。
+    // プロキシ経由には LINE 認証が必要。
     // 未ログインのまま投げると無意味な 401 になるため、先に分かりやすく案内する。
-    if (useProxy && !token && !isTemporaryProMaxRoute()) {
+    if (useProxy && !token) {
       throw new Error('内蔵Straicoキーの利用にはLINEログインが必要です。LINEでログインするか、APIキー設定からご自身のStraicoキーを登録してください');
     }
     const res = await fetch(useProxy ? STRAICO_PROXY_ENDPOINT : STRAICO_ENDPOINT, {
@@ -2289,8 +2295,7 @@ ${theme}
       headers: useProxy
         ? {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-            ...temporaryProMaxHeaders()
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
           }
         : {
             'Authorization': `Bearer ${apiKey}`,
@@ -3266,7 +3271,7 @@ ${layoutDef.desc}
   // タイムアウト管理 + エラーレスポンス整形を統一する。
   async function _postImageGenProxy(endpoint, body, timeoutMs, extraHeaders) {
     const token = _getLiffToken();
-    if (!token && !isTemporaryProMaxRoute()) throw new Error('LINE認証トークンが取得できません');
+    if (!token) throw new Error('LINE認証トークンが取得できません');
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -3278,7 +3283,6 @@ ${layoutDef.desc}
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-          ...temporaryProMaxHeaders(),
           ...(extraHeaders || {})
         },
         body: JSON.stringify(body),
@@ -3655,14 +3659,13 @@ ${layoutDef.desc}
 
   async function logGenerationStart(jobId, payload) {
     const token = _getLiffToken();
-    if (!token && !isTemporaryProMaxRoute()) return false;
+    if (!token) return false;
     try {
       const res = await fetch('/api/log-generation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-          ...temporaryProMaxHeaders()
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
         },
         body: JSON.stringify({ job_id: jobId, ...payload })
       });
@@ -3681,14 +3684,13 @@ ${layoutDef.desc}
     // 完全な fire-and-forget。keepalive を付けることで、ユーザーがタブを
     // 閉じても送信は完遂される (フェーズ2 で活きる前提)。
     const token = _getLiffToken();
-    if (!token && !isTemporaryProMaxRoute()) return;
+    if (!token) return;
     try {
       fetch('/api/log-slide', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-          ...temporaryProMaxHeaders()
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
         },
         body: JSON.stringify({ job_id: jobId, slide_idx: slideIdx, ...result }),
         keepalive: true
@@ -4425,6 +4427,77 @@ ${layoutDef.desc}
     console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ showStraico =', showStraico, '/ active model =', imageGenState.model);
   }
 
+  // 公開ページ (/ と /free、localhost 除く) のUI制限。
+  // 単体＋手動カルーセルのみ使える状態にし、スタイルは2種、署名・配色は固定、
+  // AI機能ボタンは薄暗く押せない (非表示にはしない) 状態にする。
+  const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風
+
+  function isPublicMode() {
+    // localhost は開発用に全機能のまま (制限をかけない)。
+    // 公開ルートでは ?plan= 等の上書きに関わらず常に制限を適用する
+    // (公開ページの制限は経路で決まる仕様。デモは localhost / pro-max で行う)。
+    return isOpenAccessRoute() && !isLocalDev();
+  }
+
+  function lockSection(selector) {
+    const sec = document.querySelector(selector);
+    if (!sec) return;
+    sec.classList.add('section--locked');
+    sec.querySelectorAll('.selection-card, .color-swatch, .color-auto-btn, button, input').forEach(el => {
+      // div ベースのカード/スウォッチは disabled 属性を無視するので pointer-events で止める。
+      // ネイティブ button/input には disabled も付ける。
+      // tabindex=-1 でキーボードフォーカスも外す (Enter/Space での発火を防ぐ。
+      //  click ハンドラ側でも aria-disabled を見て二重に弾く)。
+      el.style.pointerEvents = 'none';
+      el.setAttribute('aria-disabled', 'true');
+      el.setAttribute('tabindex', '-1');
+      if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') el.setAttribute('disabled', '');
+    });
+  }
+
+  function applyPublicLimits() {
+    if (!isPublicMode()) return;
+
+    // (a) スタイルを2種のみ表示。許可外を選んでいたら A にリセット。
+    document.querySelectorAll('[data-group="style"]').forEach(card => {
+      const allow = PUBLIC_ALLOWED_STYLES.includes(card.dataset.value);
+      card.style.display = allow ? '' : 'none';
+      if (!allow) { card.classList.remove('active'); card.setAttribute('aria-checked', 'false'); }
+    });
+    if (!PUBLIC_ALLOWED_STYLES.includes(state.style)) {
+      state.style = 'A';
+      activateCard('style', 'A');
+      updateBadges();
+      saveState();
+    }
+
+    // (b) スタイル署名をデフォルト(none)に固定してロック
+    if (state.styleSignature !== 'none') {
+      state.styleSignature = 'none';
+      activateCard('signature', 'none');
+      updateBadges();
+      saveState();
+    }
+    lockSection('#sectionSignature');
+
+    // (c) 配色を auto に固定してロック
+    if (state.colorMode !== 'auto') {
+      setColorAuto();  // 内部で clearColorSelections + saveState
+    }
+    lockSection('#sectionColor');
+
+    // (d) AI機能ボタンを薄暗く・押せない状態に (非表示にはしない)
+    //     既存CSS .generate-btn:disabled { opacity:.5 } で薄暗くなる
+    [els.aiGenerateBtn, els.imageGenBtn].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+      btn.title = '公開ページでは手動作成のみご利用いただけます（全機能はマガジン購入者向けページで）';
+    });
+
+    console.log('[applyPublicLimits] public mode: styles limited, signature/color locked, AI disabled');
+  }
+
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
   // ※ このLIFFアプリのエンドポイントURLを ルート https://zukai-builder.vercel.app/ に
   //   設定することで、配下の全サブパス (/pro-max, /line-menu 等) を1つのLIFFアプリでカバーする。
@@ -4472,8 +4545,7 @@ ${layoutDef.desc}
     if (!profile) return false;
     return profile.source === 'api'
         || profile.source === 'api-cache'
-        || profile.source === 'local-dev'
-        || profile.source === 'temporary-pro-max';
+        || profile.source === 'local-dev';
   }
 
   // 現在のプロファイルに応じてヘッダの CTA / ユーザープロフィール表示を切替
@@ -4951,10 +5023,12 @@ ${layoutDef.desc}
     return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
   }
 
-  // LINE認証不要の公開ページ (/free のみ) かどうか
-  // ※ /pro-max はログイン必須化したため、ここからは除外している
+  // LINE認証不要の公開ページかどうか。
+  // ルート (/) と /free を「公開ページ」として扱う (キャンペーン用・機能制限あり)。
+  // ※ /pro-max はログイン必須なのでここからは除外。
   function isOpenAccessRoute() {
     const path = location.pathname || '';
+    if (path === '/' || path === '') return true;
     return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
   }
 
@@ -4966,23 +5040,11 @@ ${layoutDef.desc}
     return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
   }
 
-  function isTemporaryProMaxRoute() {
-    const path = location.pathname || '';
-    return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
-  }
-
-  function temporaryProMaxHeaders() {
-    return isTemporaryProMaxRoute() ? { 'X-Temporary-Pro-Max-Access': '1' } : {};
-  }
-
-  // アプリ起動 (常にアプリ本体を即表示。LIFF はバックグラウンドで初期化)
-  // 流れ:
-  //   1) URL クエリと経路を解析して "ベースライン" プロファイルを作る
-  //      - /free or localhost → 既存挙動 (open-access / local-dev)
-  //      - それ以外 → 匿名フリー (source='anonymous')
-  //   2) アプリ本体を起動 + ヘッダ反映
-  //   3) /free/localhost 以外なら LIFF をバックグラウンド初期化し、
-  //      ログイン済みなら本物のプロファイルにアップグレード
+  // アプリ起動。経路で2つに分岐:
+  //   ① /pro-max (ログイン必須・マガジン購入者): ゲート→LINEログイン→全機能
+  //   ② / と /free (公開ページ) と localhost: 認証なしで即起動。
+  //      公開ルートは plan='public' + applyPublicLimits() で機能制限
+  //      (localhost は開発用に plan='pro' で全機能)。ログイン昇格はしない。
   function startApp() {
     initLoginEvents();
 
@@ -4996,13 +5058,15 @@ ${layoutDef.desc}
       return;
     }
 
-    // ② 公開ルート (/free) と localhost: 固定プロファイルで即起動
+    // ② 公開ルート (/ と /free) と localhost: 固定プロファイルで即起動
+    //    localhost は開発用に pro (全機能)。それ以外の公開ルートは public (制限あり)。
     if (isLocalDev() || isOpenAccessRoute()) {
       hideLoginGate();
-      const source = isOpenAccessRoute() ? 'open-access' : 'local-dev';
-      const defaultPlan = isOpenAccessRoute() ? 'free' : 'pro';
+      const isLocal = isLocalDev();
+      const source = isLocal ? 'local-dev' : 'open-access';
+      const defaultPlan = isLocal ? 'pro' : 'public';
       window.__USER_PROFILE__ = {
-        lineUserId:    isOpenAccessRoute() ? 'Uopen-access' : 'Ulocal-dev',
+        lineUserId:    isLocal ? 'Ulocal-dev' : 'Uopen-access',
         product:       PRODUCT_CODE,
         plan:          overridePlan || defaultPlan,
         status:        'active',
@@ -5014,30 +5078,27 @@ ${layoutDef.desc}
       init();
       applyProviderGate();
       applyHeaderForProfile();
+      applyPublicLimits();   // 公開モード (localhost 以外) のみスタイル/署名/配色/AIを制限
       return;
     }
 
-    // ③ 通常ルート (/): ログイン不要。匿名フリーで即起動し、
-    //    既にLINEログイン済みなら裏で本物のプランに昇格 (ログインは強制しない)
+    // ③ フォールバック (本番では到達しない: / は上の②で公開扱い):
+    //    念のため匿名 public で起動。ログイン昇格はしない。
     hideLoginGate();
-    // キャッシュがあれば PRO/STANDARD バッジを最初から出すために先に hydrate を試みる。
-    // 失敗 (未ログイン or TTL 切れ) なら匿名フリーで起動する。
-    if (!_hydrateFromProfileCache()) {
-      window.__USER_PROFILE__ = {
-        lineUserId:    null,
-        product:       PRODUCT_CODE,
-        plan:          overridePlan || 'free',
-        status:        'active',
-        planExpiresAt: null,
-        tags:          overrideTags,
-        updatedAt:     null,
-        source:        'anonymous'
-      };
-    }
+    window.__USER_PROFILE__ = {
+      lineUserId:    null,
+      product:       PRODUCT_CODE,
+      plan:          overridePlan || 'public',
+      status:        'active',
+      planExpiresAt: null,
+      tags:          overrideTags,
+      updatedAt:     null,
+      source:        'anonymous'
+    };
     init();
     applyProviderGate();
     applyHeaderForProfile();
-    initLiff();
+    applyPublicLimits();
   }
 
   // ログイン必須ルートのブートストラップ

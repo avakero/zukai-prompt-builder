@@ -905,6 +905,16 @@ img {
   box-shadow: none;
 }
 
+/* 公開ページでロックされたセクション (署名・配色)。薄暗くして操作不可を示す */
+.section--locked {
+  opacity: 0.55;
+}
+.section--locked .selection-card,
+.section--locked .color-swatch,
+.section--locked .color-auto-btn {
+  cursor: not-allowed;
+}
+
 .generate-btn svg {
   width: 20px;
   height: 20px;

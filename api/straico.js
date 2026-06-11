@@ -1,6 +1,5 @@
 // POST /api/straico
 // 入力 : Authorization: Bearer <LIFF access token>
-//        (または /pro-max キャンペーン中の X-Temporary-Pro-Max-Access ヘッダ)
 //        body (JSON): { model: string, prompt: string }
 // 出力 : 200 <Straico API のレスポンス JSON をそのまま透過>
 //        400 { error: 'invalid_input' }
