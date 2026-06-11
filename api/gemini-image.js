@@ -38,6 +38,8 @@ const { VerificationError } = require('./_lib/line');
 const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 const { uploadGeneratedImage } = require('./_lib/image-storage');
+const { readJsonBody, isSafeRefImageUrl, sanitizeImageMime, MAX_PROMPT_CHARS } = require('./_lib/request');
+const { userIsDeveloper } = require('./_lib/tags');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -55,22 +57,6 @@ function normalizeAspectRatio(ar) {
   return '1:1';
 }
 
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
-}
-
 async function fetchWithTimeout(url, options, timeoutMs) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -82,10 +68,11 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 async function downloadImageAsBase64(url) {
-  const res = await fetchWithTimeout(url, {}, 15_000);
+  if (!(await isSafeRefImageUrl(url))) throw new Error('ref image url not allowed');
+  const res = await fetchWithTimeout(url, { redirect: 'error' }, 15_000);
   if (!res.ok) throw new Error(`fetch ref image failed: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
-  const mimeType = res.headers.get('content-type') || 'image/png';
+  const mimeType = sanitizeImageMime(res.headers.get('content-type'));
   return { mimeType, b64: buf.toString('base64') };
 }
 
@@ -175,9 +162,22 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'internal_error' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
-    console.error('[api/gemini-image] GEMINI_API_KEY env var missing');
+  // API キー（BYOK必須・内蔵キーは開発者のみ）
+  // X-Gemini-Key ヘッダで自分のキーを渡してきたらそれを使う（保存・ログしない）。
+  // BYOK が無い場合、内蔵 GEMINI_API_KEY を使えるのは開発者タグ保有者のみ。
+  const userKey = (req.headers['x-gemini-key'] || '').toString().trim();
+  let apiKey = userKey;
+  if (!apiKey) {
+    const isDev = await userIsDeveloper(auth.lineUserId);
+    if (!isDev) {
+      console.warn('[api/gemini-image] byok_required (no own key, not developer)', { lineUserId: auth.lineUserId });
+      res.statusCode = 403;
+      return res.json({ error: 'byok_required' });
+    }
+    apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  }
+  if (!apiKey) {
+    console.error('[api/gemini-image] no API key (developer but GEMINI_API_KEY env unset)');
     res.statusCode = 500;
     return res.json({ error: 'key_not_configured' });
   }
@@ -188,7 +188,7 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'invalid_input' });
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
-  if (!prompt) {
+  if (!prompt || prompt.length > MAX_PROMPT_CHARS) {
     res.statusCode = 400;
     return res.json({ error: 'invalid_input' });
   }
@@ -202,7 +202,7 @@ module.exports = async function handler(req, res) {
 
   const aspectRatio = normalizeAspectRatio(body.aspectRatio);
   const refImageUrls = Array.isArray(body.imageUrls)
-    ? body.imageUrls.filter(u => typeof u === 'string' && /^https?:\/\//.test(u))
+    ? body.imageUrls.filter(u => typeof u === 'string' && /^https:\/\//.test(u))
     : [];
 
   const t0 = Date.now();

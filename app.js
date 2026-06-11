@@ -37,9 +37,11 @@
     'google/gemini-2.5-flash': 'google/gemini-3-flash-preview',
     'anthropic/claude-haiku-4-5': 'claude-haiku-4-5-5'
   };
-  // 内蔵デフォルトキー（ユーザーが独自キー未設定でもStraicoを利用可能にする）
-  // ※ ブラウザに配信されるため、配布範囲に応じて差し替え・無効化してください
-  const STRAICO_DEFAULT_API_KEY = 'WR-qLuslnqOHBAV3ni7xtagY9FuOpVzm34FH9MTFzZIzDPM95mE';
+  // 内蔵キーはサーバー側 (/api/straico, STRAICO_API_KEY env var) に移動した。
+  // ユーザーが独自キー未設定のときは getEffectiveApiKey がこのセンチネルを返し、
+  // callStraicoApi がサーバープロキシ経由で呼び出す (キーをブラウザに配信しない)。
+  const STRAICO_SERVER_PROXY = '__straico_server_proxy__';
+  const STRAICO_PROXY_ENDPOINT = '/api/straico';
   const STRAICO_MODELS = [
     { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview（推奨・高速）' },
     { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite（最速・最安）' },
@@ -712,8 +714,8 @@ ${layoutDef.desc}
   const _lastGateToast = {};
   function gateOrToast(featureKey, displayName) {
     if (window.hasFeature(featureKey)) return true;
-    // BYOK: OpenAIキーを設定済みなら AI機能（JSON生成・画像生成）をプラン不問で解放する
-    if ((featureKey === 'ai.json' || featureKey === 'ai.imagegen') && hasOwnOpenAiKey()) return true;
+    // BYOK: OpenAI または Gemini キーを設定済みなら AI機能（JSON生成・画像生成）をプラン不問で解放する
+    if ((featureKey === 'ai.json' || featureKey === 'ai.imagegen') && hasOwnAiKey()) return true;
     const now = Date.now();
     if (now - (_lastGateToast[featureKey] || 0) < 1500) return false;
     _lastGateToast[featureKey] = now;
@@ -867,7 +869,7 @@ ${layoutDef.desc}
       const div = document.createElement('div');
       div.className = 'image-thumbnail';
       div.innerHTML = `
-        <img src="${img.dataUrl}" alt="${img.name}">
+        <img src="${img.dataUrl}" alt="${escapeHtml(String(img.name || ''))}">
         <button class="image-thumbnail__remove" type="button" aria-label="削除" data-index="${i}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -1056,7 +1058,7 @@ ${layoutDef.desc}
       div.innerHTML = `
         <span class="paste-queue__item-icon">${iconHTML}</span>
         ${thumbHTML}
-        <span>${item.label}</span>
+        <span>${escapeHtml(String(item.label || ''))}</span>
       `;
       els.pasteQueueItems.appendChild(div);
     });
@@ -1077,7 +1079,7 @@ ${layoutDef.desc}
       els.pasteQueueCta.className = 'paste-queue__cta';
       els.pasteQueueCta.innerHTML = `
         ${typeIcon}
-        コピー: ${currentItem.label}
+        コピー: ${escapeHtml(String(currentItem.label || ''))}
       `;
       if (pasteQueueIndex === 0) {
         els.pasteQueueHint.textContent = '💡 ボタンを押して画像生成AIにCtrl+Vで貼り付けてください';
@@ -1852,7 +1854,7 @@ ${theme}`;
    */
   function getEffectiveApiKey(provider, cfg) {
     if (provider === 'straico') {
-      return cfg.straico.apiKey || STRAICO_DEFAULT_API_KEY;
+      return cfg.straico.apiKey || STRAICO_SERVER_PROXY;
     }
     if (provider === 'openai') {
       return cfg.openai.apiKey;
@@ -1861,12 +1863,25 @@ ${theme}`;
   }
 
   // ユーザーが自分のキーを設定しているか（内蔵デフォルトは除く＝BYOK判定用）
-  // OpenAIキーがあれば画像生成BYOK＋AI機能のプラン解除が有効になる。
+  // OpenAI または Gemini キーがあれば画像生成BYOK＋AI機能のプラン解除が有効になる。
   function hasOwnOpenAiKey() {
     try {
       const cfg = loadAiConfig();
       return !!(cfg.openai && cfg.openai.apiKey && cfg.openai.apiKey.trim());
     } catch (_) { return false; }
+  }
+
+  function hasOwnGeminiKey() {
+    try {
+      const cfg = loadAiConfig();
+      return !!(cfg.gemini && cfg.gemini.apiKey && cfg.gemini.apiKey.trim());
+    } catch (_) { return false; }
+  }
+
+  // AI機能 (JSON生成・画像生成) を BYOK で解放できるか。
+  // OpenAI / Gemini いずれかのキーを自分で設定していれば true。
+  function hasOwnAiKey() {
+    return hasOwnOpenAiKey() || hasOwnGeminiKey();
   }
 
   function setCarouselJsonGuide(stateName, meta = {}) {
@@ -1965,7 +1980,7 @@ ${theme}`;
     els.apiKeyInput.placeholder = meta.keyPlaceholder;
 
     // 内蔵デフォルトキー注記
-    const hasBuiltin = provider === 'straico' && !!STRAICO_DEFAULT_API_KEY;
+    const hasBuiltin = provider === 'straico'; // 内蔵キーはサーバープロキシで常時利用可
     if (els.apiKeyDefaultNote) {
       els.apiKeyDefaultNote.style.display = hasBuiltin ? '' : 'none';
     }
@@ -1999,7 +2014,7 @@ ${theme}`;
     const model = els.apiModelSelect.value || PROVIDER_META[apiKeyModalActiveProvider].defaultModel;
 
     // Straicoは内蔵キーがあればAPIキー空でも保存可
-    const hasBuiltin = apiKeyModalActiveProvider === 'straico' && !!STRAICO_DEFAULT_API_KEY;
+    const hasBuiltin = apiKeyModalActiveProvider === 'straico'; // 内蔵キーはサーバープロキシで常時利用可
     if (!apiKey && !hasBuiltin) {
       showToast('⚠️ APIキーを入力してください');
       els.apiKeyInput.focus();
@@ -2260,16 +2275,30 @@ ${theme}
    * - レスポンスはネスト深め＋形が揺れるためフォールバックチェーンで取り出す
    */
   async function callStraicoApi(apiKey, model, prompt) {
-    const res = await fetch(STRAICO_ENDPOINT, {
+    // 独自キー未設定 (センチネル) のときはサーバープロキシ経由。
+    // プロキシは LINE 認証 (または /pro-max の一時アクセスヘッダ) を要求する。
+    const useProxy = !apiKey || apiKey === STRAICO_SERVER_PROXY;
+    const token = useProxy ? _getLiffToken() : null;
+    // プロキシ経由には LINE 認証 (または /pro-max 一時アクセス) が必要。
+    // 未ログインのまま投げると無意味な 401 になるため、先に分かりやすく案内する。
+    if (useProxy && !token && !isTemporaryProMaxRoute()) {
+      throw new Error('内蔵Straicoキーの利用にはLINEログインが必要です。LINEでログインするか、APIキー設定からご自身のStraicoキーを登録してください');
+    }
+    const res = await fetch(useProxy ? STRAICO_PROXY_ENDPOINT : STRAICO_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        models: [model],
-        message: prompt
-      })
+      headers: useProxy
+        ? {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            ...temporaryProMaxHeaders()
+          }
+        : {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+      body: JSON.stringify(useProxy
+        ? { model, prompt }
+        : { models: [model], message: prompt })
     });
 
     if (!res.ok) {
@@ -2694,6 +2723,9 @@ ${theme}
     const layout = slide.layout || (role === 'body' ? 'G' : '');
     const layoutDef = layout ? LAYOUT_DEFS[layout] : null;
     const content = slide.content || '';
+    // role/page/layout は AI 生成 JSON・貼り付け JSON 由来なのでエスケープ必須。
+    // CSS クラス名に使う role は英数とハイフンのみ許可する。
+    const roleClass = String(role).replace(/[^a-zA-Z0-9_-]/g, '') || 'body';
 
     const card = document.createElement('div');
     card.className = 'carousel-slide-card';
@@ -2701,11 +2733,11 @@ ${theme}
     if (slide._edited) card.classList.add('carousel-slide-card--edited');
 
     card.innerHTML = `
-      <div class="carousel-slide-card__page">${slide.page || i + 1}</div>
+      <div class="carousel-slide-card__page">${escapeHtml(String(slide.page || i + 1))}</div>
       <div class="carousel-slide-card__body">
         <div class="carousel-slide-card__meta">
-          <span class="carousel-slide-card__role carousel-slide-card__role--${role}">${roleLabel}</span>
-          ${layoutDef ? `<span class="carousel-slide-card__layout-badge">${layout}: ${layoutDef.label}</span>` : ''}
+          <span class="carousel-slide-card__role carousel-slide-card__role--${roleClass}">${escapeHtml(String(roleLabel))}</span>
+          ${layoutDef ? `<span class="carousel-slide-card__layout-badge">${escapeHtml(String(layout))}: ${escapeHtml(String(layoutDef.label))}</span>` : ''}
           <span class="carousel-slide-card__edited-badge" data-edited-badge title="この本文は編集されています" ${slide._edited ? '' : 'hidden'}>編集済み</span>
         </div>
         <div class="carousel-slide-card__content" data-view>${escapeHtml(content)}</div>
@@ -2810,9 +2842,11 @@ ${theme}
   }
 
   function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    // 属性値コンテキスト (alt="..." 等) でも安全なように引用符もエスケープする。
+    // (旧実装の div.textContent → innerHTML トリックは " と ' を素通しするため不採用)
+    return String(text == null ? '' : text).replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[m]);
   }
 
   function getCarouselPromptStyle() {
@@ -3264,11 +3298,20 @@ ${layoutDef.desc}
 
     if (!res.ok) {
       let detail = '';
+      let errorCode = '';
       try {
         const j = await res.json();
+        errorCode = j && j.error ? String(j.error) : '';
         detail = j && j.detail ? `: ${typeof j.detail === 'string' ? j.detail.substring(0, 200) : JSON.stringify(j.detail).substring(0, 200)}` : '';
-        if (j && j.error) detail = `${j.error}${detail}`;
+        if (errorCode) detail = `${errorCode}${detail}`;
       } catch (_) {}
+      // BYOK 必須エラー: 自分のキーを設定する導線を案内する
+      if (res.status === 403 && errorCode === 'byok_required') {
+        const e = new Error('画像生成には自分のAPIキーが必要です。APIキー設定（歯車アイコン）から OpenAI または Gemini のキーを登録してください');
+        e.status = 403;
+        e.byokRequired = true;
+        throw e;
+      }
       const err = new Error(`API Error ${res.status}${detail ? ` (${detail})` : ''}`);
       err.status = res.status;
       throw err;
@@ -3287,7 +3330,7 @@ ${layoutDef.desc}
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
     }
-    return _postImageGenProxy('/api/pickaxe', payload, PICKAXE_REQUEST_TIMEOUT_MS);
+    return _postImageGenProxy('/api/pickaxe-proxy', payload, PICKAXE_REQUEST_TIMEOUT_MS);
   }
 
   // OpenAI 1試行 (gpt-image-2 / gpt-image-1 / dall-e-3)
@@ -3317,7 +3360,14 @@ ${layoutDef.desc}
     if (Array.isArray(refImageUrls) && refImageUrls.length > 0) {
       payload.imageUrls = refImageUrls;
     }
-    return _postImageGenProxy('/api/gemini-image', payload, GEMINI_REQUEST_TIMEOUT_MS);
+    // BYOK: ユーザーが Gemini キーを設定していれば、それをサーバーに渡して使う。
+    // 未設定なら開発者タグ保有者のみ内蔵キーで実行される (それ以外は 403)。
+    let extraHeaders;
+    try {
+      const userKey = loadAiConfig().gemini.apiKey;
+      if (userKey && userKey.trim()) extraHeaders = { 'X-Gemini-Key': userKey.trim() };
+    } catch (_) {}
+    return _postImageGenProxy('/api/gemini-image', payload, GEMINI_REQUEST_TIMEOUT_MS, extraHeaders);
   }
 
   function isRetryable(err) {
@@ -3650,6 +3700,8 @@ ${layoutDef.desc}
 
   async function generateAllImages() {
     if (!gateOrToast('ai.imagegen', '画像一括生成')) return;
+    // 二重クリックガード: 実行中 (disabled) なら何もしない
+    if (els.imageGenBtn && els.imageGenBtn.disabled) return;
     if (!carouselData || !carouselData.slides || carouselData.slides.length === 0) {
       showToast('先にJSONを展開してください');
       return;
@@ -3660,6 +3712,11 @@ ${layoutDef.desc}
       showToast('スタイルプロンプトを入力してください');
       return;
     }
+
+    // 最初の await (キャラ画像アップロード) より前に同期的に無効化する。
+    // 例外が出てもボタンが固まらないよう、復元は下の finally で必ず行う。
+    els.imageGenBtn.disabled = true;
+    try {
 
     const slides = carouselData.slides;
     const total = slides.length;
@@ -3794,6 +3851,7 @@ ${layoutDef.desc}
       STAGGER_DELAY_MS = 0;
     }
     console.log('[ImageGen] provider:', _activeProvider, '/ concurrency:', _activeConcurrency, '/ stagger:', STAGGER_DELAY_MS + 'ms');
+    let _byokRequiredHit = false;  // BYOK未設定で403を踏んだら最後に専用案内を出す
     await runWithConcurrency(slides, _activeConcurrency, async (slide, i) => {
       // スタガリング: 各リクエストの開始を i * STAGGER_DELAY_MS だけ遅らせる
       const initialDelay = (i < _activeConcurrency) ? i * STAGGER_DELAY_MS : 0;
@@ -3826,6 +3884,7 @@ ${layoutDef.desc}
         imageGenState.generatedImages[i].status = 'error';
         imageGenState.generatedImages[i].error = err.message || String(err);
         imageGenState.generatedImages[i].failedModel = model;
+        if (err && err.byokRequired) _byokRequiredHit = true;
         console.error(`[ImageGen] slide ${i + 1} failed:`, err);
         renderImageGrid();
         updateProgressUI(total);
@@ -3842,20 +3901,26 @@ ${layoutDef.desc}
       }
     });
 
-    stopProgressTicker();
-    updateProgressUI(total);
-
-    // ボタン復元
-    els.imageGenBtn.disabled = false;
-    els.imageGenBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-      </svg>
-      画像を一括生成する
-    `;
+    } finally {
+      // 途中で例外が発生してもボタン・プログレス表示を必ず復元する
+      stopProgressTicker();
+      updateProgressUI(total);
+      els.imageGenBtn.disabled = false;
+      els.imageGenBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+        </svg>
+        画像を一括生成する
+      `;
+    }
 
     const successCount = imageGenState.generatedImages.filter(g => g.status === 'success').length;
-    showToast(`✨ ${successCount}/${slides.length}枚の画像を生成しました`);
+    // 全滅かつ BYOK 未設定が原因なら、件数ではなくキー設定への導線を出す
+    if (successCount === 0 && _byokRequiredHit) {
+      showToast('🔑 画像生成には自分のAPIキーが必要です。APIキー設定（歯車アイコン）から OpenAI または Gemini のキーを登録してください');
+    } else {
+      showToast(`✨ ${successCount}/${slides.length}枚の画像を生成しました`);
+    }
   }
 
   // ============================================================
@@ -3910,7 +3975,7 @@ ${layoutDef.desc}
         const isDataUrl = typeof img.imageUrl === 'string' && img.imageUrl.startsWith('data:');
         item.innerHTML = `
           <div class="image-grid-item__badge">${i + 1}</div>
-          <img class="image-grid-item__img" src="${img.imageUrl}" alt="スライド ${i + 1}" loading="lazy">
+          <img class="image-grid-item__img" src="${escapeHtml(img.imageUrl)}" alt="スライド ${i + 1}" loading="lazy">
           <div class="image-grid-item__overlay">
             <div class="image-grid-item__overlay-actions">
               <button class="image-grid-item__action-btn" data-action="expand" title="拡大表示">
@@ -4125,7 +4190,7 @@ ${layoutDef.desc}
     // プレビュー
     if (els.regenModalPreview) {
       if (imgData.imageUrl) {
-        els.regenModalPreview.innerHTML = `<img src="${imgData.imageUrl}" alt="現在の画像">`;
+        els.regenModalPreview.innerHTML = `<img src="${escapeHtml(imgData.imageUrl)}" alt="現在の画像">`;
       } else {
         els.regenModalPreview.innerHTML = '<span style="color:var(--text-tertiary);padding:var(--space-8)">画像なし</span>';
       }
@@ -4266,7 +4331,11 @@ ${layoutDef.desc}
       imageGenState.generatedImages[idx].failedModel = selectedModel;
       renderImageGrid();
       updateProgressUI(total);
-      showToast(`⚠️ ${selectedModel} での再生成に失敗しました（別モデルでお試しください）`);
+      if (err && err.byokRequired) {
+        showToast('🔑 画像生成には自分のAPIキーが必要です。APIキー設定（歯車アイコン）から OpenAI または Gemini のキーを登録してください');
+      } else {
+        showToast(`⚠️ ${selectedModel} での再生成に失敗しました（別モデルでお試しください）`);
+      }
     }
   }
 

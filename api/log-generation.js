@@ -30,25 +30,10 @@ const { VerificationError } = require('./_lib/line');
 const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { readJsonBody } = require('./_lib/request');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
-}
 
 function pickString(v, max = 4000) {
   if (typeof v !== 'string') return null;

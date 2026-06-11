@@ -24,28 +24,13 @@
 
 const { authenticateFromAuthorizationHeader, VerificationError } = require('./_lib/line');
 const { applyCors, handlePreflight } = require('./_lib/cors');
-const { getSupabaseAdmin } = require('./_lib/supabase');
+const { readJsonBody, MAX_PROMPT_CHARS } = require('./_lib/request');
+const { userHasAnyTag } = require('./_lib/tags');
 
 // Pickaxe アクセス可否チェック: user_tags に 'pickaxe_internal' タグがあるユーザーのみ許可。
 // 7月末で Pickaxe サブスクが終わるため、一般ユーザーは OpenAI/Gemini に誘導する。
 async function userHasPickaxeAccess(lineUserId) {
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('user_tags')
-      .select('tag')
-      .eq('line_user_id', lineUserId)
-      .eq('tag', 'pickaxe_internal')
-      .maybeSingle();
-    if (error) {
-      console.error('[api/pickaxe-proxy] user_tags lookup failed:', error.message);
-      return false;
-    }
-    return !!data;
-  } catch (e) {
-    console.error('[api/pickaxe-proxy] supabase init failed:', e && e.message);
-    return false;
-  }
+  return userHasAnyTag(lineUserId, ['pickaxe_internal']);
 }
 
 const ALLOW_METHODS = 'POST, OPTIONS';
@@ -100,22 +85,6 @@ function getApiKeyForIndex(idx) {
   return v && typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
-}
-
 module.exports = async function handler(req, res) {
   if (handlePreflight(req, res, ALLOW_METHODS)) return;
   applyCors(req, res, ALLOW_METHODS);
@@ -156,7 +125,7 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'invalid_input' });
   }
   const { prompt, model, keyIndex, aspectRatio, imageUrls } = body;
-  if (typeof prompt !== 'string' || !prompt.trim()) {
+  if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > MAX_PROMPT_CHARS) {
     res.statusCode = 400;
     return res.json({ error: 'invalid_input', detail: 'prompt required' });
   }
@@ -220,7 +189,7 @@ module.exports = async function handler(req, res) {
     }
     console.error(`[api/pickaxe-proxy] fetch failed idx=${keyIndex}: ${err.message}`);
     res.statusCode = 502;
-    return res.json({ error: 'upstream_error', detail: err.message, keyIndex });
+    return res.json({ error: 'upstream_error', detail: (err.message || '').slice(0, 500), keyIndex });
   }
   clearTimeout(timeoutId);
   const elapsedMs = Date.now() - startedAt;
@@ -280,12 +249,12 @@ module.exports = async function handler(req, res) {
       `--- response snippet ---\n${snippet}\n--- end snippet ---`
     );
     res.statusCode = 502;
+    // 応答本文の生スニペットはサーバーログのみに残し、クライアントへはキー一覧だけ返す
     return res.json({
       error: 'no_image_in_response',
       keyIndex,
       elapsedMs,
-      responseKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-      responseSnippet: snippet.substring(0, 400)
+      responseKeys: data && typeof data === 'object' ? Object.keys(data) : null
     });
   }
 

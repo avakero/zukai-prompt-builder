@@ -29,10 +29,9 @@ values (
   10 * 1024 * 1024,  -- 10MB/file
   array['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 )
-on conflict (id) do update set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
+-- 既存バケットには手を付けない (Studio 等で行った運用変更を再実行で巻き戻さないため)。
+-- バケット設定を変えたい場合は Studio から手動で行うこと。
+on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------
 -- RLS ポリシー

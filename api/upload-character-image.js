@@ -24,10 +24,13 @@ const { VerificationError } = require('./_lib/line');
 const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { readJsonBody } = require('./_lib/request');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const BUCKET = 'character-refs';
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB after decode
+// base64 data URL + JSON ラッパ込みの body 上限 (5MB バイナリ ≒ 6.7MB base64)
+const MAX_UPLOAD_BODY_BYTES = 8 * 1024 * 1024;
 
 const MIME_TO_EXT = {
   'image/png':  'png',
@@ -44,24 +47,6 @@ function parseDataUrl(dataUrl) {
   const mime = m[1].toLowerCase();
   const base64 = m[2];
   return { mime, base64 };
-}
-
-async function readJsonBody(req) {
-  // Vercel の Node ランタイムは req.body を自動 parse する場合があるが、
-  // raw stream のままのケースもあるので両対応。
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
 }
 
 module.exports = async function handler(req, res) {
@@ -90,7 +75,7 @@ module.exports = async function handler(req, res) {
   }
 
   // 入力検証
-  const body = await readJsonBody(req);
+  const body = await readJsonBody(req, MAX_UPLOAD_BODY_BYTES);
   if (!body || typeof body !== 'object') {
     res.statusCode = 400;
     return res.json({ error: 'invalid_body' });

@@ -4,6 +4,16 @@
   "buildCommand": "",
   "outputDirectory": ".",
   "fluid": true,
+  "functions": {
+    "api/openai-image.js":    { "maxDuration": 180 },
+    "api/gemini-image.js":    { "maxDuration": 180 },
+    "api/pickaxe-proxy.js":   { "maxDuration": 300 },
+    "api/straico.js":         { "maxDuration": 120 },
+    "api/cleanup-storage.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cleanup-storage", "schedule": "0 18 * * *" }
+  ],
   "rewrites": [
     { "source": "/pro-max", "destination": "/index.html" },
     { "source": "/pro-max/", "destination": "/index.html" },

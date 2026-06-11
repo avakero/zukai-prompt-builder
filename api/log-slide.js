@@ -27,26 +27,11 @@ const { VerificationError } = require('./_lib/line');
 const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { getSupabaseAdmin } = require('./_lib/supabase');
 const { applyCors, handlePreflight } = require('./_lib/cors');
+const { readJsonBody } = require('./_lib/request');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_STATUS = new Set(['success', 'failed', 'running']);
-
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
-}
 
 function pickString(v, max = 4000) {
   if (typeof v !== 'string') return null;
@@ -133,8 +118,9 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'job_not_found' });
   }
   if (jobRow.line_user_id !== auth.lineUserId) {
+    // 所有者本人の line_user_id はログに出さない (PII 最小化)
     console.warn('[api/log-slide] ownership mismatch', {
-      jobId, expectedUser: jobRow.line_user_id, actualUser: auth.lineUserId
+      jobId, actualUser: auth.lineUserId
     });
     res.statusCode = 403;
     return res.json({ error: 'job_not_owned' });
@@ -142,8 +128,9 @@ module.exports = async function handler(req, res) {
 
   // スライド更新
   const updateRow = { status };
+  // image_url は https URL のみ受理 (javascript: 等のスキーム混入を防ぐ)
   const imageUrl = pickString(body.image_url, 2000);
-  if (imageUrl) updateRow.image_url = imageUrl;
+  if (imageUrl && /^https:\/\//.test(imageUrl)) updateRow.image_url = imageUrl;
   const errMsg = pickString(body.error, 1000);
   if (errMsg) updateRow.error = errMsg;
   const workspaceIdx = pickInt(body.workspace_idx);
@@ -151,16 +138,23 @@ module.exports = async function handler(req, res) {
   const elapsedMs = pickInt(body.elapsed_ms);
   if (elapsedMs !== null) updateRow.elapsed_ms = elapsedMs;
 
-  const { error: updErr } = await supabase
+  const { data: updRows, error: updErr } = await supabase
     .from('generation_slides')
     .update(updateRow)
     .eq('job_id', jobId)
-    .eq('slide_idx', slideIdx);
+    .eq('slide_idx', slideIdx)
+    .select('slide_idx');
 
   if (updErr) {
     console.error('[api/log-slide] generation_slides update failed:', updErr.message);
     res.statusCode = 500;
     return res.json({ error: 'db_error' });
+  }
+  // 対象スライドが存在しなかった (0行更新) 場合は成功と偽らず 404 を返す
+  if (!Array.isArray(updRows) || updRows.length === 0) {
+    console.warn('[api/log-slide] slide not found', { jobId, slideIdx });
+    res.statusCode = 404;
+    return res.json({ error: 'slide_not_found' });
   }
 
   res.statusCode = 200;

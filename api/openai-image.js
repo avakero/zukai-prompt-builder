@@ -53,6 +53,8 @@ const { VerificationError } = require('./_lib/line');
 const { authenticateWithTemporaryProMax } = require('./_lib/temp-access');
 const { applyCors, handlePreflight } = require('./_lib/cors');
 const { uploadGeneratedImage } = require('./_lib/image-storage');
+const { readJsonBody, isSafeRefImageUrl, sanitizeImageMime, MAX_PROMPT_CHARS } = require('./_lib/request');
+const { userIsDeveloper } = require('./_lib/tags');
 
 const ALLOW_METHODS = 'POST, OPTIONS';
 const GENERATIONS_ENDPOINT = 'https://api.openai.com/v1/images/generations';
@@ -85,22 +87,6 @@ function aspectToSize(ar) {
   }
 }
 
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch { return null; }
-  }
-  return new Promise((resolve) => {
-    let buf = '';
-    req.on('data', chunk => { buf += chunk; });
-    req.on('end', () => {
-      if (!buf) return resolve({});
-      try { resolve(JSON.parse(buf)); } catch { resolve(null); }
-    });
-    req.on('error', () => resolve(null));
-  });
-}
-
 async function fetchWithTimeout(url, options, timeoutMs) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -113,10 +99,11 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 
 // imageUrls (公開URL) を fetch して Buffer 化、multipart/form-data の File として送る準備
 async function downloadImageBuffer(url) {
-  const res = await fetchWithTimeout(url, {}, 15_000);
+  if (!(await isSafeRefImageUrl(url))) throw new Error('ref image url not allowed');
+  const res = await fetchWithTimeout(url, { redirect: 'error' }, 15_000);
   if (!res.ok) throw new Error(`fetch ref image failed: ${res.status}`);
   const arr = await res.arrayBuffer();
-  const ct = res.headers.get('content-type') || 'image/png';
+  const ct = sanitizeImageMime(res.headers.get('content-type'));
   return { buf: Buffer.from(arr), contentType: ct };
 }
 
@@ -144,13 +131,23 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'internal_error' });
   }
 
-  // API キー（BYOK優先）
+  // API キー（BYOK必須・内蔵キーは開発者のみ）
   // ユーザーが X-OpenAI-Key ヘッダで自分のキーを渡してきたらそれを使う（保存・ログしない）。
-  // 未指定なら従来どおりサーバーの OPENAI_API_KEY env var にフォールバック。
+  // BYOK が無い場合、内蔵 OPENAI_API_KEY を使えるのは開発者タグ保有者のみ。
+  // 一般ユーザーが BYOK 無しで叩いたら 403 (内蔵キーへフォールバックしない)。
   const userKey = (req.headers['x-openai-key'] || '').toString().trim();
-  const apiKey = userKey || process.env.OPENAI_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
-    console.error('[api/openai-image] no API key (X-OpenAI-Key header missing and OPENAI_API_KEY env unset)');
+  let apiKey = userKey;
+  if (!apiKey) {
+    const isDev = await userIsDeveloper(auth.lineUserId);
+    if (!isDev) {
+      console.warn('[api/openai-image] byok_required (no own key, not developer)', { lineUserId: auth.lineUserId });
+      res.statusCode = 403;
+      return res.json({ error: 'byok_required' });
+    }
+    apiKey = (process.env.OPENAI_API_KEY || '').trim();
+  }
+  if (!apiKey) {
+    console.error('[api/openai-image] no API key (developer but OPENAI_API_KEY env unset)');
     res.statusCode = 500;
     return res.json({ error: 'key_not_configured' });
   }
@@ -162,7 +159,7 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'invalid_input' });
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
-  if (!prompt) {
+  if (!prompt || prompt.length > MAX_PROMPT_CHARS) {
     res.statusCode = 400;
     return res.json({ error: 'invalid_input' });
   }
@@ -174,8 +171,9 @@ module.exports = async function handler(req, res) {
   }
 
   const size = aspectToSize(body.aspectRatio);
-  const quality = (typeof body.quality === 'string' && body.quality.trim()) || 'medium';
-  const refImageUrls = Array.isArray(body.imageUrls) ? body.imageUrls.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)) : [];
+  const VALID_QUALITY = new Set(['low', 'medium', 'high', 'auto']);
+  const quality = VALID_QUALITY.has(body.quality) ? body.quality : 'medium';
+  const refImageUrls = Array.isArray(body.imageUrls) ? body.imageUrls.filter(u => typeof u === 'string' && /^https:\/\//.test(u)) : [];
 
   const t0 = Date.now();
 

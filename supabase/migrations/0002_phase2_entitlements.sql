@@ -34,7 +34,15 @@ on conflict (code) do nothing;
 -- ---------------------------------------------------------------------
 -- subscriptions → entitlements リネーム + product_code 追加
 -- ---------------------------------------------------------------------
-alter table public.subscriptions rename to entitlements;
+-- 冪等化: 既にリネーム済み (再実行時) は何もしない
+do $$
+begin
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'subscriptions')
+     and not exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'entitlements')
+  then
+    alter table public.subscriptions rename to entitlements;
+  end if;
+end $$;
 
 alter table public.entitlements
   add column if not exists product_code text references public.products(code);
@@ -51,8 +59,17 @@ alter table public.entitlements
 alter table public.entitlements
   drop constraint if exists subscriptions_line_user_id_key;
 
-alter table public.entitlements
-  add constraint entitlements_user_product_uniq unique (line_user_id, product_code);
+-- 冪等化: 制約が既にあれば何もしない (ADD CONSTRAINT に IF NOT EXISTS はないため)
+do $$
+begin
+  alter table public.entitlements
+    add constraint entitlements_user_product_uniq unique (line_user_id, product_code);
+exception
+  -- UNIQUE/PK 制約はバッキングインデックスの関係で 42P07 (duplicate_table)、
+  -- その他の制約は 42710 (duplicate_object) で重複が報告されるため両方握る
+  when duplicate_table then null;
+  when duplicate_object then null;
+end $$;
 
 -- インデックス
 create index if not exists entitlements_product_code_idx
@@ -62,5 +79,11 @@ create index if not exists entitlements_user_product_idx
   on public.entitlements (line_user_id, product_code);
 
 -- トリガ名整理(Postgres 9.2+)
-alter trigger subscriptions_set_updated_at on public.entitlements
-  rename to entitlements_set_updated_at;
+-- 冪等化: ALTER TRIGGER に IF EXISTS はないため、旧名トリガが無ければスキップ
+do $$
+begin
+  alter trigger subscriptions_set_updated_at on public.entitlements
+    rename to entitlements_set_updated_at;
+exception
+  when undefined_object then null;
+end $$;

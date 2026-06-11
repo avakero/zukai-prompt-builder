@@ -91,8 +91,9 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'job_not_found' });
   }
   if (jobRow.line_user_id !== auth.lineUserId) {
+    // 所有者本人の line_user_id はログに出さない (PII 最小化)
     console.warn('[api/job] ownership mismatch', {
-      jobId, expectedUser: jobRow.line_user_id, actualUser: auth.lineUserId
+      jobId, actualUser: auth.lineUserId
     });
     res.statusCode = 403;
     return res.json({ error: 'job_not_owned' });

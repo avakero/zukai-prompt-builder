@@ -24,7 +24,13 @@ const scopedCSS = css
   .replace(/^body\s*\{[\s\S]*?\}/m, '')
   // *, *::before を .zpb-root 内にスコープ
   .replace(/^\*,\s*\*::before,\s*\*::after\s*\{/m, '.zpb-root *, .zpb-root *::before, .zpb-root *::after {')
-  .replace(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*,/g, '@media (prefers-reduced-motion: reduce) { .zpb-root *,')
+  // prefers-reduced-motion 内のセレクタ全体 (*, *::before, *::after) をスコープ化する。
+  // 先頭の * だけ置換すると *::before / *::after がグローバルのまま残り、
+  // 埋め込み先 WordPress ページ全体のアニメーションを止めてしまう。
+  .replace(
+    /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*,\s*\*::before,\s*\*::after\s*\{/g,
+    '@media (prefers-reduced-motion: reduce) { .zpb-root *, .zpb-root *::before, .zpb-root *::after {'
+  )
   // :focus-visible スコープ化
   .replace(/^:focus-visible\s*\{/m, '.zpb-root :focus-visible {')
   // img スコープ化
@@ -60,6 +66,15 @@ const bodyMatch = html.match(/<body>([\s\S]*?)<script/);
 const scopedBody = bodyMatch
   ? bodyMatch[1].trim().replace(/data-theme/g, 'data-zpb-theme')
   : '';
+
+// 抽出失敗ガード: index.html の構造変更 (body 内へのインライン <script> 追加など) で
+// 本文が途中で切れた / 空になった場合は、壊れた埋め込みファイルを出力せず失敗させる。
+const MIN_BODY_CHARS = 30000;
+if (!bodyMatch || scopedBody.length < MIN_BODY_CHARS) {
+  console.error(`❌ body 抽出に失敗しました (抽出サイズ: ${scopedBody.length} 文字, 期待: ${MIN_BODY_CHARS} 文字以上)`);
+  console.error('   index.html の <body> 内に <script> タグを追加した場合、抽出 regex の見直しが必要です。');
+  process.exit(1);
+}
 
 // ============================================================
 // 出力生成

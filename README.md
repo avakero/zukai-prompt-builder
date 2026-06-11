@@ -119,6 +119,8 @@ npm run build:wp   # = node build-wp.js
 | `ALLOWED_ORIGINS` | クロスオリジン呼び出しを許可するオリジンをカンマ区切り |
 | `OPENAI_API_KEY` | OpenAI gpt-image-2 / DALL·E 3 用 |
 | `GEMINI_API_KEY` | Google AI Studio で発行した Imagen / Gemini 用キー |
+| `STRAICO_API_KEY` | Straico 内蔵キー（`/api/straico` プロキシが使用。ユーザーが独自キー未設定のときの既定経路） |
+| `ENABLE_TEMP_PRO_MAX_ACCESS` | `1` のときだけ `/pro-max` の一時開放（認証バイパス）が有効。**未設定なら常に無効**（オプトイン） |
 | `PICKAXE_API_KEY_1` 〜 `_7` | Pickaxe ワークスペース別デプロイメントキー（内部限定） |
 | `PICKAXE_MODEL_INPUT_ID_{N}` / `PICKAXE_PROMPT_INPUT_ID_{N}` | Pickaxe form-chat の入力UUIDを上書き（通常不要） |
 | `LOG_LEVEL` | `info` / `debug` |
@@ -134,18 +136,41 @@ Supabase でプロジェクト作成（リージョン: `ap-northeast-1` 推奨�
 | `0003_character_refs_storage.sql` | Storage バケット `character-refs`（キャラ参照画像、24h 自動削除） |
 | `0004_generation_jobs.sql` | `generation_jobs` / `generation_slides`（生成ジョブのテレメトリ + 復元用、24h 自動削除） |
 | `0005_generated_images_storage.sql` | Storage バケット `generated-images`（AI 生成画像本体、24h 自動削除） |
+| `0006_auth_audit_log_cleanup.sql` | `auth_audit_log` の90日クリーンアップ関数（無限成長防止） |
 
 Service Role キーを `SUPABASE_SERVICE_ROLE_KEY` に設定。
 
-### (推奨) pg_cron でクリーンアップ自動化
+### クリーンアップ自動化（2系統に分かれる）
 
-Supabase Studio → Database → Cron Jobs で日次実行:
+24h 自動削除は**DBレコード**と**Storage実ファイル**で削除経路が異なる。Supabase は
+`storage.objects` への直接 `DELETE` を保護トリガー（`storage.protect_delete`）で禁止して
+いるため、Storage は SQL では消せず Storage API 経由が必須。
+
+**(1) DBレコード — pg_cron（Supabase内）**
+
+`pg_cron` 拡張を有効化し（Database → Extensions）、SQL Editor で登録:
 
 ```sql
-select public.cleanup_old_character_refs();
-select public.cleanup_old_generation_jobs();
-select public.cleanup_old_generated_images();
+create extension if not exists pg_cron;
+
+select cron.schedule(
+  'zukai-daily-cleanup',
+  '0 18 * * *',          -- 毎日 UTC 18:00 = JST 翌03:00
+  $$
+    select public.cleanup_old_generation_jobs();   -- slides は ON DELETE CASCADE で連動削除
+    select public.cleanup_old_auth_audit_log();
+  $$
+);
 ```
+
+> ⚠️ `cleanup_old_character_refs` / `cleanup_old_generated_images`（storage系）は
+> `storage.protect_delete` で弾かれるため、**この pg_cron には入れない**（入れると
+> 1トランザクションでロールバックされ全関数が失敗する）。Storage は次の (2) で消す。
+
+**(2) Storage実ファイル — Vercel Cron（`/api/cleanup-storage`）**
+
+`vercel.json` の `crons` で日次に `/api/cleanup-storage` が叩かれ、service_role で
+Storage API 経由 24h 超のファイルを削除する。`CRON_SECRET` 環境変数で保護（必須）。
 
 ### Vercel デプロイ
 
@@ -162,14 +187,27 @@ vercel deploy
 | `api/log-generation.js` / `api/log-slide.js` / `api/job.js` | 10 秒 |
 | `api/openai-image.js` / `api/gemini-image.js` | 180 秒 |
 | `api/pickaxe-proxy.js` | 300 秒 |
+| `api/straico.js` | 120 秒 |
+| `api/cleanup-storage.js` | 60 秒（Vercel Cron で日次実行） |
 
-### プランと機能マッピング（初期値）
+### AI機能のアクセス制御（サーバー側で強制）
+
+> **重要**: AI機能（JSON生成・画像生成）はクライアントUIのプランゲートだけでなく、**サーバー側でも検証する**。プランは UI 表示の制御にとどまり、実際の利用可否は以下で決まる:
+>
+> - **一般ユーザー**: 自分の OpenAI / Gemini キー（BYOK）が**必須**。`/api/openai-image` は `X-OpenAI-Key`、`/api/gemini-image` は `X-Gemini-Key` ヘッダで送る。BYOK が無ければ **403 `byok_required`**。
+> - **開発者（`pickaxe_internal` タグ保有者）**: BYOK 無しでも内蔵キー（`OPENAI_API_KEY` / `GEMINI_API_KEY`）で利用可。
+> - **Straico（`/api/straico`）**: 開発者専用。UI 非表示 + サーバーでタグ必須（タグ無しは 403）。
+> - **Pickaxe（`/api/pickaxe-proxy`）**: 従来どおり `pickaxe_internal` タグ必須。
+>
+> これにより DevTools での `plan` 上書きや UI バイパスをしても、サーバーが最終防衛線として弾く。
+
+### プランと機能マッピング（UIゲートの初期値）
 
 | プラン | 解放される機能キー | 含まれる機能 |
 |---|---|---|
 | `free` | `core.single` | 単体モード(単一プロンプト生成) / スタイル・レイアウト・フォーマット・配色・キャラクター画像・ペーストキュー |
-| `standard` | + `mode.carousel`, `ai.json` | + カルーセルモード / AIによるカルーセルJSON自動生成（Straico・Gemini）/ キャプション・ハッシュタグ生成 |
-| `pro` | + `ai.imagegen`, `theme.seasonal` | + 画像一括生成（OpenAI gpt-image-2 / Gemini）/ 個別再生成 / 季節テーマ / 24h ジョブ復元 |
+| `standard` | + `mode.carousel` | + カルーセルモード（手動JSON貼付）|
+| `pro` | + `ai.json`, `ai.imagegen`, `theme.seasonal` | + AIカルーセルJSON生成 / 画像一括生成 / 個別再生成 / 季節テーマ / 24h ジョブ復元（※実利用にはBYOKキーが必要）|
 | `lifetime` | `pro` と同じ | `pro` と同等 |
 
 ### タグによる個別解放
@@ -179,7 +217,7 @@ vercel deploy
 | `beta` | `ai.json` / `ai.imagegen` / `theme.seasonal`（free でも AI 機能を試せる） |
 | `internal` | beta と同等 + `mode.carousel` |
 | `vip` | internal と同等 |
-| **`pickaxe_internal`** | **`provider.pickaxe`**（Pickaxe モデル選択肢を UI に表示し、`/api/pickaxe-proxy` を許可） |
+| **`pickaxe_internal`** | **`provider.pickaxe` / `provider.straico`**（Pickaxe・Straico を UI に表示し `/api/pickaxe-proxy`・`/api/straico` を許可）+ **内蔵 OpenAI/Gemini キーの利用**（＝開発者タグ。一般ユーザーは BYOK 必須） |
 
 詳細は [app.js](app.js) の `PLAN_FEATURES` / `TAG_FEATURE_GRANTS` / `FEATURE_REQUIRED_PLAN` 定数を参照。
 
