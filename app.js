@@ -4614,6 +4614,17 @@ ${layoutDef.desc}
     const userProfileEl = document.getElementById('lineUserProfile');
     const badge = document.getElementById('lineUserPlanBadge');
 
+    // 公開ルート (/ と /free) は「認証なしで使う」設計。ログイン導線そのものを出さない。
+    //   - 機能制限ありの公開ページから無意味なログインに誘導しない (理想①)
+    //   - 全機能が欲しい人は /pro-max へ (そちらはゲートで LINE 認証)
+    //   - 公開ルートでは initLiff() を呼ばないため _liffReadyState が 'pending' のままで、
+    //     CTA を押すと「認証の準備中…」スピナーから進めなくなる二次バグも防ぐ
+    if (isOpenAccessRoute() && !isLocalDev()) {
+      if (cta) cta.hidden = true;
+      if (userProfileEl) userProfileEl.style.display = 'none';
+      return;
+    }
+
     if (authenticated) {
       if (cta) cta.hidden = true;
       if (userProfileEl) userProfileEl.style.display = 'flex';
