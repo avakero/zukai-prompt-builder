@@ -5202,6 +5202,8 @@ ${layoutDef.desc}
         try {
           await waitForLiffSdk(8000);
           await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
+          // init 完了。ログインボタンの押下を即 liff.login() に流せる状態にする。
+          _markLiffReady('ready');
           if (!liff.isLoggedIn()) {
             // キャッシュは残っていたが LIFF はログアウト状態 → 次回起動で再ログインを要求
             try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
@@ -5211,6 +5213,7 @@ ${layoutDef.desc}
           if (result === 'reauth') return;
           applyHeaderForProfile();
         } catch (e) {
+          _markLiffReady('failed');
           console.warn('[startup] background refresh failed; staying on cache:', e && e.message);
         }
       })();
@@ -5225,9 +5228,15 @@ ${layoutDef.desc}
       await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
     } catch (e) {
       console.error('[LIFF] init failed on login-required route:', e && e.message);
+      // init 失敗 → ログインボタンは友だち追加 URL にフォールバックさせる。
+      _markLiffReady('failed');
       setLoginGateState('error');
       return;
     }
+    // init 成功 → ログインボタンの押下を即 liff.login() に流せる状態にする。
+    // これが無いと _liffReadyState が 'pending' のまま固定され、ボタンを押しても
+    // 「認証の準備中…」から進まずログインが永久に始まらない。
+    _markLiffReady('ready');
 
     if (!liff.isLoggedIn()) {
       console.log('[LIFF] not logged in → showing login gate');
