@@ -593,6 +593,16 @@ img {
   gap: var(--space-3);
 }
 
+/* スタイル署名は2カラム。先頭の「標準（個性なし）」だけ全幅に置き、
+   残り6つの個性を2×3で並べて奇数による空きセルを無くす。 */
+.selection-grid--signature {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.selection-grid--signature .selection-card:first-child {
+  grid-column: 1 / -1;
+}
+
 .selection-card {
   position: relative;
   display: flex;

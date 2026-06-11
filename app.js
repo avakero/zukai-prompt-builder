@@ -1606,11 +1606,13 @@ ${layoutDef.desc}
     }
 
     // カルーセルモードでは「画像生成スタイル」が新しいスタイル選択を担当するため、
-    // ChatGPT貼り付けプロンプト用の旧スタイル/レイアウト/配色セクションは隠す
+    // ChatGPT貼り付けプロンプト用の旧スタイル/レイアウトセクションは隠す
     // （混乱を避けるため）。フォーマットは両方の生成で共通利用するので残す。
+    // 配色 (sectionColor) は getCurrentStylePrompt() 経由で画像生成にも反映される
+    // ため、署名と同様に両モードで表示する（全スライドの色調統一に使う）。
     // キャラクター画像 (sectionImages) はカルーセルモードでも参考画像として
     // Pickaxe API に渡せるようになったため、両モードで表示する。
-    const carouselOnlyHidden = ['sectionStyle', 'sectionLayout', 'sectionColor'];
+    const carouselOnlyHidden = ['sectionStyle', 'sectionLayout'];
     carouselOnlyHidden.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = mode === 'carousel' ? 'none' : '';
@@ -3037,6 +3039,19 @@ ${layoutDef.desc}
     if (sig && base.trim()) {
       base += `\n\n【スタイル署名（あなたの個性）】上記の画風を最優先し、それを損なわない範囲で次の個性を加える：${sig}`;
     }
+    // ② 配色（UIの設定）を上乗せ。カルーセル全スライドで色調を統一するため、
+    // お任せ以外（プリセット / カスタム）を指定したときだけ明示的に指示する。
+    if (base.trim()) {
+      let colorInstruction = '';
+      if (state.colorMode === 'preset' && state.colorValue) {
+        colorInstruction = state.colorValue;
+      } else if (state.colorMode === 'custom') {
+        colorInstruction = `テーマカラー: ${state.customColor}`;
+      }
+      if (colorInstruction) {
+        base += `\n\n【配色】全スライドで次の配色に統一する：${colorInstruction}`;
+      }
+    }
     return base;
   }
 
@@ -4076,8 +4091,11 @@ ${layoutDef.desc}
     }
 
     // プロンプト入力欄
+    // スタイルプロンプトは常に現在のUI設定（スタイル・署名・配色）から再計算し、
+    // 一括生成後に色や署名を変更した場合も個別再生成へ反映されるようにする。
+    // 現在値が空（custom 未入力など）の場合のみ、前回固定値にフォールバック。
     if (els.regenStylePrompt) {
-      els.regenStylePrompt.value = imgData.stylePrompt || getCurrentStylePrompt();
+      els.regenStylePrompt.value = getCurrentStylePrompt() || imgData.stylePrompt || '';
     }
     if (els.regenContentPrompt) {
       els.regenContentPrompt.value = imgData.contentPrompt || '';
