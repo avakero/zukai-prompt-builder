@@ -1551,6 +1551,8 @@ ${layoutDef.desc}
     if (els.imageGenPresets) {
       els.imageGenPresets.querySelectorAll('.image-gen-preset').forEach(preset => {
         preset.addEventListener('click', () => {
+          // 公開ページでロックされたプリセットはキーボード(Enter/Space→click)経由でも無効化
+          if (preset.getAttribute('aria-disabled') === 'true') return;
           selectImageGenPreset(preset.dataset.preset);
         });
         preset.addEventListener('keydown', (e) => {
@@ -4431,6 +4433,7 @@ ${layoutDef.desc}
   // 単体＋手動カルーセルのみ使える状態にし、スタイルは2種、署名・配色は固定、
   // AI機能ボタンは薄暗く押せない (非表示にはしない) 状態にする。
   const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風
+  const PUBLIC_ALLOWED_IMAGE_GEN_PRESETS = ['handdrawn', 'flat'];  // カルーセル画像生成スタイルも2種のみ
 
   function isPublicMode() {
     // localhost は開発用に全機能のまま (制限をかけない)。
@@ -4455,20 +4458,43 @@ ${layoutDef.desc}
     });
   }
 
+  // 個別カードを「薄く表示して選択不可」にする (非表示にはしない)。
+  // div ベースのカードは disabled 属性を無視するので pointer-events で止め、
+  // tabindex=-1 でキーボードフォーカスも外す (click ハンドラ側でも aria-disabled を見て二重に弾く)。
+  function lockCard(card) {
+    card.classList.add('card--locked');
+    card.style.pointerEvents = 'none';
+    card.setAttribute('aria-disabled', 'true');
+    card.setAttribute('tabindex', '-1');
+  }
+
   function applyPublicLimits() {
     if (!isPublicMode()) return;
 
-    // (a) スタイルを2種のみ表示。許可外を選んでいたら A にリセット。
+    // (a) 単体モードのスタイルは2種のみ選択可。許可外は薄く表示して選択不可。
+    //     許可外を選んでいたら A にリセット。
     document.querySelectorAll('[data-group="style"]').forEach(card => {
       const allow = PUBLIC_ALLOWED_STYLES.includes(card.dataset.value);
-      card.style.display = allow ? '' : 'none';
-      if (!allow) { card.classList.remove('active'); card.setAttribute('aria-checked', 'false'); }
+      if (!allow) {
+        lockCard(card);
+        card.classList.remove('active');
+        card.setAttribute('aria-checked', 'false');
+      }
     });
     if (!PUBLIC_ALLOWED_STYLES.includes(state.style)) {
       state.style = 'A';
       activateCard('style', 'A');
       updateBadges();
       saveState();
+    }
+
+    // (a2) カルーセルモードの画像生成スタイルも2種のみ選択可。
+    //      許可外を選んでいたら handdrawn にリセット。
+    document.querySelectorAll('#imageGenPresets .image-gen-preset').forEach(card => {
+      if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(card.dataset.preset)) lockCard(card);
+    });
+    if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(imageGenState.selectedPreset)) {
+      selectImageGenPreset('handdrawn');
     }
 
     // (b) スタイル署名をデフォルト(none)に固定してロック

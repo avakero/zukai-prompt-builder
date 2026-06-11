@@ -915,6 +915,13 @@ img {
   cursor: not-allowed;
 }
 
+/* 公開ページで選択不可の個別カード (スタイル/画像生成プリセット)。
+   非表示にせず薄くして「有料版にはある」ことを見せる */
+.card--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .generate-btn svg {
   width: 20px;
   height: 20px;
