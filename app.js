@@ -432,6 +432,9 @@
     // 公開ページ (/ と /free) 用の擬似プラン。単体＋手動カルーセルのみ、AI不可。
     // (UI 側では applyPublicLimits() でスタイル/署名/配色も絞り、AIボタンを無効表示にする)
     public: ['core.single', 'mode.carousel'],
+    // 単体専用ページ (/solo) 用の擬似プラン。認証なしで単体モードの全機能
+    // (全スタイル・署名・配色) が使える。カルーセルUIは applySoloLayout() で丸ごと隠す。
+    solo: ['core.single'],
     free: ['core.single'],
     // LINEログイン済み (= マガジン購入者) は全機能を表示。AI の実利用は BYOK 必須
     // (サーバー側 /api/*-image で検証)。購入者の絞り込みは /pro-max URL を知っていること=経路で行う。
@@ -1636,6 +1639,9 @@ ${layoutDef.desc}
 
   function switchMode(mode) {
     if (mode !== 'single' && mode !== 'carousel') return;
+    // 単体専用ページではカルーセルへの切替を黙って無視する
+    // (localStorage に carousel が保存されていても起動時にトーストを出さない)
+    if (mode === 'carousel' && isSoloRoute()) return;
     if (mode === 'carousel' && !gateOrToast('mode.carousel', 'カルーセルモード')) return;
     state.mode = mode;
 
@@ -4524,6 +4530,31 @@ ${layoutDef.desc}
     console.log('[applyPublicLimits] public mode: styles limited, signature/color locked, AI disabled');
   }
 
+  // 単体専用ページ (/solo) のレイアウト調整。
+  // モード切替タブとカルーセル関連UIを丸ごと非表示にし、単体モードを常時表示する。
+  // 機能制限 (applyPublicLimits) は適用しない = 単体モードは全機能 (全スタイル/署名/配色) 使える。
+  function applySoloLayout() {
+    // (a) モードタブ + カルーセルコンテンツ/出力を非表示
+    ['modeTabs', 'modeContentCarousel', 'modeContentCarouselOutput'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+
+    // (b) 単体側コンテンツを強制表示 (保存状態が carousel でも単体を出す)
+    //     スタイル/レイアウトはカルーセルモードで隠される対象なので明示的に戻す
+    ['modeContentSingle', 'modeContentSingleOutput', 'sectionStyle', 'sectionLayout'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    state.mode = 'single';
+
+    // (c) 認証なしページなので LINE ログイン導線も出さない
+    const cta = document.getElementById('lineLoginCtaBtn');
+    if (cta) cta.hidden = true;
+
+    console.log('[applySoloLayout] solo mode: carousel UI hidden, single mode full features');
+  }
+
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
   // ※ このLIFFアプリのエンドポイントURLを ルート https://zukai-builder.vercel.app/ に
   //   設定することで、配下の全サブパス (/pro-max, /line-menu 等) を1つのLIFFアプリでカバーする。
@@ -5058,6 +5089,14 @@ ${layoutDef.desc}
     return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
   }
 
+  // 単体専用ページか (/solo)。
+  // LINE認証なし・単体モードの全機能が使える・カルーセルUIは表示しない。
+  // 公開ページ (isOpenAccessRoute) とは別扱いで、applyPublicLimits の制限は受けない。
+  function isSoloRoute() {
+    const path = location.pathname || '';
+    return path === '/solo' || path === '/solo/' || path.indexOf('/solo') === 0;
+  }
+
   // ログイン必須ルートか (現在は /pro-max のみ。/ と /free は公開)
   // ※ localhost は開発用にゲートをスキップする
   function isLoginRequiredRoute() {
@@ -5077,6 +5116,27 @@ ${layoutDef.desc}
     const qs = new URLSearchParams(location.search);
     const overridePlan = qs.get('plan');
     const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    // ⓪ 単体専用ページ (/solo): 認証なしで即起動。単体モードは全機能、カルーセルUIなし。
+    //    localhost より先に判定することでローカルでも /solo の見た目を確認できる。
+    if (isSoloRoute()) {
+      hideLoginGate();
+      window.__USER_PROFILE__ = {
+        lineUserId:    'Usolo',
+        product:       PRODUCT_CODE,
+        plan:          'solo',
+        status:        'active',
+        planExpiresAt: null,
+        tags:          ['solo'],
+        updatedAt:     null,
+        source:        'open-access'
+      };
+      init();
+      applyProviderGate();
+      applyHeaderForProfile();
+      applySoloLayout();
+      return;
+    }
 
     // ① ログイン必須ルート (/pro-max): ゲートを表示し、ログイン済みのときだけ本体を起動
     if (isLoginRequiredRoute()) {

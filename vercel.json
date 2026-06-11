@@ -19,6 +19,8 @@
     { "source": "/pro-max/", "destination": "/index.html" },
     { "source": "/free", "destination": "/index.html" },
     { "source": "/free/", "destination": "/index.html" },
+    { "source": "/solo", "destination": "/index.html" },
+    { "source": "/solo/", "destination": "/index.html" },
     { "source": "/line-menu", "destination": "/line-menu.html" },
     { "source": "/line-menu/", "destination": "/line-menu.html" }
   ],
