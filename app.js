@@ -228,7 +228,11 @@
     styleSignature: 'none', // ① あなたのスタイル署名（個性）。SIGNATURE_DEFS のキー
     theme: 'light',
     mode: 'single', // 'single' | 'carousel'
-    carouselPageNumbers: true
+    carouselPageNumbers: true,
+    // カルーセル(AI構成)入力。単体の text と同様にリロード後も復元する。
+    aiTheme: '',
+    aiSlideCount: '5',
+    aiTone: 'friendly'
   };
 
   // カルーセル状態
@@ -751,7 +755,10 @@ ${layoutDef.desc}
       styleSignature: state.styleSignature || 'none', // 署名は個人設定なのでリセットしない
       theme: state.theme, // テーマはリセットしない
       mode: 'single',
-      carouselPageNumbers: true
+      carouselPageNumbers: true,
+      aiTheme: '',
+      aiSlideCount: '5',
+      aiTone: 'friendly'
     };
 
     els.contentText.value = '';
@@ -1217,6 +1224,17 @@ ${layoutDef.desc}
       els.contentText.value = state.text;
     }
 
+    // カルーセル(AI構成)入力の復元
+    if (els.aiThemeInput && state.aiTheme) {
+      els.aiThemeInput.value = state.aiTheme;
+    }
+    if (els.aiSlideCount && state.aiSlideCount) {
+      els.aiSlideCount.value = state.aiSlideCount;
+    }
+    if (els.aiTone && state.aiTone) {
+      els.aiTone.value = state.aiTone;
+    }
+
     // 選択カード
     activateCard('style', state.style);
     activateCard('layout', state.layout);
@@ -1272,6 +1290,29 @@ ${layoutDef.desc}
       state.text = els.contentText.value;
       saveState();
     });
+
+    // カルーセル(AI構成)入力も単体と同様に保存／復元する
+    if (els.aiThemeInput) {
+      els.aiThemeInput.addEventListener('input', () => {
+        state.aiTheme = els.aiThemeInput.value;
+      });
+      els.aiThemeInput.addEventListener('blur', () => {
+        state.aiTheme = els.aiThemeInput.value;
+        saveState();
+      });
+    }
+    if (els.aiSlideCount) {
+      els.aiSlideCount.addEventListener('change', () => {
+        state.aiSlideCount = els.aiSlideCount.value;
+        saveState();
+      });
+    }
+    if (els.aiTone) {
+      els.aiTone.addEventListener('change', () => {
+        state.aiTone = els.aiTone.value;
+        saveState();
+      });
+    }
 
     // 選択カードクリック
     $$('.selection-card').forEach(card => {
@@ -4389,17 +4430,84 @@ ${layoutDef.desc}
     }
   }
 
-  // CTA クリック時: LIFF が使えれば liff.login()、ダメなら友だち追加 URL にフォールバック
-  function triggerLineLogin() {
-    if (typeof liff !== 'undefined' && typeof liff.login === 'function') {
+  // liff.init() の進行状態。ログインボタンの挙動を分岐するために使う。
+  //   'pending' … init がまだ完了していない (押されても待たせる)
+  //   'ready'   … init 完了。即 liff.login() してよい
+  //   'failed'  … init 失敗 or LIFF 利用不可。友だち追加 URL にフォールバック
+  let _liffReadyState = 'pending';
+  // init 未完了中にログインを押された場合、その意図を記憶して init 完了時に自動実行する。
+  // これがないと「押したのに無反応」に見え、ユーザーが連打してしまう。
+  let _pendingLoginIntent = false;
+  let _pendingLoginBtn = null;
+
+  // ログインボタンを「認証の準備中…」表示にする (押下直後の無反応感を消す)。
+  // SVG アイコンを含む innerHTML を退避し、リダイレクトされない場合は復元できるようにする。
+  function _setLoginBtnPending(btn) {
+    if (!btn || btn.dataset.loginPending === '1') return;
+    btn.dataset.loginPending = '1';
+    btn.dataset.loginPrevHtml = btn.innerHTML;
+    btn.setAttribute('aria-busy', 'true');
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.75';
+    btn.innerHTML = '<span class="spinner"></span>認証の準備中…';
+  }
+  function _resetLoginBtn(btn) {
+    if (!btn || btn.dataset.loginPending !== '1') return;
+    btn.innerHTML = btn.dataset.loginPrevHtml || btn.innerHTML;
+    delete btn.dataset.loginPending;
+    delete btn.dataset.loginPrevHtml;
+    btn.removeAttribute('aria-busy');
+    btn.style.pointerEvents = '';
+    btn.style.opacity = '';
+  }
+
+  function _goFriendAddUrl() {
+    window.location.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_ID);
+  }
+
+  // liff.init() の完了 (成功 or 失敗) を通知する。
+  // 待たせていたログインクリックがあれば、ここで自動的に実行する。
+  function _markLiffReady(state) {
+    _liffReadyState = (state === 'ready') ? 'ready' : 'failed';
+    if (!_pendingLoginIntent) return;
+    _pendingLoginIntent = false;
+    console.log('[LIFF] flushing queued login intent. state=', _liffReadyState);
+    if (_liffReadyState === 'ready' && typeof liff !== 'undefined' && typeof liff.login === 'function') {
+      try { liff.login(); return; } catch (e) {
+        console.warn('[LIFF] queued liff.login() failed; falling back to friend-add URL', e);
+      }
+    }
+    _goFriendAddUrl();
+  }
+
+  // CTA クリック時の挙動。init の進行状態で分岐する:
+  //   ready  → 即 liff.login()
+  //   failed → 友だち追加 URL にフォールバック
+  //   pending→ 意図を記憶し「準備中…」を表示。init 完了時に _markLiffReady が自動実行する。
+  function triggerLineLogin(btn) {
+    if (_liffReadyState === 'ready' && typeof liff !== 'undefined' && typeof liff.login === 'function') {
       try {
+        _setLoginBtnPending(btn);
         liff.login();
         return;
       } catch (e) {
         console.warn('[LIFF] liff.login() failed; falling back to friend-add URL', e);
+        _resetLoginBtn(btn);
+        _goFriendAddUrl();
+        return;
       }
     }
-    window.location.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_ID);
+
+    if (_liffReadyState === 'failed') {
+      _goFriendAddUrl();
+      return;
+    }
+
+    // init 進行中。連打を防ぎつつ「動いている」ことを見せ、完了したら自動でログインへ。
+    console.log('[LIFF] login clicked before init finished → queueing until ready');
+    _pendingLoginIntent = true;
+    _pendingLoginBtn = btn || null;
+    _setLoginBtnPending(btn);
   }
 
   function buildFallbackProfile(source) {
@@ -4699,6 +4807,9 @@ ${layoutDef.desc}
       await waitForLiffSdk(8000);
       await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
 
+      // init 完了。待たせていたログインクリックがあればここで即発火させる。
+      _markLiffReady('ready');
+
       if (liff.isLoggedIn()) {
         console.log('[LIFF] logged in → fetchUserProfile()');
         const result = await fetchUserProfile();
@@ -4713,6 +4824,8 @@ ${layoutDef.desc}
       }
     } catch (e) {
       console.warn('[LIFF] background init failed; staying anonymous:', e && e.message);
+      // init 失敗 → 待たせていたクリックは友だち追加 URL にフォールバックさせる。
+      _markLiffReady('failed');
     }
   }
 
@@ -4723,7 +4836,7 @@ ${layoutDef.desc}
     if (ctaBtn) {
       ctaBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        triggerLineLogin();
+        triggerLineLogin(ctaBtn);
       });
     }
 
@@ -4732,7 +4845,7 @@ ${layoutDef.desc}
     if (gateLoginBtn) {
       gateLoginBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        triggerLineLogin();
+        triggerLineLogin(gateLoginBtn);
       });
     }
     // ゲート内エラー時の再試行
