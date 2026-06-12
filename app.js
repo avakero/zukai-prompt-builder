@@ -3654,7 +3654,7 @@ ${layoutDef.desc}
       // 期限切れの ID Token を更新できない (401 が無限に続く原因)。
       // 先に logout() でセッションを破棄し、強制的にフルログインさせる。
       if (typeof liff.logout === 'function') liff.logout();
-      liff.login();
+      _liffLoginToCurrentPage();
     } catch (e) {
       console.warn('[LIFF] silent re-login failed:', e && e.message);
       return false;
@@ -4567,6 +4567,17 @@ ${layoutDef.desc}
   // ※ LINE Official Account Manager で確認できるベーシックID（@xxx）またはプレミアムID
   const LINE_OA_ID = '@922tidzy';
 
+  // liff.login() のラッパー。必ず「現在のページ」へ戻す redirectUri を明示する。
+  //   redirectUri 未指定だと LIFF はエンドポイントURL (ルート /) に着地させてしまい、
+  //   /pro-max でログインしたのにルート扱い (公開ルート=機能制限) のページに戻ってしまう。
+  //   現在のパスを redirectUri に渡すことで、ログイン後も /pro-max に留まらせる。
+  //   ※ query/hash は付けない (code/state の二重付与や古いパラメータ持ち越しを防ぐ)。
+  //   redirectUri は LIFF エンドポイントURL (ルート) 配下である必要があり /pro-max は配下なのでOK。
+  function _liffLoginToCurrentPage() {
+    const redirectUri = location.origin + location.pathname;
+    liff.login({ redirectUri });
+  }
+
   // ログインゲートを非表示にする (デフォルトで .hidden だが念のため)
   function hideLoginGate() {
     const gate = document.getElementById('lineLoginGate');
@@ -4682,7 +4693,7 @@ ${layoutDef.desc}
     _pendingLoginIntent = false;
     console.log('[LIFF] flushing queued login intent. state=', _liffReadyState);
     if (_liffReadyState === 'ready' && typeof liff !== 'undefined' && typeof liff.login === 'function') {
-      try { liff.login(); return; } catch (e) {
+      try { _liffLoginToCurrentPage(); return; } catch (e) {
         console.warn('[LIFF] queued liff.login() failed; falling back to friend-add URL', e);
       }
     }
@@ -4697,7 +4708,7 @@ ${layoutDef.desc}
     if (_liffReadyState === 'ready' && typeof liff !== 'undefined' && typeof liff.login === 'function') {
       try {
         _setLoginBtnPending(btn);
-        liff.login();
+        _liffLoginToCurrentPage();
         return;
       } catch (e) {
         console.warn('[LIFF] liff.login() failed; falling back to friend-add URL', e);
