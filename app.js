@@ -4574,8 +4574,34 @@ ${layoutDef.desc}
   //   ※ query/hash は付けない (code/state の二重付与や古いパラメータ持ち越しを防ぐ)。
   //   redirectUri は LIFF エンドポイントURL (ルート) 配下である必要があり /pro-max は配下なのでOK。
   function _liffLoginToCurrentPage() {
+    // ログイン前に「戻りたいページ」を控える。LINEログインはエンドポイントURL(ルート/)に
+    // 着地することがあり、そこから本来のページへ戻すためのフォールバックに使う。
+    _stashLoginReturnPath();
     const redirectUri = location.origin + location.pathname;
     liff.login({ redirectUri });
+  }
+
+  // ログイン直前の経路を sessionStorage に控える/読み出す。
+  // sessionStorage は OAuth で別オリジンへ往復しても同一タブ・同一オリジンで生き残る。
+  const LOGIN_RETURN_KEY = 'zukai-login-return';
+  function _stashLoginReturnPath() {
+    try { sessionStorage.setItem(LOGIN_RETURN_KEY, location.pathname); } catch (_) {}
+  }
+  function _consumeLoginReturnPath() {
+    try {
+      const v = sessionStorage.getItem(LOGIN_RETURN_KEY);
+      sessionStorage.removeItem(LOGIN_RETURN_KEY);
+      return v;
+    } catch (_) { return null; }
+  }
+
+  // 現在のURLが LINEログインからの戻り (LIFFコールバック) かどうか。
+  // code+state (OAuth) もしくは liff.state (LIFFの経路復元パラメータ) を見る。
+  function _hasLiffRedirectParams() {
+    try {
+      const qs = new URLSearchParams(location.search);
+      return (qs.has('code') && qs.has('state')) || qs.has('liff.state');
+    } catch (_) { return false; }
   }
 
   // ログインゲートを非表示にする (デフォルトで .hidden だが念のため)
@@ -5135,6 +5161,49 @@ ${layoutDef.desc}
   function startApp() {
     initLoginEvents();
 
+    // LINEログインからの戻り (LIFFコールバック) を最優先で処理する。
+    //   LIFFのエンドポイントURLはルート(/)なので、/pro-max でログインしても LINE は
+    //   code/state(+liff.state) 付きで一旦ルート(/)に戻してくる。ルートは通常 liff.init() を
+    //   呼ばないため、ここで処理しないと「認証コードが交換されない＋本来ページに戻れない」=
+    //   制限ありの公開ページに留まったままになる (これが /pro-max ログイン後に制限が解けない原因)。
+    //   /pro-max に直接戻った場合は requireLoginThenStart 側で処理するのでここでは扱わない。
+    if (_hasLiffRedirectParams() && !isLoginRequiredRoute()) {
+      handleLiffCallbackThenRoute();
+      return;
+    }
+
+    routeApp();
+  }
+
+  // LINEログインからの戻りをルートで処理し、本来のページへ送り直す。
+  async function handleLiffCallbackThenRoute() {
+    showLoginGate('loading');   // 処理中は制限ページのチラ見えを防ぐ
+    try {
+      await waitForLiffSdk(8000);
+      await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
+      _markLiffReady('ready');
+      // liff.init() が liff.state を検出すれば本来ページへ自動遷移する (この後は未実行)。
+      // 自動遷移しなくても、ログイン前に控えた戻り先があればそこへ送る。
+      if (liff.isLoggedIn && liff.isLoggedIn()) {
+        const ret = _consumeLoginReturnPath();
+        if (ret && ret !== location.pathname) {
+          console.log('[LIFF] callback handled → redirecting to original page:', ret);
+          location.replace(location.origin + ret);
+          return;
+        }
+      } else {
+        _consumeLoginReturnPath();   // 未ログインなら控えは破棄
+      }
+    } catch (e) {
+      _markLiffReady('failed');
+      console.warn('[LIFF] callback handling failed:', e && e.message);
+    }
+    hideLoginGate();
+    routeApp();
+  }
+
+  // 経路で起動を分岐する本体 (⓪単体 / ①ログイン必須 / ②公開・localhost / ③フォールバック)。
+  function routeApp() {
     const qs = new URLSearchParams(location.search);
     const overridePlan = qs.get('plan');
     const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
