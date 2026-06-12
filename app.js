@@ -4633,6 +4633,15 @@ ${layoutDef.desc}
     setLoginGateState(state || 'loading');
   }
 
+  // ローディング画面の文言を差し替える (スピナーを「意図的な処理中」に見せるため)。
+  //   main: 主文 / sub: 補助文 (省略時は補助文を空に)
+  function setLoginLoadingMessage(main, sub) {
+    const t = document.getElementById('lineLoadingText');
+    const s = document.getElementById('lineLoadingSubtext');
+    if (t && main) t.textContent = main;
+    if (s) s.textContent = sub || '';
+  }
+
   // プロファイルが「LIFF ログイン済み相当」かどうか
   // (local-dev もテスト目的で認証済み扱い、 anonymous / open-access / fallback は未認証扱い)
   function isProfileAuthenticated(profile) {
@@ -4686,7 +4695,7 @@ ${layoutDef.desc}
   let _pendingLoginIntent = false;
   let _pendingLoginBtn = null;
 
-  // ログインボタンを「認証の準備中…」表示にする (押下直後の無反応感を消す)。
+  // ログインボタンを「ログインしています…」表示にする (押下直後の無反応感を消す)。
   // SVG アイコンを含む innerHTML を退避し、リダイレクトされない場合は復元できるようにする。
   function _setLoginBtnPending(btn) {
     if (!btn || btn.dataset.loginPending === '1') return;
@@ -4695,7 +4704,7 @@ ${layoutDef.desc}
     btn.setAttribute('aria-busy', 'true');
     btn.style.pointerEvents = 'none';
     btn.style.opacity = '0.75';
-    btn.innerHTML = '<span class="spinner"></span>認証の準備中…';
+    btn.innerHTML = '<span class="spinner"></span>ログインしています…';
   }
   function _resetLoginBtn(btn) {
     if (!btn || btn.dataset.loginPending !== '1') return;
@@ -5178,6 +5187,7 @@ ${layoutDef.desc}
   // LINEログインからの戻りをルートで処理し、本来のページへ送り直す。
   async function handleLiffCallbackThenRoute() {
     showLoginGate('loading');   // 処理中は制限ページのチラ見えを防ぐ
+    setLoginLoadingMessage('ログインしています…', 'アプリに戻っています');
     try {
       await waitForLiffSdk(8000);
       await withTimeout(liff.init({ liffId: LIFF_ID }), 10000, 'LIFF init');
