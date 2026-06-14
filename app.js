@@ -2910,6 +2910,14 @@ ${theme}
       colorInstruction = `テーマカラー: ${state.customColor}`;
     }
 
+    // ① スタイル署名（あなたの個性）。単体モードの generatePrompt と同形式で上乗せ。
+    // 公開ページ (/ と /free) では applyPublicLimits が署名を none に固定するため
+    // ここは自動的に空になる (署名が効くのは /pro-max と /solo のみ)。
+    const signaturePrompt = buildSignatureText();
+    const signatureBlock = signaturePrompt
+      ? `\n\n### あなたのスタイル署名（個性）\n※選択した画風・配色を最優先し、それを損なわない範囲で次の個性を加えてください。\n${signaturePrompt}`
+      : '';
+
     // キャラクター画像の指示
     let charImageNote = '';
     if (characterImages.length > 0) {
@@ -2971,7 +2979,7 @@ ${layoutDef.desc}
 
 ### フォーマット: ${globalFormat}
 
-### 配色: ${colorInstruction}${charImageNote}`;
+### 配色: ${colorInstruction}${signatureBlock}${charImageNote}`;
   }
 
   function buildImageSlideContent(slide, index, totalSlides) {
