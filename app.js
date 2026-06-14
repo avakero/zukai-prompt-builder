@@ -429,7 +429,7 @@
   // ai.json / ai.imagegen は API コストが運営負担になるため pro 以上に限定。
   // standard ユーザーは BYOK (自分の OpenAI キーを設定) すれば両方使えるようになる。
   const PLAN_FEATURES = {
-    // 公開ページ (/ と /free) 用の擬似プラン。単体＋手動カルーセルのみ、AI不可。
+    // 公開ページ (/) 用の擬似プラン。単体＋手動カルーセルのみ、AI不可。
     // (UI 側では applyPublicLimits() でスタイル/署名/配色も絞り、AIボタンを無効表示にする)
     public: ['core.single', 'mode.carousel'],
     // 単体専用ページ (/solo) 用の擬似プラン。認証なしで単体モードの全機能
@@ -2911,7 +2911,7 @@ ${theme}
     }
 
     // ① スタイル署名（あなたの個性）。単体モードの generatePrompt と同形式で上乗せ。
-    // 公開ページ (/ と /free) では applyPublicLimits が署名を none に固定するため
+    // 公開ページ (/) では applyPublicLimits が署名を none に固定するため
     // ここは自動的に空になる (署名が効くのは /pro-max と /solo のみ)。
     const signaturePrompt = buildSignatureText();
     const signatureBlock = signaturePrompt
@@ -4443,7 +4443,7 @@ ${layoutDef.desc}
     console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ showStraico =', showStraico, '/ active model =', imageGenState.model);
   }
 
-  // 公開ページ (/ と /free、localhost 除く) のUI制限。
+  // 公開ページ (/、localhost 除く) のUI制限。
   // 単体＋手動カルーセルのみ使える状態にし、スタイルは2種、署名・配色は固定、
   // AI機能ボタンは薄暗く押せない (非表示にはしない) 状態にする。
   const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風
@@ -4668,7 +4668,7 @@ ${layoutDef.desc}
     const userProfileEl = document.getElementById('lineUserProfile');
     const badge = document.getElementById('lineUserPlanBadge');
 
-    // 公開ルート (/ と /free) は「認証なしで使う」設計。ログイン導線そのものを出さない。
+    // 公開ルート (/) は「認証なしで使う」設計。ログイン導線そのものを出さない。
     //   - 機能制限ありの公開ページから無意味なログインに誘導しない (理想①)
     //   - 全機能が欲しい人は /pro-max へ (そちらはゲートで LINE 認証)
     //   - 公開ルートでは initLiff() を呼ばないため _liffReadyState が 'pending' のままで、
@@ -5146,12 +5146,11 @@ ${layoutDef.desc}
   }
 
   // LINE認証不要の公開ページかどうか。
-  // ルート (/) と /free を「公開ページ」として扱う (キャンペーン用・機能制限あり)。
-  // ※ /pro-max はログイン必須なのでここからは除外。
+  // ルート (/) を「公開ページ」として扱う (キャンペーン用・機能制限あり)。
+  // ※ /pro-max はログイン必須なのでここからは除外。/free は廃止し / に一本化した。
   function isOpenAccessRoute() {
     const path = location.pathname || '';
-    if (path === '/' || path === '') return true;
-    return path === '/free' || path === '/free/' || path.indexOf('/free') === 0;
+    return path === '/' || path === '';
   }
 
   // 単体専用ページか (/solo)。
@@ -5162,7 +5161,7 @@ ${layoutDef.desc}
     return path === '/solo' || path === '/solo/' || path.indexOf('/solo') === 0;
   }
 
-  // ログイン必須ルートか (現在は /pro-max のみ。/ と /free は公開)
+  // ログイン必須ルートか (現在は /pro-max のみ。/ は公開)
   // ※ localhost は開発用にゲートをスキップする
   function isLoginRequiredRoute() {
     if (isLocalDev()) return false;
@@ -5172,7 +5171,7 @@ ${layoutDef.desc}
 
   // アプリ起動。経路で2つに分岐:
   //   ① /pro-max (ログイン必須・マガジン購入者): ゲート→LINEログイン→全機能
-  //   ② / と /free (公開ページ) と localhost: 認証なしで即起動。
+  //   ② / (公開ページ) と localhost: 認証なしで即起動。
   //      公開ルートは plan='public' + applyPublicLimits() で機能制限
   //      (localhost は開発用に plan='pro' で全機能)。ログイン昇格はしない。
   function startApp() {
@@ -5253,7 +5252,7 @@ ${layoutDef.desc}
       return;
     }
 
-    // ② 公開ルート (/ と /free) と localhost: 固定プロファイルで即起動
+    // ② 公開ルート (/) と localhost: 固定プロファイルで即起動
     //    localhost は開発用に pro (全機能)。それ以外の公開ルートは public (制限あり)。
     if (isLocalDev() || isOpenAccessRoute()) {
       hideLoginGate();
