@@ -969,8 +969,7 @@ ${layoutDef.desc}
   async function uploadOneCharacterImage(img) {
     if (img.publicUrl) return img.publicUrl;
 
-    const token = _getLiffToken();
-    if (!token) throw new Error('LINE認証トークンが取得できません');
+    if (!_getLiffToken()) throw new Error('LINE認証トークンが取得できません');
 
     // 大きい画像は送信前に縮小
     let dataUrlToSend;
@@ -981,14 +980,18 @@ ${layoutDef.desc}
       dataUrlToSend = img.dataUrl;
     }
 
-    const res = await fetch('/api/upload-character-image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-      },
-      body: JSON.stringify({ dataUrl: dataUrlToSend, filename: img.name })
-    });
+    // ID Token 期限切れ (401 expired_token) に備え、401 復旧を共通ヘルパーで行う。
+    const res = await _authedFetchWithRecovery(
+      (tok) => fetch('/api/upload-character-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tok
+        },
+        body: JSON.stringify({ dataUrl: dataUrlToSend, filename: img.name })
+      }),
+      'api/upload-character-image'
+    );
 
     if (!res.ok) {
       let detail = '';
@@ -2308,27 +2311,33 @@ ${theme}
     // 独自キー未設定 (センチネル) のときはサーバープロキシ経由。
     // プロキシは LINE 認証を要求する (Straico は開発者タグ保有者のみ)。
     const useProxy = !apiKey || apiKey === STRAICO_SERVER_PROXY;
-    const token = useProxy ? _getLiffToken() : null;
     // プロキシ経由には LINE 認証が必要。
     // 未ログインのまま投げると無意味な 401 になるため、先に分かりやすく案内する。
-    if (useProxy && !token) {
+    if (useProxy && !_getLiffToken()) {
       throw new Error('内蔵Straicoキーの利用にはLINEログインが必要です。LINEでログインするか、APIキー設定からご自身のStraicoキーを登録してください');
     }
-    const res = await fetch(useProxy ? STRAICO_PROXY_ENDPOINT : STRAICO_ENDPOINT, {
-      method: 'POST',
-      headers: useProxy
-        ? {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-          }
-        : {
+    // プロキシ経由は ID Token 期限切れ (401 expired_token) を踏み得るため、
+    // 401 復旧 (Access Token リトライ → 静かに再ログイン) を共通ヘルパーで行う。
+    const res = useProxy
+      ? await _authedFetchWithRecovery(
+          (tok) => fetch(STRAICO_PROXY_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + tok
+            },
+            body: JSON.stringify({ model, prompt })
+          }),
+          'api/straico'
+        )
+      : await fetch(STRAICO_ENDPOINT, {
+          method: 'POST',
+          headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json'
           },
-      body: JSON.stringify(useProxy
-        ? { model, prompt }
-        : { models: [model], message: prompt })
-    });
+          body: JSON.stringify({ models: [model], message: prompt })
+        });
 
     if (!res.ok) {
       let errBody = '';
@@ -2486,6 +2495,11 @@ ${theme}
       expandCarousel();
     } catch (err) {
       console.error(`${provider} API error:`, err);
+      // 認証期限切れで再ログインへ遷移中: 生成エラー扱いにせず案内だけ出す
+      if (err && err.reauthRedirect) {
+        showToast('🔄 ログインの有効期限が切れたため再ログインします…');
+        return;
+      }
       const msg = err && err.message ? err.message : String(err);
       showToast(`⚠️ 生成エラー: ${msg}`);
     } finally {
@@ -3383,35 +3397,36 @@ ${layoutDef.desc}
   // どのプロバイダの endpoint でも、LIFF認証 + AbortController による
   // タイムアウト管理 + エラーレスポンス整形を統一する。
   async function _postImageGenProxy(endpoint, body, timeoutMs, extraHeaders) {
-    const token = _getLiffToken();
-    if (!token) throw new Error('LINE認証トークンが取得できません');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    let res;
-    try {
-      res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-          ...(extraHeaders || {})
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      });
-    } catch (err) {
-      if (err && err.name === 'AbortError') {
-        const e = new Error(`タイムアウト（${Math.round(timeoutMs / 1000)}秒以内に応答なし）`);
-        e.status = 0;
-        e.isTimeout = true;
-        throw e;
+    // ID Token 期限切れ (401 expired_token) に備え、401 復旧を共通ヘルパーで行う。
+    // タイムアウト管理は試行ごとに AbortController を張る必要があるため doFetch 内に置く。
+    const doFetch = async (tok) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + tok,
+            ...(extraHeaders || {})
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          const e = new Error(`タイムアウト（${Math.round(timeoutMs / 1000)}秒以内に応答なし）`);
+          e.status = 0;
+          e.isTimeout = true;
+          throw e;
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
       }
-      throw err;
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    };
+
+    const res = await _authedFetchWithRecovery(doFetch, endpoint);
 
     if (!res.ok) {
       let detail = '';
@@ -3768,6 +3783,44 @@ ${layoutDef.desc}
   }
   function _clearReLoginAttempts() {
     try { sessionStorage.removeItem('zukai-relogin-attempts'); } catch (_) {}
+  }
+
+  // LINE 認証付き fetch の 401 復旧ラッパー。
+  // _getLiffToken() が返す ID Token は LIFF が自動更新しないため、放置すると
+  // 期限切れになり、認証プロキシ (/api/straico, /api/pickaxe-proxy 等) が
+  // 401 expired_token を返す。fetchUserProfile (/api/me) と同じ復旧戦略を共通化する:
+  //   1) expired_token / invalid_token なら、LIFF が自動更新する Access Token で1回リトライ
+  //   2) それでも 401 なら logout()+login() で静かに再ログイン (ページ遷移)
+  // doFetch(token) は token を Authorization: Bearer に載せた fetch の Promise を返すこと。
+  // 戻り値: 復旧後の Response。再ログインへ遷移したときは reauthRedirect 付き Error を throw。
+  // トークン未取得時は noAuthToken 付き Error を throw。
+  async function _authedFetchWithRecovery(doFetch, label) {
+    const token = _getLiffToken();
+    if (!token) {
+      const e = new Error('LINE認証トークンが取得できません');
+      e.noAuthToken = true;
+      throw e;
+    }
+    let res = await doFetch(token);
+    if (res.status === 401) {
+      let errCode = null;
+      try { const b = await res.clone().json(); errCode = b && b.error; } catch (_) {}
+      console.warn('[' + label + '] 401, errCode=', errCode);
+      if (errCode === 'expired_token' || errCode === 'invalid_token') {
+        const accessToken = _getLiffAccessToken();
+        if (accessToken && accessToken !== token) {
+          console.log('[' + label + '] retrying with access token after', errCode);
+          try { res = await doFetch(accessToken); } catch (_) { /* 前の res を維持 */ }
+        }
+        if (res.status === 401 && _trySilentLineReLogin(label + ' auth expired')) {
+          const e = new Error('認証の有効期限が切れました。再ログインしています…');
+          e.reauthRedirect = true;
+          throw e;
+        }
+      }
+    }
+    if (res.ok) _clearReLoginAttempts();
+    return res;
   }
 
   async function logGenerationStart(jobId, payload) {
