@@ -18,9 +18,9 @@
   --carve:#2c2516;        /* 彫り込み（暗い溝） */
   --carve-hi:rgba(255,248,224,.22); /* 彫りのフチのハイライト */
   --muted:#3a3220;
-  /* 懐中電灯の現在位置（初期は中央） */
-  --mx:50vw;
-  --my:42vh;
+  /* 懐中電灯の現在位置（初期は画面外＝最初は真っ暗。カーソル/タッチで初めて照らす） */
+  --mx:-9999px;
+  --my:-9999px;
   --radius:12px;
 }
 *{box-sizing:border-box}
@@ -320,6 +320,13 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
   window.addEventListener('touchmove', function (e) {
     if (e.touches && e.touches[0]) moveTorch(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
+  // タッチ端末は hover が無く指で探りにくいので、初期は中央を照らして石板を見せる。
+  // デスクトップ（hover あり）は最初真っ暗のまま、カーソル移動で初めて照らす。
+  try {
+    if (window.matchMedia && window.matchMedia('(hover: none)').matches) {
+      moveTorch(window.innerWidth / 2, window.innerHeight * 0.42);
+    }
+  } catch (_) {}
 
   function waitForLiff(timeoutMs) {
     return new Promise(function (resolve, reject) {
