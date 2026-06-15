@@ -343,6 +343,10 @@
     imageGridSection: $('#imageGridSection'),
     imageGrid: $('#imageGrid'),
     imageGridBadge: $('#imageGridBadge'),
+    // god-max（一括プロンプト束ね）
+    godMaxGenerateBtn: $('#godMaxGenerateBtn'),
+    godMaxOutput: $('#godMaxOutput'),
+    godMaxCopyBtn: $('#godMaxCopyBtn'),
     // 再生成モーダル
     regenModalOverlay: $('#regenModalOverlay'),
     regenModalTitle: $('#regenModalTitle'),
@@ -440,7 +444,10 @@
     // (サーバー側 /api/*-image で検証)。購入者の絞り込みは /pro-max URL を知っていること=経路で行う。
     standard: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
-    lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen']
+    lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
+    // 最上位ティア。pro 全機能に加え、全スライドを1つの「一括プロンプト」に束ねて
+    // codex / antigravity 等のエージェントに丸ごと渡す god-max 専用機能 (mode.godBatch) を解放。
+    god: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'mode.godBatch']
   };
 
   // タグによる個別解放 (プランより強い、上書き専用)
@@ -450,14 +457,17 @@
     beta: ['ai.json', 'ai.imagegen'],
     internal: ['ai.json', 'ai.imagegen', 'mode.carousel'],
     vip: ['ai.json', 'ai.imagegen', 'mode.carousel'],
-    pickaxe_internal: ['provider.pickaxe', 'provider.straico']
+    pickaxe_internal: ['provider.pickaxe', 'provider.straico'],
+    // god タグ単体でも god-max の一括プロンプト機能を解放 (検証・個別付与用)
+    god: ['ai.json', 'ai.imagegen', 'mode.carousel', 'mode.godBatch']
   };
 
   // feature key → ユーザー向けに案内する必要プラン
   const FEATURE_REQUIRED_PLAN = {
     'mode.carousel': 'STANDARD',
     'ai.json': 'PRO',
-    'ai.imagegen': 'PRO'
+    'ai.imagegen': 'PRO',
+    'mode.godBatch': 'GOD'
   };
 
   function applyTheme(theme) {
@@ -1463,6 +1473,12 @@ ${layoutDef.desc}
     }
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
+    }
+    if (els.godMaxGenerateBtn) {
+      els.godMaxGenerateBtn.addEventListener('click', generateGodMaxBatch);
+    }
+    if (els.godMaxCopyBtn) {
+      els.godMaxCopyBtn.addEventListener('click', copyGodMaxOutput);
     }
     if (els.carouselPageNumberToggle) {
       els.carouselPageNumberToggle.addEventListener('change', () => {
@@ -3093,6 +3109,87 @@ ${layoutDef.desc}
   }
 
   // ============================================================
+  // god-max：全スライドを1つの「一括プロンプト」に束ねて出力
+  // ============================================================
+  // pro-max は1枚ずつ完結したプロンプトを生成するが、god-max は共通ルール＋共通
+  // スタイルを冒頭で1度だけ宣言し、その下に各スライドの内容を列挙する。丸ごとコピー
+  // して codex / antigravity などのエージェントに貼ると、全画像を自律生成できる。
+
+  function buildGodBatchPrompt() {
+    if (!carouselData || !carouselData.slides || !carouselData.slides.length) {
+      showToast('先にカルーセル構成（JSON）を展開してください');
+      return null;
+    }
+    const stylePrompt = getCurrentStylePrompt();
+    if (!stylePrompt || !stylePrompt.trim()) {
+      showToast('画像生成スタイルを選択（またはカスタム入力）してください');
+      return null;
+    }
+
+    const slides = carouselData.slides;
+    const total = slides.length;
+    const hasCharRefs = characterImages.length > 0;
+    const aspect = state.format;
+
+    const lines = [];
+    lines.push(`あなたは画像生成を自律実行するエージェントです。以下の指示に従い、全${total}枚の画像をそれぞれ生成してください。`);
+    lines.push('');
+    lines.push(`# 共通ルール（全${total}枚に必ず適用）`);
+    lines.push('- すべての画像で画風・配色・文字組み・トーンに統一感を持たせ、ひと続きのカルーセル投稿として成立させる。');
+    lines.push(`- アスペクト比（縦横比）は全画像 ${aspect} で統一する。`);
+    lines.push('- 各画像は独立した1枚絵として完成させ、指定の内容を過不足なく図解する。');
+    lines.push('- 画像内の日本語テキストは正確に・読みやすく描画する。');
+    if (state.carouselPageNumbers === false) {
+      lines.push('- ページ番号や「1/5」のような枚数表記は入れない。');
+    } else {
+      lines.push(`- 各画像の右下に小さくページ番号「現在/${total}」を入れる（例: 1/${total}）。`);
+    }
+    if (hasCharRefs) {
+      lines.push('- 添付した参照キャラクター画像を全画像に必ず登場させ、輪郭・顔・目・口・色・服装・体型・特徴的な小物を維持する（別キャラクター化しない）。キャラクターは案内役として画像幅の15〜30%程度のサイズで配置する。');
+    }
+    lines.push('- 既存のアニメ・漫画・ゲーム・映画・企業マスコット等、著作権や商標で保護されたキャラクター・ロゴは描写しない。');
+    lines.push('');
+    lines.push('# 共通スタイル（全画像に適用する画風）');
+    lines.push(stylePrompt.trim());
+    lines.push('');
+    lines.push('# 各画像のプロンプト');
+    slides.forEach((slide, i) => {
+      const page = slide.page || i + 1;
+      const role = ROLE_LABELS[slide.role] || slide.role || '';
+      lines.push('');
+      lines.push(`## 画像 ${page} / ${total}${role ? `（${role}）` : ''}`);
+      lines.push((slide.content || '').trim());
+    });
+    return lines.join('\n');
+  }
+
+  function generateGodMaxBatch() {
+    if (!gateOrToast('mode.godBatch', 'God 一括プロンプト')) return;
+    const prompt = buildGodBatchPrompt();
+    if (prompt == null) return;
+
+    if (els.godMaxOutput) els.godMaxOutput.value = prompt;
+    const wrap = document.getElementById('godMaxOutputWrap');
+    if (wrap) wrap.style.display = '';
+
+    showToast(`✨ ${carouselData.slides.length}枚分を1つの一括プロンプトに束ねました`);
+    setTimeout(() => {
+      if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
+  function copyGodMaxOutput() {
+    const text = els.godMaxOutput ? els.godMaxOutput.value : '';
+    if (!text) {
+      showToast('先に一括プロンプトを生成してください');
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('📋 一括プロンプトをコピーしました。エージェントに貼り付けてください');
+    }).catch(() => showToast('コピーに失敗しました'));
+  }
+
+  // ============================================================
   // 画像生成スタイルプリセット制御
   // ============================================================
 
@@ -4563,6 +4660,37 @@ ${layoutDef.desc}
     console.log('[applySoloLayout] solo mode: carousel UI hidden, single mode full features');
   }
 
+  // god-max ページ (/god-max) のレイアウト調整。
+  // カルーセル構成を土台に「一括プロンプト」を束ねて出力することに専念する。
+  // 単体タブ・自前画像生成 (imageGenBtn / imageGrid)・1枚ずつのプロンプト出力は隠す。
+  function applyGodMaxLayout() {
+    // カルーセルモードへ固定 (構成 → JSON → スライドを土台にする)
+    switchMode('carousel');
+
+    // (a) 単体タブと、god-max では使わない出力系セクションを隠す
+    ['modeTabs', 'carouselGenerateSection', 'carouselOutputSection',
+     'imageGenBtnSection', 'imageGridSection'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+
+    // (b) god-max 専用の一括プロンプトセクションを表示
+    const batch = document.getElementById('godMaxBatchSection');
+    if (batch) batch.style.display = '';
+
+    // (c) 機能ゲート: god ティア (mode.godBatch) 未保有ならボタンをロックして案内
+    const allowed = !!(window.hasFeature && window.hasFeature('mode.godBatch'));
+    if (els.godMaxGenerateBtn) {
+      els.godMaxGenerateBtn.disabled = !allowed;
+      els.godMaxGenerateBtn.setAttribute('aria-disabled', allowed ? 'false' : 'true');
+      if (!allowed) els.godMaxGenerateBtn.title = 'God プラン以上でご利用いただけます';
+    }
+    const lock = document.getElementById('godMaxLockNotice');
+    if (lock) lock.style.display = allowed ? 'none' : '';
+
+    console.log('[applyGodMaxLayout] god-max mode: batch-prompt only, godBatch feature =', allowed);
+  }
+
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
   // ※ このLIFFアプリのエンドポイントURLを ルート https://zukai-builder.vercel.app/ に
   //   設定することで、配下の全サブパス (/pro-max, /line-menu 等) を1つのLIFFアプリでカバーする。
@@ -4691,6 +4819,18 @@ ${layoutDef.desc}
       if (userProfileEl) userProfileEl.style.display = 'none';
       if (cta) cta.hidden = false;
     }
+
+    applyGodCta();
+  }
+
+  // god ティア (mode.godBatch) を持つユーザーには god-max への導線を表示する。
+  // god-max ページ自身では出さない (既にそこにいるため)。
+  function applyGodCta() {
+    const godCta = document.getElementById('godCta');
+    if (!godCta) return;
+    const show = !isGodMaxRoute()
+      && !!(window.hasFeature && window.hasFeature('mode.godBatch'));
+    godCta.style.display = show ? '' : 'none';
   }
 
   // liff.init() の進行状態。ログインボタンの挙動を分岐するために使う。
@@ -5161,12 +5301,19 @@ ${layoutDef.desc}
     return path === '/solo' || path === '/solo/' || path.indexOf('/solo') === 0;
   }
 
-  // ログイン必須ルートか (現在は /pro-max のみ。/ は公開)
+  // god-max ページか (/god-max)。pro-max の上位版。ログイン必須 (下の判定に含む)。
+  function isGodMaxRoute() {
+    const path = location.pathname || '';
+    return path === '/god-max' || path === '/god-max/' || path.indexOf('/god-max') === 0;
+  }
+
+  // ログイン必須ルートか (/pro-max・/god-max。/ は公開)
   // ※ localhost は開発用にゲートをスキップする
   function isLoginRequiredRoute() {
     if (isLocalDev()) return false;
     const path = location.pathname || '';
-    return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0;
+    return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0
+        || isGodMaxRoute();
   }
 
   // アプリ起動。経路で2つに分岐:
@@ -5273,6 +5420,7 @@ ${layoutDef.desc}
       applyProviderGate();
       applyHeaderForProfile();
       applyPublicLimits();   // 公開モード (localhost 以外) のみスタイル/署名/配色/AIを制限
+      if (isGodMaxRoute()) applyGodMaxLayout();   // localhost で /god-max を確認できるように
       return;
     }
 
@@ -5304,6 +5452,7 @@ ${layoutDef.desc}
       console.log('[startup] fast path via profile cache');
       hideLoginGate();
       init();
+      if (isGodMaxRoute()) applyGodMaxLayout();
       // 裏で LIFF init + /api/me を回し、差分があれば applyProviderGate が再走する。
       // ここで失敗してもキャッシュで起動済みなので体験はブロックしない。
       (async () => {
@@ -5364,6 +5513,7 @@ ${layoutDef.desc}
     hideLoginGate();
     init();
     applyHeaderForProfile();
+    if (isGodMaxRoute()) applyGodMaxLayout();
     restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
   }
 

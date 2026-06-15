@@ -131,6 +131,18 @@
     </div>
   </header>
 
+  <!-- ===== god 導線 (god ティア保有時のみ表示) ===== -->
+  <a class="god-cta" id="godCta" href="/god-max" style="display:none">
+    <span class="god-cta__crest" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 6.5L21 9l-5 4.2L17.5 20 12 16.4 6.5 20 8 13.2 3 9l6.6-.5z"/></svg>
+    </span>
+    <span class="god-cta__body">
+      <span class="god-cta__title">GOD 覚醒済み</span>
+      <span class="god-cta__desc">全スライドを1つの一括プロンプトに束ねる god-max へ</span>
+    </span>
+    <svg class="god-cta__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+
   <!-- ===== モード切替タブ ===== -->
   <div class="mode-tabs" id="modeTabs">
     <button class="mode-tab active" data-mode="single" type="button" id="modeSingle">
@@ -835,6 +847,34 @@
 
     <!-- ===== カルーセルモード: 生成ボタン＋出力 ===== -->
     <div class="mode-content" id="modeContentCarouselOutput" style="display: none;">
+
+      <!-- god-max: 一括プロンプト束ね出力 (通常は非表示。/god-max ルートでのみ表示) -->
+      <section class="section" id="godMaxBatchSection" style="display:none">
+        <div class="section__header">
+          <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <h2 class="section__title">一括プロンプト生成（God）</h2>
+        </div>
+        <p class="god-max-desc">全スライドを<strong>1つのプロンプト</strong>に束ねて出力します。丸ごとコピーして codex / antigravity などのエージェントに貼り付けると、全画像を自律的に生成できます。</p>
+        <p class="god-max-lock-notice" id="godMaxLockNotice" style="display:none">🔒 この機能は God プラン以上でご利用いただけます。</p>
+        <button class="generate-btn" id="godMaxGenerateBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          一括プロンプトを生成する
+        </button>
+        <div class="god-max-output-wrap" id="godMaxOutputWrap" style="display:none">
+          <div class="god-max-output-header">
+            <span class="god-max-output-title">一括プロンプト</span>
+            <button class="action-btn action-btn--copy" id="godMaxCopyBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              全文コピー
+            </button>
+          </div>
+          <textarea id="godMaxOutput" class="form-textarea god-max-output" rows="18" readonly></textarea>
+        </div>
+      </section>
 
       <!-- プロンプト生成ボタン -->
       <section class="section" id="carouselGenerateSection">

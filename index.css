@@ -2743,6 +2743,82 @@ img {
   transform: translateY(-2px);
 }
 
+/* ===== god 導線バナー (pro-max で god 保有時) ===== */
+.god-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg, 14px);
+  text-decoration: none;
+  color: #1a1304;
+  background: linear-gradient(135deg, #f5c542, #b8860b);
+  box-shadow: 0 8px 22px rgba(245, 197, 66, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.god-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(245, 197, 66, 0.45);
+}
+.god-cta__crest {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #1a1304;
+}
+.god-cta__crest svg { width: 100%; height: 100%; }
+.god-cta__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.god-cta__title { font-weight: 800; font-size: var(--text-sm); letter-spacing: 0.06em; }
+.god-cta__desc { font-size: var(--text-xs, 0.72rem); opacity: 0.85; }
+.god-cta__arrow { flex: none; width: 20px; height: 20px; color: #1a1304; }
+
+/* ===== god-max: 一括プロンプト束ね出力 ===== */
+.god-max-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 var(--space-4);
+}
+
+.god-max-lock-notice {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.god-max-output-wrap {
+  margin-top: var(--space-5);
+}
+
+.god-max-output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.god-max-output-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.god-max-output {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
+}
+
 /* ============================================================
    画像グリッド
    ============================================================ */

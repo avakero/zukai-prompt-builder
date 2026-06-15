@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="">
+<title>覚醒の間</title>
+<style>
+:root{
+  --gold:#f5c542;
+  --gold-deep:#b8860b;
+  --gold-soft:#fff3c4;
+  /* 石板の色 */
+  --stone-1:#9b8f73;
+  --stone-2:#7e7359;
+  --stone-3:#5f5743;
+  --carve:#2c2516;        /* 彫り込み（暗い溝） */
+  --carve-hi:rgba(255,248,224,.22); /* 彫りのフチのハイライト */
+  --muted:#3a3220;
+  /* 懐中電灯の現在位置（初期は中央） */
+  --mx:50vw;
+  --my:42vh;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;
+  color:#efe7d2;line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100%;
+  display:flex;align-items:center;justify-content:center;padding:24px;overflow-x:hidden;cursor:none;
+  /* 洞窟の岩肌：不均一な暗がり */
+  background:
+    radial-gradient(38% 30% at 18% 14%, rgba(74,56,30,.45), transparent 70%),
+    radial-gradient(42% 34% at 84% 22%, rgba(54,42,24,.40), transparent 70%),
+    radial-gradient(46% 40% at 30% 88%, rgba(60,44,24,.42), transparent 72%),
+    radial-gradient(50% 44% at 78% 82%, rgba(40,30,18,.40), transparent 72%),
+    radial-gradient(150% 130% at 50% 118%, #221910 0%, #0b0805 46%, #030201 100%),
+    #030201;
+}
+button{font-family:inherit}
+
+/* 漂う塵（光に舞う埃） */
+.dust{position:fixed;inset:0;pointer-events:none;z-index:5;
+  background-image:
+    radial-gradient(1px 1px at 22% 32%, rgba(255,240,210,.7), transparent),
+    radial-gradient(1px 1px at 68% 58%, rgba(255,236,200,.6), transparent),
+    radial-gradient(1.4px 1.4px at 41% 78%, rgba(255,228,170,.7), transparent),
+    radial-gradient(1px 1px at 83% 24%, rgba(255,240,210,.5), transparent),
+    radial-gradient(1px 1px at 54% 16%, rgba(255,232,180,.55), transparent),
+    radial-gradient(1px 1px at 12% 64%, rgba(255,240,210,.5), transparent);
+  background-repeat:no-repeat;animation:drift 7s ease-in-out infinite alternate;opacity:.6}
+@keyframes drift{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+
+/* ===== 懐中電灯（カーソル追従スポットライト） ===== */
+/* 温かい光だまり（明部を琥珀色に染める） */
+.torch-glow{position:fixed;inset:0;pointer-events:none;z-index:40;
+  background:radial-gradient(circle 240px at var(--mx) var(--my),
+    rgba(255,189,92,.20) 0px, rgba(255,170,70,.10) 120px, transparent 240px);
+  animation:flicker 2.6s ease-in-out infinite}
+@keyframes flicker{0%,100%{opacity:.92}45%{opacity:1}70%{opacity:.86}}
+/* 暗幕（カーソル周辺だけ透過し、外は洞窟の闇） */
+.torch-mask{position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:radial-gradient(circle at var(--mx) var(--my),
+    rgba(2,1,0,0) 0px, rgba(2,1,0,0) 110px, rgba(2,1,0,.62) 230px, rgba(2,1,0,.93) 400px)}
+/* 光源の芯（小さな灯り） */
+.torch-core{position:fixed;top:0;left:0;width:14px;height:14px;border-radius:50%;pointer-events:none;z-index:60;
+  transform:translate(-50%,-50%);left:var(--mx);top:var(--my);
+  background:radial-gradient(circle,#fff7da,rgba(245,197,66,.5) 60%,transparent 75%);
+  box-shadow:0 0 18px 6px rgba(255,200,90,.45);animation:flicker 2.6s ease-in-out infinite}
+
+/* ===== 石板 ===== */
+.tablet{position:relative;z-index:1;width:min(440px,100%);padding:40px 30px 34px;text-align:center;
+  border-radius:var(--radius);
+  background:
+    radial-gradient(2px 2px at 18% 22%, rgba(0,0,0,.18), transparent),
+    radial-gradient(2px 2px at 72% 34%, rgba(0,0,0,.16), transparent),
+    radial-gradient(2px 2px at 44% 68%, rgba(0,0,0,.18), transparent),
+    radial-gradient(2px 2px at 86% 78%, rgba(0,0,0,.15), transparent),
+    radial-gradient(2px 2px at 28% 84%, rgba(255,255,255,.06), transparent),
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.20)),
+    linear-gradient(135deg, var(--stone-1) 0%, var(--stone-2) 48%, var(--stone-3) 100%);
+  border:1px solid rgba(28,22,12,.6);
+  box-shadow:
+    inset 0 2px 0 rgba(255,248,224,.16),
+    inset 0 -4px 10px rgba(0,0,0,.5),
+    inset 0 0 60px rgba(0,0,0,.35),
+    0 30px 64px rgba(0,0,0,.75),
+    0 0 0 3px rgba(16,12,6,.55);
+}
+/* 石のひび */
+.tablet::before{content:"";position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;opacity:.5;
+  background:
+    linear-gradient(115deg, transparent 0 39%, rgba(0,0,0,.22) 39.5% 40%, transparent 40.5%),
+    linear-gradient(58deg, transparent 0 67%, rgba(0,0,0,.18) 67.4% 67.8%, transparent 68.2%),
+    linear-gradient(75deg, transparent 0 22%, rgba(255,255,255,.05) 22.3% 22.6%, transparent 23%);}
+/* 透かしの大きな象形（背景に彫られた紋章） */
+.tablet__watermark{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);
+  width:240px;height:240px;color:var(--carve);opacity:.10;pointer-events:none;z-index:0}
+.tablet__watermark svg{width:100%;height:100%}
+.tablet > *:not(.tablet__watermark){position:relative;z-index:1}
+
+.crest{width:64px;height:64px;margin:0 auto 14px;color:var(--gold);
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.6)) drop-shadow(0 0 8px rgba(245,197,66,.35))}
+.crest svg{width:100%;height:100%}
+
+h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
+  background:linear-gradient(180deg,#ffe9a8,#c9972f);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))}
+.sub{margin:0 0 0;font-size:.82rem;color:var(--muted);letter-spacing:.1em;
+  text-shadow:0 1px 0 rgba(255,248,224,.2)}
+
+/* 彫られた象形文字の帯（区切り） */
+.glyph-row{display:flex;align-items:center;justify-content:center;gap:16px;margin:18px 0;
+  padding:10px 0;border-top:1px solid rgba(0,0,0,.28);border-bottom:1px solid rgba(255,248,224,.14)}
+.glyph{width:26px;height:26px;flex:none;color:var(--carve);
+  filter:drop-shadow(0 1px 0 rgba(255,248,224,.22))}
+.glyph svg{width:100%;height:100%}
+
+/* 状態切替 */
+.state{display:none}
+.state.active{display:block;animation:fadein .4s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.spinner{width:34px;height:34px;margin:6px auto 14px;border:3px solid rgba(245,197,66,.25);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.field{margin:0 0 16px;text-align:left}
+.field label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.1em;
+  text-shadow:0 1px 0 rgba(255,248,224,.2)}
+/* 石に彫られた溝のような入力欄 */
+.field input{width:100%;padding:14px 16px;font-size:1.05rem;letter-spacing:.2em;text-align:center;
+  background:linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.28));
+  border:1px solid rgba(16,12,6,.7);border-radius:10px;color:var(--gold-soft);outline:none;transition:.18s;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.6), 0 1px 0 rgba(255,248,224,.12)}
+.field input::placeholder{letter-spacing:.12em;color:#6f6446}
+.field input:focus{border-color:var(--gold);box-shadow:inset 0 3px 8px rgba(0,0,0,.6), 0 0 0 3px rgba(245,197,66,.22)}
+
+/* 石に嵌め込まれた金のボタン */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;
+  padding:15px;border:1px solid rgba(60,42,8,.6);border-radius:10px;font-size:1rem;font-weight:800;letter-spacing:.08em;cursor:none;transition:.18s;
+  background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#1a1304;
+  box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4)}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.5)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn--line{background:#06c755;color:#fff;border-color:rgba(3,90,40,.6)}
+.btn svg{width:19px;height:19px}
+
+.error{margin:14px 0 0;font-size:.82rem;color:#e7635c;min-height:1.1em;text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.note{margin:18px 0 0;font-size:.72rem;color:var(--muted);line-height:1.7;text-shadow:0 1px 0 rgba(255,248,224,.18)}
+
+.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+
+/* ===== 覚醒演出オーバーレイ ===== */
+.ascension{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;
+  background:#000;overflow:hidden;cursor:none}
+.ascension.active{display:flex}
+.ascension__rays{position:absolute;width:200vmax;height:200vmax;
+  background:repeating-conic-gradient(from 0deg, rgba(245,197,66,.0) 0deg, rgba(245,197,66,.16) 4deg, rgba(245,197,66,0) 8deg);
+  animation:spinrays 9s linear infinite;opacity:0}
+.ascension.active .ascension__rays{opacity:1;transition:opacity 1s ease}
+@keyframes spinrays{to{transform:rotate(360deg)}}
+.ascension__flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, #fff7da, var(--gold) 30%, transparent 70%);
+  transform:scale(0);opacity:0}
+.ascension.active .ascension__flash{animation:flash 2.6s ease-out forwards}
+@keyframes flash{0%{transform:scale(0);opacity:.0}25%{opacity:.95}55%{transform:scale(1.6);opacity:.5}100%{transform:scale(2.4);opacity:0}}
+.ascension__text{position:relative;z-index:2;text-align:center}
+.ascension__word{font-size:clamp(2.6rem,12vw,6rem);font-weight:900;letter-spacing:.2em;
+  background:linear-gradient(180deg,#fff8e1,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 40px rgba(245,197,66,.6);transform:scale(.6);opacity:0}
+.ascension.active .ascension__word{animation:wordin 1.4s .5s cubic-bezier(.2,.9,.2,1.1) forwards}
+@keyframes wordin{to{transform:scale(1);opacity:1}}
+.ascension__tag{margin-top:10px;font-size:clamp(.9rem,3.5vw,1.3rem);letter-spacing:.5em;color:var(--gold-soft);opacity:0}
+.ascension.active .ascension__tag{animation:wordin 1.2s 1.2s ease forwards}
+.ascension__redir{position:absolute;bottom:34px;left:0;right:0;text-align:center;font-size:.74rem;color:rgba(255,243,196,.6);opacity:0}
+.ascension.active .ascension__redir{animation:wordin 1s 2.2s ease forwards}
+
+/* タッチ端末ではカーソル懐中電灯の芯を出さない（指で隠れるため） */
+@media (hover:none){
+  body{cursor:auto}
+  .torch-core{display:none}
+  .btn{cursor:pointer}
+}
+</style>
+<!-- LINE 関連ドメインへ事前接続 -->
+<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+<link rel="preconnect" href="https://access.line.me">
+<link rel="preconnect" href="https://api.line.me">
+<script charset="utf-8" async src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+
+<div class="dust" aria-hidden="true"></div>
+
+<!-- 懐中電灯レイヤー -->
+<div class="torch-glow" aria-hidden="true"></div>
+<div class="torch-mask" aria-hidden="true"></div>
+<div class="torch-core" aria-hidden="true"></div>
+
+<div class="tablet">
+  <!-- 背景に彫られた大きな目（透かし） -->
+  <div class="tablet__watermark" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 12s4-6 10-6 10 6 10 6"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><path d="M9 16l-3.5 5"/><path d="M14 16l1 5"/></svg>
+  </div>
+
+  <div class="crest" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2l2.4 6.5L21 9l-5 4.2L17.5 20 12 16.4 6.5 20 8 13.2 3 9l6.6-.5z"/>
+    </svg>
+  </div>
+  <h1>覚醒の間</h1>
+  <p class="sub">GOD への扉</p>
+
+  <!-- 象形文字の帯（上） -->
+  <div class="glyph-row" aria-hidden="true">
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6.5" rx="3.2" ry="4"/><line x1="12" y1="10.5" x2="12" y2="21"/><line x1="7" y1="14" x2="17" y2="14"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0M2 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-6 10-6 10 6 10 6"/><circle cx="12" cy="12" r="2.4"/><path d="M9 15l-3 5"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c4 4 4 12 0 20M12 2c-4 4-4 12 0 20M12 6v14"/></svg></span>
+  </div>
+
+  <!-- 確認中 -->
+  <div class="state active" id="stLoading">
+    <div class="spinner"></div>
+    <p class="sub" style="margin:0">封印を確かめています…</p>
+  </div>
+
+  <!-- ログイン -->
+  <div class="state" id="stLogin">
+    <p class="sub" style="margin:0 0 18px">この石板を開くには LINE ログインが必要です。</p>
+    <button class="btn btn--line" id="loginBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.271.173-.508.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+      LINEでログイン
+    </button>
+  </div>
+
+  <!-- 合言葉入力 -->
+  <div class="state" id="stCode">
+    <div class="field">
+      <label for="codeInput">合言葉</label>
+      <input id="codeInput" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="合言葉を入力" maxlength="64">
+    </div>
+    <button class="btn" id="awakenBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      覚醒する
+    </button>
+    <p class="error" id="codeError"></p>
+    <p class="note">正しい合言葉を刻むと <b style="color:var(--gold)">GOD</b> へと覚醒し、一括プロンプト機能 (god-max) が解放されます。</p>
+  </div>
+
+  <!-- エラー -->
+  <div class="state" id="stError">
+    <div class="crest" style="margin-bottom:10px;color:#e7635c"><div style="font-size:2rem">⚠️</div></div>
+    <p class="sub" id="errorMsg" style="margin:0 0 18px">エラーが発生しました。</p>
+    <button class="btn" id="retryBtn" type="button">再試行する</button>
+  </div>
+
+  <!-- 象形文字の帯（下） -->
+  <div class="glyph-row" aria-hidden="true">
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4L3 20h18z"/><path d="M12 4v16M7 12h10"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4 0 6-3 9-3"/><path d="M12 14c2 0 2-4 0-6"/><path d="M12 11l5-1 4 1"/><circle cx="12.4" cy="6.4" r="1"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6.5" rx="3.2" ry="4"/><line x1="12" y1="10.5" x2="12" y2="21"/><line x1="7" y1="14" x2="17" y2="14"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0M2 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg></span>
+    <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-6 10-6 10 6 10 6"/><circle cx="12" cy="12" r="2.4"/><path d="M9 15l-3 5"/></svg></span>
+  </div>
+</div>
+
+<!-- 覚醒演出 -->
+<div class="ascension" id="ascension" aria-hidden="true">
+  <div class="ascension__rays"></div>
+  <div class="ascension__flash"></div>
+  <div class="ascension__text">
+    <div class="ascension__word">覚 醒</div>
+    <div class="ascension__tag">GOD MODE</div>
+  </div>
+  <div class="ascension__redir" id="ascensionRedir">PRO MAX へ移行します…</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // app.js / line-menu.html と同一の単一 LIFF アプリ
+  var LIFF_ID = "2009850086-K3TrYsDF";
+  var LINE_OA_ID = "@922tidzy";
+  // pro-max が起動時に再取得するようプロフィールキャッシュをクリアするキー
+  var PROFILE_CACHE_KEY = "zukai-profile-v1";
+  var REDIRECT_TO = "/pro-max";
+
+  function el(id) { return document.getElementById(id); }
+  function setState(s) {
+    ['stLoading', 'stLogin', 'stCode', 'stError'].forEach(function (id) {
+      var e = el(id); if (e) e.classList.remove('active');
+    });
+    var e = el(s); if (e) e.classList.add('active');
+  }
+  function showError(msg) {
+    if (msg) { var m = el('errorMsg'); if (m) m.textContent = msg; }
+    setState('stError');
+  }
+
+  function isLocalDev() {
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
+  }
+
+  // ===== 懐中電灯（カーソル/タッチ追従） =====
+  var rootStyle = document.documentElement.style;
+  function moveTorch(x, y) {
+    rootStyle.setProperty('--mx', x + 'px');
+    rootStyle.setProperty('--my', y + 'px');
+  }
+  window.addEventListener('mousemove', function (e) { moveTorch(e.clientX, e.clientY); }, { passive: true });
+  window.addEventListener('touchstart', function (e) {
+    if (e.touches && e.touches[0]) moveTorch(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  window.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches[0]) moveTorch(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  function waitForLiff(timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      if (typeof liff !== 'undefined') return resolve();
+      var t0 = Date.now();
+      var iv = setInterval(function () {
+        if (typeof liff !== 'undefined') { clearInterval(iv); resolve(); }
+        else if (Date.now() - t0 > timeoutMs) { clearInterval(iv); reject(new Error('LIFF SDKの読み込みに失敗しました')); }
+      }, 100);
+    });
+  }
+
+  function getToken() {
+    try { var idt = liff.getIDToken && liff.getIDToken(); if (idt) return idt; } catch (e) {}
+    try { return (liff.getAccessToken && liff.getAccessToken()) || null; } catch (e) {}
+    return null;
+  }
+
+  // ===== 覚醒演出 → pro-max へ遷移 =====
+  function ascendAndRedirect() {
+    // pro-max が新しい god タグを反映できるよう、プロフィールキャッシュを破棄
+    try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
+    var asc = el('ascension');
+    if (asc) { asc.setAttribute('aria-hidden', 'false'); asc.classList.add('active'); }
+    setTimeout(function () { location.replace(location.origin + REDIRECT_TO); }, 3600);
+  }
+
+  // ===== 合言葉送信 =====
+  function submitCode() {
+    var input = el('codeInput');
+    var btn = el('awakenBtn');
+    var errEl = el('codeError');
+    var code = (input && input.value || '').trim();
+    if (errEl) errEl.textContent = '';
+    if (!code) {
+      if (errEl) errEl.textContent = '合言葉を入力してください。';
+      if (input) { input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake'); }
+      return;
+    }
+
+    // localhost は演出プレビュー: バックエンド無しで覚醒演出だけ再生し、終了後リロードして再試行できる。
+    if (isLocalDev()) {
+      var redir = el('ascensionRedir'); if (redir) redir.textContent = '（演出プレビュー：まもなくリセット）';
+      var ascD = el('ascension'); if (ascD) { ascD.setAttribute('aria-hidden', 'false'); ascD.classList.add('active'); }
+      setTimeout(function () { location.reload(); }, 4500);
+      return;
+    }
+
+    var token = getToken();
+    if (!token) { showError('認証トークンを取得できませんでした。再度ログインしてください。'); return; }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;margin:0;border-width:2px"></span> 照合中…'; }
+
+    fetch('/api/grant-god', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ code: code })
+    }).then(function (res) {
+      return res.json().then(function (data) { return { status: res.status, data: data }; });
+    }).then(function (r) {
+      if (r.status === 200 && r.data && r.data.ok) {
+        ascendAndRedirect();
+        return;
+      }
+      // 失敗: ボタンを戻してエラー表示
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> 覚醒する'; }
+      var code2 = r.data && r.data.error;
+      var card = el('codeInput');
+      if (r.status === 403 || code2 === 'wrong_code') {
+        if (errEl) errEl.textContent = '合言葉が違います。';
+        if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); card.value = ''; card.focus(); }
+      } else if (r.status === 401) {
+        showError('認証の有効期限が切れています。再度ログインしてください。');
+      } else if (r.status === 503 || code2 === 'not_configured') {
+        if (errEl) errEl.textContent = '現在この石板は閉ざされています（運営未設定）。';
+      } else {
+        if (errEl) errEl.textContent = '付与に失敗しました。時間をおいて再度お試しください。';
+      }
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> 覚醒する'; }
+      if (errEl) errEl.textContent = '通信エラーが発生しました。';
+      console.error('[god] grant failed:', e && e.message);
+    });
+  }
+
+  // ===== イベント =====
+  var loginBtn = el('loginBtn');
+  if (loginBtn) loginBtn.addEventListener('click', function () {
+    try {
+      if (typeof liff !== 'undefined' && liff.login) {
+        liff.login({ redirectUri: location.origin + '/god' });
+      }
+    } catch (e) { showError(e && e.message); }
+  });
+  var awakenBtn = el('awakenBtn');
+  if (awakenBtn) awakenBtn.addEventListener('click', submitCode);
+  var codeInput = el('codeInput');
+  if (codeInput) codeInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submitCode(); }
+  });
+  var retryBtn = el('retryBtn');
+  if (retryBtn) retryBtn.addEventListener('click', function () { location.reload(); });
+
+  // ===== 起動 =====
+  // localhost は開発用にログインをスキップして合言葉入力を直接表示
+  if (isLocalDev()) {
+    setState('stCode');
+    return;
+  }
+
+  setState('stLoading');
+  waitForLiff(8000)
+    .then(function () { return liff.init({ liffId: LIFF_ID }); })
+    .then(function () {
+      if (liff.isLoggedIn()) {
+        setState('stCode');
+        var ci = el('codeInput'); if (ci) ci.focus();
+      } else {
+        setState('stLogin');
+      }
+    })
+    .catch(function (e) {
+      console.error('[god LIFF] init failed:', e && e.message);
+      showError('認証の初期化に失敗しました。' + (e && e.message ? ' (' + e.message + ')' : ''));
+    });
+})();
+</script>
+</body>
+</html>
