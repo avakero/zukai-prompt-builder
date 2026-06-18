@@ -1417,6 +1417,99 @@ img {
   justify-content: center;
 }
 
+/* 添付サムネ上の「保存」ボタン（★）。保存済みは塗りつぶし＆常時表示。 */
+.image-thumbnail__save {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f5c542;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: all var(--transition-fast);
+}
+.image-thumbnail:hover .image-thumbnail__save { opacity: 1; transform: scale(1); }
+.image-thumbnail__save.is-saved { opacity: 1; transform: scale(1); }
+.image-thumbnail__save svg { width: 13px; height: 13px; }
+
+/* ===== 保存済みキャラ ライブラリ ===== */
+.saved-chars {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border-color);
+}
+.saved-chars__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.saved-chars__icon { width: 16px; height: 16px; color: #f5c542; flex: none; }
+.saved-chars__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+.saved-chars__hint {
+  font-size: var(--text-xs, 0.72rem);
+  color: var(--text-tertiary, var(--text-secondary));
+  opacity: 0.8;
+}
+.saved-chars__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.saved-char {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+.saved-char__add {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.05));
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.saved-char__add:hover {
+  border-color: var(--color-primary-400);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+.saved-char__add img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.saved-char__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+  border: 2px solid var(--color-surface, #fff);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all var(--transition-fast);
+}
+.saved-char:hover .saved-char__remove { opacity: 1; }
+.saved-char__remove svg { width: 11px; height: 11px; }
+
 /* ============================================================
    17. ペーストキュー ウィジェット
    ============================================================ */
@@ -2776,6 +2869,76 @@ img {
 .god-cta__arrow { flex: none; width: 20px; height: 20px; color: #1a1304; }
 
 /* ===== god-max: 一括プロンプト束ね出力 ===== */
+.god-max-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-color);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.god-max-back:hover {
+  color: var(--text-primary);
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.07));
+}
+.god-max-back svg { width: 16px; height: 16px; flex: none; }
+
+.god-max-images {
+  margin-top: var(--space-4);
+}
+.god-max-images__hint {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 var(--space-3);
+}
+.god-max-images__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+.god-max-image {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-2);
+  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.03));
+}
+.god-max-image img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.05));
+}
+.god-max-image__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1, 4px);
+  width: 100%;
+  padding: var(--space-2);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  color: var(--text-primary);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.15s ease;
+}
+.god-max-image__copy:hover { background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04)); }
+.god-max-image__copy svg { width: 14px; height: 14px; flex: none; }
+
 .god-max-desc {
   font-size: var(--text-sm);
   color: var(--text-secondary);

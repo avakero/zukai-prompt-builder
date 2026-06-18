@@ -805,6 +805,16 @@
         <div class="image-upload-zone__hint">またはクリックしてファイルを選択（最大5枚）</div>
       </div>
       <div class="image-thumbnails" id="imageThumbnails"></div>
+
+      <!-- 保存済みキャラ ライブラリ（端末ローカル保存。クリックでワンタップ添付） -->
+      <div class="saved-chars" id="savedChars" style="display:none">
+        <div class="saved-chars__header">
+          <svg class="saved-chars__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span class="saved-chars__title">保存済みキャラ</span>
+          <span class="saved-chars__hint">クリックで添付</span>
+        </div>
+        <div class="saved-chars__grid" id="savedCharsGrid"></div>
+      </div>
     </section>
 
     <!-- ===== 単体モード: 生成ボタン＋出力 ===== -->
@@ -850,6 +860,10 @@
 
       <!-- god-max: 一括プロンプト束ね出力 (通常は非表示。/god-max ルートでのみ表示) -->
       <section class="section" id="godMaxBatchSection" style="display:none">
+        <a class="god-max-back" id="godMaxBackBtn" href="/pro-max">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          PRO MAX へ戻る
+        </a>
         <div class="section__header">
           <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -873,6 +887,12 @@
             </button>
           </div>
           <textarea id="godMaxOutput" class="form-textarea god-max-output" rows="18" readonly></textarea>
+
+          <!-- 添付キャラクター画像: テキストとは別に1枚ずつクリップボードへコピーできる -->
+          <div class="god-max-images" id="godMaxImages" style="display:none">
+            <p class="god-max-images__hint">添付したキャラクター画像です。テキスト（一括プロンプト）とは別に、下のボタンで<strong>1枚ずつコピー</strong>してエージェントに貼り付けてください。</p>
+            <div class="god-max-images__grid" id="godMaxImagesGrid"></div>
+          </div>
         </div>
       </section>
 

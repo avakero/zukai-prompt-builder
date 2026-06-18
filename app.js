@@ -886,16 +886,24 @@ ${layoutDef.desc}
     characterImages.forEach((img, i) => {
       const div = document.createElement('div');
       div.className = 'image-thumbnail';
+      const saved = isCharSaved(img.dataUrl);
       div.innerHTML = `
         <img src="${img.dataUrl}" alt="${escapeHtml(String(img.name || ''))}">
         <button class="image-thumbnail__remove" type="button" aria-label="削除" data-index="${i}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="image-thumbnail__save${saved ? ' is-saved' : ''}" type="button" aria-label="${saved ? '保存済み' : 'このキャラを保存'}" title="${saved ? '保存済み' : 'このキャラを保存'}">
+          <svg viewBox="0 0 24 24" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
         <span class="image-thumbnail__order">${i + 1}</span>
       `;
       div.querySelector('.image-thumbnail__remove').addEventListener('click', (e) => {
         e.stopPropagation();
         removeImage(i);
+      });
+      div.querySelector('.image-thumbnail__save').addEventListener('click', (e) => {
+        e.stopPropagation();
+        saveCharToLibrary(i);
       });
       els.imageThumbnails.appendChild(div);
     });
@@ -911,6 +919,157 @@ ${layoutDef.desc}
       els.imageBadge.classList.remove('section__badge--active');
       els.imageBadge.classList.add('section__badge--success');
     }
+  }
+
+  // ============================================================
+  // 保存済みキャラ ライブラリ（端末ローカル / IndexedDB）
+  // ============================================================
+  // よく使うキャラ画像を端末のブラウザに保存し、次回ワンタップで再添付できる。
+  // サーバ（Supabase）は一切使わないので保存コストは0・24h自動削除の対象外。
+  // 画像は dataUrl 文字列で保存する（添付時の characterImages と同じ形）。
+  const CHAR_DB_NAME = 'zukai-character-library';
+  const CHAR_DB_STORE = 'characters';
+  let savedChars = [];      // メモリ上のキャッシュ（描画・重複判定に使う）
+  let _charDbPromise = null;
+
+  function openCharDB() {
+    if (_charDbPromise) return _charDbPromise;
+    _charDbPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB) { reject(new Error('IndexedDB 非対応')); return; }
+      const req = indexedDB.open(CHAR_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(CHAR_DB_STORE)) {
+          db.createObjectStore(CHAR_DB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB open 失敗'));
+    });
+    return _charDbPromise;
+  }
+
+  function charDbTx(mode, fn) {
+    return openCharDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(CHAR_DB_STORE, mode);
+      const store = tx.objectStore(CHAR_DB_STORE);
+      let result;
+      Promise.resolve(fn(store)).then(r => { result = r; });
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('tx abort'));
+    }));
+  }
+
+  function isCharSaved(dataUrl) {
+    return savedChars.some(c => c.dataUrl === dataUrl);
+  }
+
+  // 起動時に呼ぶ：保存済みキャラを読み込んでライブラリを描画する。
+  function loadSavedChars() {
+    return charDbTx('readonly', store => new Promise((resolve) => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    })).then(list => {
+      // 新しい保存が先頭に来るよう savedAt 降順
+      savedChars = (list || []).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      renderSavedChars();
+    }).catch(() => { savedChars = []; renderSavedChars(); });
+  }
+
+  function saveCharToLibrary(index) {
+    const img = characterImages[index];
+    if (!img || !img.dataUrl) return;
+    if (isCharSaved(img.dataUrl)) { showToast('このキャラは保存済みです'); return; }
+
+    const rec = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: img.name || `キャラ ${savedChars.length + 1}`,
+      dataUrl: img.dataUrl,
+      mime: (img.blob && img.blob.type) || '',
+      savedAt: Date.now()
+    };
+    charDbTx('readwrite', store => store.put(rec)).then(() => {
+      savedChars.unshift(rec);
+      renderSavedChars();
+      renderImageThumbnails(); // 星アイコンを「保存済み」表示に更新
+      showToast('⭐ キャラを保存しました。次回からワンタップで添付できます');
+    }).catch(() => showToast('保存に失敗しました'));
+  }
+
+  function deleteSavedChar(id) {
+    charDbTx('readwrite', store => store.delete(id)).then(() => {
+      savedChars = savedChars.filter(c => c.id !== id);
+      renderSavedChars();
+      renderImageThumbnails();
+      showToast('保存済みキャラを削除しました');
+    }).catch(() => showToast('削除に失敗しました'));
+  }
+
+  // 保存済みキャラを現在の添付に追加する。
+  function addSavedCharToAttachments(id) {
+    const rec = savedChars.find(c => c.id === id);
+    if (!rec) return;
+    if (characterImages.length >= MAX_IMAGES) {
+      showToast(`画像は最大${MAX_IMAGES}枚までです`);
+      return;
+    }
+    if (isCharAttached(rec.dataUrl)) { showToast('すでに添付されています'); return; }
+    characterImages.push({ name: rec.name, dataUrl: rec.dataUrl, blob: dataUrlToBlob(rec.dataUrl) });
+    renderImageThumbnails();
+    updateImageBadge();
+    showToast('🖼️ 保存済みキャラを添付しました');
+  }
+
+  function isCharAttached(dataUrl) {
+    return characterImages.some(c => c.dataUrl === dataUrl);
+  }
+
+  // dataUrl(base64) → Blob。アップロード経路は dataUrl を使うため blob は無くても動くが、
+  // 既存コードとの整合のため添付時に復元しておく。
+  function dataUrlToBlob(dataUrl) {
+    try {
+      const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+      if (!m) return null;
+      const mime = m[1];
+      const bin = atob(m[2]);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    } catch (_) { return null; }
+  }
+
+  function renderSavedChars() {
+    const box = document.getElementById('savedChars');
+    const grid = document.getElementById('savedCharsGrid');
+    if (!box || !grid) return;
+
+    if (!savedChars.length) {
+      box.style.display = 'none';
+      grid.innerHTML = '';
+      return;
+    }
+    box.style.display = '';
+    grid.innerHTML = '';
+    savedChars.forEach(rec => {
+      const cell = document.createElement('div');
+      cell.className = 'saved-char';
+      cell.innerHTML = `
+        <button class="saved-char__add" type="button" title="クリックで添付">
+          <img src="${rec.dataUrl}" alt="${escapeHtml(String(rec.name || ''))}">
+        </button>
+        <button class="saved-char__remove" type="button" aria-label="保存済みから削除" title="保存済みから削除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      `;
+      cell.querySelector('.saved-char__add').addEventListener('click', () => addSavedCharToAttachments(rec.id));
+      cell.querySelector('.saved-char__remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSavedChar(rec.id);
+      });
+      grid.appendChild(cell);
+    });
   }
 
   // ------------------------------------------------------------
@@ -3186,6 +3345,8 @@ ${layoutDef.desc}
     const wrap = document.getElementById('godMaxOutputWrap');
     if (wrap) wrap.style.display = '';
 
+    renderGodMaxImages();
+
     showToast(`✨ ${carouselData.slides.length}枚分を1つの一括プロンプトに束ねました`);
     setTimeout(() => {
       if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3201,6 +3362,68 @@ ${layoutDef.desc}
     navigator.clipboard.writeText(text).then(() => {
       showToast('📋 一括プロンプトをコピーしました。エージェントに貼り付けてください');
     }).catch(() => showToast('コピーに失敗しました'));
+  }
+
+  // god-max: 添付したキャラクター画像を「1枚ずつコピー」できるサムネ列を描画する。
+  // テキスト(一括プロンプト)はクリップボードのテキスト枠、画像は画像枠と別物のため、
+  // ユーザーが個別にコピー→貼り付けできるようにする。
+  function renderGodMaxImages() {
+    const box = document.getElementById('godMaxImages');
+    const grid = document.getElementById('godMaxImagesGrid');
+    if (!box || !grid) return;
+
+    if (!characterImages.length) {
+      box.style.display = 'none';
+      grid.innerHTML = '';
+      return;
+    }
+
+    box.style.display = '';
+    grid.innerHTML = '';
+    characterImages.forEach((img, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'god-max-image';
+      cell.innerHTML = `
+        <img src="${img.dataUrl}" alt="${escapeHtml(String(img.name || ''))}">
+        <button class="god-max-image__copy" type="button" data-index="${i}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          画像${i + 1}をコピー
+        </button>
+      `;
+      cell.querySelector('.god-max-image__copy').addEventListener('click', () => copyCharacterImage(i));
+      grid.appendChild(cell);
+    });
+  }
+
+  // 1枚のキャラクター画像をクリップボードへ画像として書き込む。
+  // クリップボードへの画像書き込みは PNG が最も広く通るため、canvas 経由で PNG 化する
+  // (JPEG/WebP のまま write すると一部ブラウザで失敗するため)。
+  function copyCharacterImage(index) {
+    const img = characterImages[index];
+    if (!img) return;
+    if (!(navigator.clipboard && window.ClipboardItem)) {
+      showToast('このブラウザは画像コピーに対応していません');
+      return;
+    }
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        canvas.getContext('2d').drawImage(image, 0, 0);
+        canvas.toBlob((blob) => {
+          if (!blob) { showToast('画像のコピーに失敗しました'); return; }
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => {
+            showToast(`🖼️ 画像${index + 1}をコピーしました。エージェントに貼り付けてください`);
+          }).catch(() => showToast('画像のコピーに失敗しました'));
+        }, 'image/png');
+      } catch (_) {
+        showToast('画像のコピーに失敗しました');
+      }
+    };
+    image.onerror = () => showToast('画像の読み込みに失敗しました');
+    image.src = img.dataUrl;
   }
 
   // ============================================================
@@ -4521,6 +4744,8 @@ ${layoutDef.desc}
 
     applyUIState();
     initEvents();
+    // 端末ローカルに保存済みのキャラ画像ライブラリを読み込んで描画
+    loadSavedChars();
     // AIプロバイダ選択を保存値で初期化
     const aiCfg = loadAiConfig();
     if (els.aiProvider) els.aiProvider.value = aiCfg.provider;
