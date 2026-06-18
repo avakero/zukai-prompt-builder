@@ -4597,7 +4597,7 @@ ${layoutDef.desc}
   // 単体＋手動カルーセルのみ使える状態にし、スタイルは2種、署名・配色は固定、
   // AI機能ボタンは薄暗く押せない (非表示にはしない) 状態にする。
   const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風
-  const PUBLIC_ALLOWED_IMAGE_GEN_PRESETS = ['handdrawn', 'flat'];  // カルーセル画像生成スタイルも2種のみ
+  const PUBLIC_ALLOWED_IMAGE_GEN_PRESETS = ['infographic', 'chalkboard'];  // カルーセル画像生成スタイルは2種のみ (インフォグラフィック / 黒板チョーク風)
 
   function isPublicMode() {
     // localhost は開発用に全機能のまま (制限をかけない)。
@@ -4653,12 +4653,12 @@ ${layoutDef.desc}
     }
 
     // (a2) カルーセルモードの画像生成スタイルも2種のみ選択可。
-    //      許可外を選んでいたら handdrawn にリセット。
+    //      許可外を選んでいたら infographic にリセット。
     document.querySelectorAll('#imageGenPresets .image-gen-preset').forEach(card => {
       if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(card.dataset.preset)) lockCard(card);
     });
     if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(imageGenState.selectedPreset)) {
-      selectImageGenPreset('handdrawn');
+      selectImageGenPreset('infographic');
     }
 
     // (b) スタイル署名をデフォルト(none)に固定してロック
