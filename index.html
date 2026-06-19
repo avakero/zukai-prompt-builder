@@ -131,17 +131,31 @@
     </div>
   </header>
 
-  <!-- ===== god 導線 (god ティア保有時のみ表示) ===== -->
-  <a class="god-cta" id="godCta" href="/god-max" style="display:none">
-    <span class="god-cta__crest" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 6.5L21 9l-5 4.2L17.5 20 12 16.4 6.5 20 8 13.2 3 9l6.6-.5z"/></svg>
-    </span>
-    <span class="god-cta__body">
-      <span class="god-cta__title">GOD 覚醒済み</span>
-      <span class="god-cta__desc">全スライドを1つの一括プロンプトに束ねる god-max へ</span>
-    </span>
-    <svg class="god-cta__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-  </a>
+  <!-- ===== モード切り替え (GOD ティア保有時のみ表示) =====
+       通常(PRO MAX) ⇄ GOD一括 を行き来する2方向スイッチ。初心者でも「今どっちにいるか」
+       が一目で分かるよう現在のモードをハイライトし、もう片方をワンタップで開ける。 -->
+  <nav class="mode-switch" id="modeSwitch" style="display:none" aria-label="モード切り替え">
+    <a class="mode-switch__opt" id="modeSwitchPro" href="/pro-max">
+      <span class="mode-switch__ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+      </span>
+      <span class="mode-switch__txt">
+        <span class="mode-switch__name">通常モード</span>
+        <span class="mode-switch__desc">1枚ずつプロンプトを作る</span>
+      </span>
+      <span class="mode-switch__now" aria-hidden="true">表示中</span>
+    </a>
+    <a class="mode-switch__opt mode-switch__opt--god" id="modeSwitchGod" href="/god-max">
+      <span class="mode-switch__ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </span>
+      <span class="mode-switch__txt">
+        <span class="mode-switch__name">一括モード</span>
+        <span class="mode-switch__desc">全スライドを1つにまとめる</span>
+      </span>
+      <span class="mode-switch__now" aria-hidden="true">表示中</span>
+    </a>
+  </nav>
 
   <!-- ===== モード切替タブ ===== -->
   <div class="mode-tabs" id="modeTabs">
@@ -860,15 +874,11 @@
 
       <!-- god-max: 一括プロンプト束ね出力 (通常は非表示。/god-max ルートでのみ表示) -->
       <section class="section" id="godMaxBatchSection" style="display:none">
-        <a class="god-max-back" id="godMaxBackBtn" href="/pro-max">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          PRO MAX へ戻る
-        </a>
         <div class="section__header">
           <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
           </svg>
-          <h2 class="section__title">一括プロンプト生成（God）</h2>
+          <h2 class="section__title">一括プロンプト生成</h2>
         </div>
         <p class="god-max-desc">全スライドを<strong>1つのプロンプト</strong>に束ねて出力します。丸ごとコピーして codex / antigravity などのエージェントに貼り付けると、全画像を自律的に生成できます。</p>
         <p class="god-max-lock-notice" id="godMaxLockNotice" style="display:none">🔒 この機能は God プラン以上でご利用いただけます。</p>

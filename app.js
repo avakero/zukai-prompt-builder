@@ -4966,6 +4966,9 @@ ${layoutDef.desc}
     const lock = document.getElementById('godMaxLockNotice');
     if (lock) lock.style.display = allowed ? 'none' : '';
 
+    // 着地直後から「通常モードに戻る」導線を出す（プロフィール取得を待たない）
+    applyModeSwitch();
+
     console.log('[applyGodMaxLayout] god-max mode: batch-prompt only, godBatch feature =', allowed);
   }
 
@@ -5098,17 +5101,28 @@ ${layoutDef.desc}
       if (cta) cta.hidden = false;
     }
 
-    applyGodCta();
+    applyModeSwitch();
   }
 
-  // god ティア (mode.godBatch) を持つユーザーには god-max への導線を表示する。
-  // god-max ページ自身では出さない (既にそこにいるため)。
-  function applyGodCta() {
-    const godCta = document.getElementById('godCta');
-    if (!godCta) return;
-    const show = !isGodMaxRoute()
-      && !!(window.hasFeature && window.hasFeature('mode.godBatch'));
-    godCta.style.display = show ? '' : 'none';
+  // 通常(PRO MAX) ⇄ GOD一括 の2方向モードスイッチを制御する。
+  //  - 表示条件: god ティア (mode.godBatch) 保有、または現在 god-max ルート上にいる
+  //    （god-max では「戻る導線」を必ず出したいのでルートだけでも表示する）。
+  //  - 現在のモードをハイライトし、クリック不可にする（もう片方だけ遷移できる）。
+  function applyModeSwitch() {
+    const sw = document.getElementById('modeSwitch');
+    if (!sw) return;
+    const onGodMax = isGodMaxRoute();
+    const show = onGodMax || !!(window.hasFeature && window.hasFeature('mode.godBatch'));
+    sw.style.display = show ? '' : 'none';
+    if (!show) return;
+    _setSwitchActive(document.getElementById('modeSwitchPro'), !onGodMax);
+    _setSwitchActive(document.getElementById('modeSwitchGod'), onGodMax);
+  }
+  function _setSwitchActive(opt, active) {
+    if (!opt) return;
+    opt.classList.toggle('is-active', active);
+    if (active) opt.setAttribute('aria-current', 'page');
+    else opt.removeAttribute('aria-current');
   }
 
   // liff.init() の進行状態。ログインボタンの挙動を分岐するために使う。

@@ -2836,59 +2836,91 @@ img {
   transform: translateY(-2px);
 }
 
-/* ===== god 導線バナー (pro-max で god 保有時) ===== */
-.god-cta {
+/* ===== モード切り替え (通常 PRO MAX ⇄ GOD一括) =====
+   初心者でも現在地が分かるセグメント型スイッチ。現在モードは塗りつぶし＋
+   「表示中」ラベルでハイライトし、もう片方だけが押せる。 */
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2);
+  border-radius: var(--radius-xl, 16px);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+}
+.mode-switch__opt {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg, 14px);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg, 12px);
   text-decoration: none;
-  color: #1a1304;
-  background: linear-gradient(135deg, #f5c542, #b8860b);
-  box-shadow: 0 8px 22px rgba(245, 197, 66, 0.32);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  color: var(--text-secondary);
+  border: 1.5px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-.god-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(245, 197, 66, 0.45);
+.mode-switch__opt:hover {
+  background: var(--surface-primary);
+  color: var(--text-primary);
 }
-.god-cta__crest {
+.mode-switch__opt.is-active {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-sm);
+  cursor: default;
+  pointer-events: none;
+}
+.mode-switch__opt--god.is-active { border-color: #f5c542; }
+
+.mode-switch__ico {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  color: #1a1304;
-}
-.god-cta__crest svg { width: 100%; height: 100%; }
-.god-cta__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.god-cta__title { font-weight: 800; font-size: var(--text-sm); letter-spacing: 0.06em; }
-.god-cta__desc { font-size: var(--text-xs, 0.72rem); opacity: 0.85; }
-.god-cta__arrow { flex: none; width: 20px; height: 20px; color: #1a1304; }
-
-/* ===== god-max: 一括プロンプト束ね出力 ===== */
-.god-max-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1, 4px);
-  margin: 0 0 var(--space-4);
-  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md, 8px);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
+  background: var(--surface-secondary);
   color: var(--text-secondary);
-  text-decoration: none;
-  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
-  border: 1px solid var(--border-color);
   transition: background 0.15s ease, color 0.15s ease;
 }
-.god-max-back:hover {
-  color: var(--text-primary);
-  background: var(--color-bg-muted, rgba(0, 0, 0, 0.07));
+.mode-switch__ico svg { width: 19px; height: 19px; }
+.mode-switch__opt--god .mode-switch__ico { color: #b8860b; }
+.mode-switch__opt.is-active .mode-switch__ico {
+  background: rgba(47, 77, 138, 0.16);
+  color: var(--color-primary-400);
 }
-.god-max-back svg { width: 16px; height: 16px; flex: none; }
+.mode-switch__opt--god.is-active .mode-switch__ico {
+  background: rgba(245, 197, 66, 0.18);
+  color: #b8860b;
+}
+
+.mode-switch__txt { display: flex; flex-direction: column; min-width: 0; }
+.mode-switch__name { font-size: var(--text-sm); font-weight: var(--font-bold, 700); letter-spacing: 0.02em; }
+.mode-switch__desc { font-size: var(--text-xs, 0.72rem); opacity: 0.78; line-height: 1.45; }
+
+/* 現在モードにだけ出す「表示中」ラベル */
+.mode-switch__now {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: none;
+  padding: 2px 7px;
+  border-radius: var(--radius-full, 999px);
+  font-size: 0.6rem;
+  font-weight: var(--font-bold, 700);
+  letter-spacing: 0.04em;
+  background: var(--color-primary-500, #6366f1);
+  color: #fff;
+}
+.mode-switch__opt.is-active .mode-switch__now { display: inline-block; }
+.mode-switch__opt--god.is-active .mode-switch__now { background: #b8860b; }
+
+@media (max-width: 380px) {
+  .mode-switch__desc { display: none; }
+}
 
 .god-max-images {
   margin-top: var(--space-4);
