@@ -175,6 +175,11 @@
     <!-- ===== カルーセルモード ===== -->
     <div class="mode-content" id="modeContentCarousel" style="display: none;">
 
+      <!-- カルーセルとは（用語解説） -->
+      <p class="mode-intro" style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:rgba(120,160,255,.08);font-size:13px;line-height:1.6;opacity:.9;">
+        💡 <strong>カルーセル</strong>とは、Instagramなどで<strong>横にスワイプして見る複数枚の投稿</strong>のこと。ここでは複数スライドの図解を<strong>まとめて作成</strong>できます。1枚だけ作りたいときは上の「単体」タブへ。
+      </p>
+
       <!-- 画像生成スタイルプリセット -->
       <section class="section" id="sectionImageGenStyle">
         <div class="section__header">
@@ -183,6 +188,7 @@
           </svg>
           <h2 class="section__title">画像生成スタイル</h2>
         </div>
+        <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">全スライドの<strong>絵のタッチ（画風）</strong>です。手書き風・フラットなど、選ぶと仕上がりの見た目が変わります。迷ったら「手書き風イラスト」のままでOK。</p>
         <div class="image-gen-presets" role="radiogroup" aria-label="画像生成スタイル選択" id="imageGenPresets">
           <div class="image-gen-preset active" data-preset="handdrawn" role="radio" aria-checked="true" tabindex="0">
             <div class="image-gen-preset__icon">
@@ -240,53 +246,6 @@
         </div>
       </section>
 
-      <!-- AIモデル選択 -->
-      <section class="section" id="sectionModelSelect">
-        <div class="section__header">
-          <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
-          </svg>
-          <h2 class="section__title">AIモデル</h2>
-        </div>
-        <div class="selection-grid selection-grid--model" role="radiogroup" aria-label="モデル選択">
-          <!-- 公開モデル: OpenAI gpt-image-2 (デフォルト) -->
-          <div class="selection-card active" data-group="model" data-value="gpt-image-2" role="radio" aria-checked="true" tabindex="0" id="modelGptImage2">
-            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <span class="selection-card__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            </span>
-            <span class="selection-card__label">gpt-image-2</span>
-            <span class="selection-card__desc">OpenAI（推奨）</span>
-          </div>
-          <!-- 公開モデル: Gemini 2.5 Flash Image -->
-          <div class="selection-card" data-group="model" data-value="gemini-2.5-flash-image-preview" role="radio" aria-checked="false" tabindex="0" id="modelGeminiFlashImage">
-            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <span class="selection-card__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            </span>
-            <span class="selection-card__label">Gemini 2.5 Flash Image</span>
-            <span class="selection-card__desc">Google</span>
-          </div>
-          <!-- 内部限定 (provider.pickaxe タグ持ちのみ JS 側で表示) -->
-          <div class="selection-card selection-card--internal" data-group="model" data-value="NanoBanana2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelNanoBanana" style="display:none">
-            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <span class="selection-card__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
-            </span>
-            <span class="selection-card__label">NanoBanana2</span>
-            <span class="selection-card__desc">Pickaxe (内部)</span>
-          </div>
-          <div class="selection-card selection-card--internal" data-group="model" data-value="GPT Image2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelGPTImage" style="display:none">
-            <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <span class="selection-card__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            </span>
-            <span class="selection-card__label">GPT Image2</span>
-            <span class="selection-card__desc">Pickaxe (内部)</span>
-          </div>
-        </div>
-      </section>
-
       <!-- AI生成（Gemini Flash 2.5） -->
       <section class="section" id="sectionAiGenerate">
         <div class="section__header">
@@ -299,23 +258,6 @@
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </button>
-        </div>
-
-        <div class="carousel-flow" aria-label="カルーセル作成の流れ">
-          <div class="carousel-flow__step carousel-flow__step--active">
-            <span class="carousel-flow__num">1</span>
-            <span class="carousel-flow__label">テーマ入力</span>
-          </div>
-          <div class="carousel-flow__line" aria-hidden="true"></div>
-          <div class="carousel-flow__step" id="carouselFlowGenerated">
-            <span class="carousel-flow__num">2</span>
-            <span class="carousel-flow__label">AI構成</span>
-          </div>
-          <div class="carousel-flow__line" aria-hidden="true"></div>
-          <div class="carousel-flow__step" id="carouselFlowExpanded">
-            <span class="carousel-flow__num">3</span>
-            <span class="carousel-flow__label">確認</span>
-          </div>
         </div>
 
         <div class="textarea-wrapper">
@@ -341,9 +283,10 @@
           </span>
         </label>
 
-        <div class="ai-gen-controls ai-gen-controls--3col">
-          <div class="ai-gen-control-group">
-            <label class="ai-gen-control-label" for="aiProvider">AIプロバイダ</label>
+        <div class="ai-gen-controls">
+          <!-- 文章を作るAI（プロバイダ）はメインから隠し、⚙APIキー設定で切替。JS参照維持のため要素は残す -->
+          <div class="ai-gen-control-group" style="display:none">
+            <label class="ai-gen-control-label" for="aiProvider">文章を作るAI</label>
             <select id="aiProvider" class="ai-gen-select">
               <option value="straico" class="provider-option--internal" data-internal="straico">Straico</option>
               <option value="gemini" selected>Gemini 直接</option>
@@ -375,15 +318,7 @@
           </div>
         </div>
 
-        <button class="generate-btn ai-generate-btn" id="aiGenerateBtn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2L9.4 8.6 2 9.27l5.45 4.74L5.82 21 12 17.27 18.18 21l-1.63-6.99L22 9.27l-7.4-.67L12 2z"/>
-          </svg>
-          <span id="aiGenerateBtnLabel">AIで構成を作る</span>
-        </button>
-
-        <div class="ai-manual-route">
-          <span class="ai-manual-route__divider">または</span>
+        <div class="ai-manual-route ai-manual-route--primary">
           <button class="ai-manual-route__btn" id="copyTemplateBtn" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2"/>
@@ -392,6 +327,18 @@
             <span>手動で作るテンプレをコピー</span>
           </button>
         </div>
+
+        <div class="ai-or-divider" role="separator"><span>または</span></div>
+
+        <button class="generate-btn ai-generate-btn" id="aiGenerateBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L9.4 8.6 2 9.27l5.45 4.74L5.82 21 12 17.27 18.18 21l-1.63-6.99L22 9.27l-7.4-.67L12 2z"/>
+          </svg>
+          <span id="aiGenerateBtnLabel">AIで構成を作る</span>
+        </button>
+        <p class="ai-generate-locked-hint" id="aiGenerateLockedHint" style="display:none">
+          🔑 AIで作るには、まず<button type="button" class="ai-generate-locked-hint__link" id="aiGenerateLockedHintLink">APIキーを設定</button>してください（⚙からいつでも変更できます）
+        </p>
       </section>
 
       <!-- JSON入力 -->
@@ -415,6 +362,29 @@
           </div>
           <div>
             <p class="carousel-json-status__title" id="carouselJsonStatusTitle">まだ構成がありません</p>
+          </div>
+        </div>
+
+        <!-- 手動テンプレをコピーした直後だけ表示。AIを開いて貼り付け→出たJSONを下の欄へ -->
+        <div class="ai-launch-links" id="aiLaunchLinks" aria-label="貼り付けるAIを開く" hidden>
+          <span class="ai-launch-links__label">コピー完了！AIを開いて貼り付け → 出てきたJSONを下の欄に貼ってください ↓</span>
+          <div class="ai-launch-links__row">
+            <a class="ai-launch-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              ChatGPT
+            </a>
+            <a class="ai-launch-link" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Gemini
+            </a>
+            <a class="ai-launch-link" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Claude
+            </a>
+            <a class="ai-launch-link" href="https://grok.com/" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Grok
+            </a>
           </div>
         </div>
 
@@ -498,6 +468,11 @@
     <!-- ===== 単体モード: テキスト入力 ===== -->
     <div class="mode-content" id="modeContentSingle">
 
+      <!-- 単体モードとは（用語解説） -->
+      <p class="mode-intro" style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:rgba(120,160,255,.08);font-size:13px;line-height:1.6;opacity:.9;">
+        💡 <strong>単体モード</strong>は、1枚の図解を作るための<strong>プロンプト（AIへの指示文）</strong>を作成します。文章を入力してスタイルなどを選ぶと、画像生成AIに貼り付けるだけのプロンプトが完成します。複数枚をまとめて作りたいときは上の「カルーセル」タブへ。
+      </p>
+
     <!-- 1. テキスト入力 -->
     <section class="section" id="sectionText">
       <div class="section__header">
@@ -531,6 +506,7 @@
         </svg>
         <h2 class="section__title">スタイル</h2>
       </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">図解全体の<strong>絵のタッチ（画風）</strong>です。手書き風・ビジネス風など、選ぶと仕上がりの見た目が変わります。迷ったら「手書き風」のままでOK。</p>
       <div class="selection-grid selection-grid--style" role="radiogroup" aria-label="スタイル選択">
 
         <div class="selection-card active" data-group="style" data-value="A" role="radio" aria-checked="true" tabindex="0" id="styleA">
@@ -580,7 +556,111 @@
       </div>
     </section>
 
-    <!-- 3. レイアウト選択 -->
+    <!-- 3. 配色 -->
+    <section class="section" id="sectionColor">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+        </svg>
+        <h2 class="section__title">配色</h2>
+      </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">図解全体の<strong>色味</strong>です。プリセットから選ぶか、迷ったら「お任せ」でAIにまかせられます。</p>
+      <div class="color-section">
+        <div class="color-presets" role="radiogroup" aria-label="配色選択">
+          <button class="color-swatch" data-color="パステルピンク＆水色" style="background: linear-gradient(135deg, #f9a8d4, #67e8f9);" title="パステルピンク＆水色" aria-label="パステルピンク＆水色" role="radio" aria-checked="false" id="colorPreset1"></button>
+          <button class="color-swatch" data-color="ネイビー＆ゴールド" style="background: linear-gradient(135deg, #1e3a5f, #d4a853);" title="ネイビー＆ゴールド" aria-label="ネイビー＆ゴールド" role="radio" aria-checked="false" id="colorPreset2"></button>
+          <button class="color-swatch" data-color="グリーン＆ナチュラル" style="background: linear-gradient(135deg, #86efac, #fde68a);" title="グリーン＆ナチュラル" aria-label="グリーン＆ナチュラル" role="radio" aria-checked="false" id="colorPreset3"></button>
+          <button class="color-swatch" data-color="モノトーン" style="background: linear-gradient(135deg, #e5e7eb, #374151);" title="モノトーン" aria-label="モノトーン" role="radio" aria-checked="false" id="colorPreset4"></button>
+          <button class="color-swatch" data-color="サンセットオレンジ" style="background: linear-gradient(135deg, #fb923c, #f43f5e);" title="サンセットオレンジ" aria-label="サンセットオレンジ" role="radio" aria-checked="false" id="colorPreset5"></button>
+          <button class="color-swatch" data-color="ラベンダー＆パープル" style="background: linear-gradient(135deg, #c4b5fd, #7c3aed);" title="ラベンダー＆パープル" aria-label="ラベンダー＆パープル" role="radio" aria-checked="false" id="colorPreset6"></button>
+          <button class="color-swatch" data-color="アクアブルー" style="background: linear-gradient(135deg, #38bdf8, #2563eb);" title="アクアブルー" aria-label="アクアブルー" role="radio" aria-checked="false" id="colorPreset7"></button>
+          <button class="color-swatch" data-color="アースカラー" style="background: linear-gradient(135deg, #a3a380, #6b5b3e);" title="アースカラー" aria-label="アースカラー" role="radio" aria-checked="false" id="colorPreset8"></button>
+          <button class="color-swatch" data-color="スレート＆シアン" style="background: linear-gradient(135deg, #334155, #22d3ee);" title="スレート＆シアン" aria-label="スレート＆シアン" role="radio" aria-checked="false" id="colorPreset9"></button>
+          <button class="color-swatch" data-color="フォレスト＆クリーム" style="background: linear-gradient(135deg, #166534, #fef3c7);" title="フォレスト＆クリーム" aria-label="フォレスト＆クリーム" role="radio" aria-checked="false" id="colorPreset10"></button>
+          <button class="color-swatch" data-color="ワイン＆ローズ" style="background: linear-gradient(135deg, #7f1d1d, #fda4af);" title="ワイン＆ローズ" aria-label="ワイン＆ローズ" role="radio" aria-checked="false" id="colorPreset11"></button>
+          <button class="color-swatch" data-color="インディゴ＆ミント" style="background: linear-gradient(135deg, #4338ca, #5eead4);" title="インディゴ＆ミント" aria-label="インディゴ＆ミント" role="radio" aria-checked="false" id="colorPreset12"></button>
+          <button class="color-swatch" data-color="コーラル＆チャコール" style="background: linear-gradient(135deg, #fb7185, #1f2937);" title="コーラル＆チャコール" aria-label="コーラル＆チャコール" role="radio" aria-checked="false" id="colorPreset13"></button>
+          <button class="color-swatch" data-color="和モダン（藍＆朱）" style="background: linear-gradient(135deg, #1e3a8a, #dc2626);" title="和モダン（藍＆朱）" aria-label="和モダン（藍＆朱）" role="radio" aria-checked="false" id="colorPreset14"></button>
+          <button class="color-swatch" data-color="レモン＆ネイビー" style="background: linear-gradient(135deg, #fde047, #1e3a8a);" title="レモン＆ネイビー" aria-label="レモン＆ネイビー" role="radio" aria-checked="false" id="colorPreset15"></button>
+          <button class="color-swatch" data-color="セージ＆テラコッタ" style="background: linear-gradient(135deg, #84a98c, #c2410c);" title="セージ＆テラコッタ" aria-label="セージ＆テラコッタ" role="radio" aria-checked="false" id="colorPreset16"></button>
+        </div>
+        <div class="color-custom-group">
+          <div class="color-picker-wrapper">
+            <input type="color" class="color-picker-input" id="customColorPicker" value="#3b82f6" aria-label="カスタムカラー選択">
+            <span class="color-picker-label">カスタム</span>
+          </div>
+          <button class="color-auto-btn active" id="colorAutoBtn" type="button" aria-label="配色をお任せ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            お任せ
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 画像全体の雰囲気（あなたらしさ） -->
+    <section class="section" id="sectionSignature">
+      <div class="section__header">
+        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17c3-1 4-8 6-8s2 6 4 6 2-4 4-4"/><path d="M3 21h18"/>
+        </svg>
+        <h2 class="section__title">画像全体の雰囲気（あなたらしさ）</h2>
+      </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">全スライドに共通でかかる<strong>雰囲気・トーン</strong>です（例：暖色で丸み／寒色で直線）。他の人と画像が被らない「あなたの個性」になり、一度選ぶと次回以降も保存されて投稿の世界観が揃います。迷ったら「標準」でOK。</p>
+      <div class="selection-grid selection-grid--signature" role="radiogroup" aria-label="スタイル署名選択">
+
+        <div class="selection-card active" data-group="signature" data-value="none" role="radio" aria-checked="true" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="selection-card__label">標準</span>
+          <span class="selection-card__desc">個性なし</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="warm" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></span>
+          <span class="selection-card__label">温かみ</span>
+          <span class="selection-card__desc">暖色・丸み</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="cool" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></span>
+          <span class="selection-card__label">クール</span>
+          <span class="selection-card__desc">寒色・直線</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="lively" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9 9 12 2"/></svg></span>
+          <span class="selection-card__label">にぎやか</span>
+          <span class="selection-card__desc">装飾を散らす</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="calm" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg></span>
+          <span class="selection-card__label">落ち着き</span>
+          <span class="selection-card__desc">余白・上品</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="bold" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9 13 2"/></svg></span>
+          <span class="selection-card__label">力強い</span>
+          <span class="selection-card__desc">コントラスト強</span>
+        </div>
+
+        <div class="selection-card" data-group="signature" data-value="craft" role="radio" aria-checked="false" tabindex="0">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></span>
+          <span class="selection-card__label">手作り感</span>
+          <span class="selection-card__desc">囲み・付箋風</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5. レイアウト選択 -->
     <section class="section" id="sectionLayout">
       <div class="section__header">
         <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -588,7 +668,17 @@
         </svg>
         <h2 class="section__title">レイアウト</h2>
       </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">図解の<strong>型（情報の並べ方）</strong>です。迷ったら先頭の「お任せ」でOK。AIが内容に合う形を選びます。</p>
       <div class="selection-grid selection-grid--layout" role="radiogroup" aria-label="レイアウト選択">
+
+        <div class="selection-card active" data-group="layout" data-value="G" role="radio" aria-checked="true" tabindex="0" id="layoutG">
+          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="selection-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <span class="selection-card__label">お任せ</span>
+          <span class="selection-card__desc">迷ったらコレ</span>
+        </div>
 
         <div class="selection-card" data-group="layout" data-value="A" role="radio" aria-checked="false" tabindex="0" id="layoutA">
           <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -644,19 +734,10 @@
           <span class="selection-card__desc">階層構造</span>
         </div>
 
-        <div class="selection-card active" data-group="layout" data-value="G" role="radio" aria-checked="true" tabindex="0" id="layoutG">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </span>
-          <span class="selection-card__label">お任せ</span>
-          <span class="selection-card__desc">自動で最適化</span>
-        </div>
-
       </div>
     </section>
 
-    <!-- 4. フォーマット選択 -->
+    <!-- 6. フォーマット選択 -->
     <section class="section" id="sectionFormat">
       <div class="section__header">
         <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -664,6 +745,7 @@
         </svg>
         <h2 class="section__title">フォーマット</h2>
       </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">画像の<strong>縦横比</strong>です。Instagram・一般的な投稿は1:1、縦長に見せたいときは3:4、スライド資料風は16:9が目安です。</p>
       <div class="selection-grid selection-grid--format" role="radiogroup" aria-label="フォーマット選択">
 
         <div class="selection-card active" data-group="format" data-value="1:1" role="radio" aria-checked="true" tabindex="0" id="format1x1">
@@ -696,110 +778,7 @@
       </div>
     </section>
 
-    <!-- 4.5 あなたのスタイル署名（個性） -->
-    <section class="section" id="sectionSignature">
-      <div class="section__header">
-        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 17c3-1 4-8 6-8s2 6 4 6 2-4 4-4"/><path d="M3 21h18"/>
-        </svg>
-        <h2 class="section__title">あなたのスタイル署名</h2>
-      </div>
-      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">他の人と画像が被らないための「あなたの個性」。一度選ぶと次回以降も保存され、投稿の世界観が揃います。</p>
-      <div class="selection-grid selection-grid--signature" role="radiogroup" aria-label="スタイル署名選択">
-
-        <div class="selection-card active" data-group="signature" data-value="none" role="radio" aria-checked="true" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>
-          <span class="selection-card__label">標準</span>
-          <span class="selection-card__desc">個性なし</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="warm" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></span>
-          <span class="selection-card__label">温かみ</span>
-          <span class="selection-card__desc">暖色・丸み</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="cool" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></span>
-          <span class="selection-card__label">クール</span>
-          <span class="selection-card__desc">寒色・直線</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="lively" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9 9 12 2"/></svg></span>
-          <span class="selection-card__label">にぎやか</span>
-          <span class="selection-card__desc">装飾を散らす</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="calm" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg></span>
-          <span class="selection-card__label">落ち着き</span>
-          <span class="selection-card__desc">余白・上品</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="bold" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9 13 2"/></svg></span>
-          <span class="selection-card__label">力強い</span>
-          <span class="selection-card__desc">コントラスト強</span>
-        </div>
-
-        <div class="selection-card" data-group="signature" data-value="craft" role="radio" aria-checked="false" tabindex="0">
-          <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="selection-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></span>
-          <span class="selection-card__label">手作り感</span>
-          <span class="selection-card__desc">囲み・付箋風</span>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- 5. 配色 -->
-    <section class="section" id="sectionColor">
-      <div class="section__header">
-        <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-        </svg>
-        <h2 class="section__title">配色</h2>
-      </div>
-      <div class="color-section">
-        <div class="color-presets" role="radiogroup" aria-label="配色選択">
-          <button class="color-swatch" data-color="パステルピンク＆水色" style="background: linear-gradient(135deg, #f9a8d4, #67e8f9);" title="パステルピンク＆水色" aria-label="パステルピンク＆水色" role="radio" aria-checked="false" id="colorPreset1"></button>
-          <button class="color-swatch" data-color="ネイビー＆ゴールド" style="background: linear-gradient(135deg, #1e3a5f, #d4a853);" title="ネイビー＆ゴールド" aria-label="ネイビー＆ゴールド" role="radio" aria-checked="false" id="colorPreset2"></button>
-          <button class="color-swatch" data-color="グリーン＆ナチュラル" style="background: linear-gradient(135deg, #86efac, #fde68a);" title="グリーン＆ナチュラル" aria-label="グリーン＆ナチュラル" role="radio" aria-checked="false" id="colorPreset3"></button>
-          <button class="color-swatch" data-color="モノトーン" style="background: linear-gradient(135deg, #e5e7eb, #374151);" title="モノトーン" aria-label="モノトーン" role="radio" aria-checked="false" id="colorPreset4"></button>
-          <button class="color-swatch" data-color="サンセットオレンジ" style="background: linear-gradient(135deg, #fb923c, #f43f5e);" title="サンセットオレンジ" aria-label="サンセットオレンジ" role="radio" aria-checked="false" id="colorPreset5"></button>
-          <button class="color-swatch" data-color="ラベンダー＆パープル" style="background: linear-gradient(135deg, #c4b5fd, #7c3aed);" title="ラベンダー＆パープル" aria-label="ラベンダー＆パープル" role="radio" aria-checked="false" id="colorPreset6"></button>
-          <button class="color-swatch" data-color="アクアブルー" style="background: linear-gradient(135deg, #38bdf8, #2563eb);" title="アクアブルー" aria-label="アクアブルー" role="radio" aria-checked="false" id="colorPreset7"></button>
-          <button class="color-swatch" data-color="アースカラー" style="background: linear-gradient(135deg, #a3a380, #6b5b3e);" title="アースカラー" aria-label="アースカラー" role="radio" aria-checked="false" id="colorPreset8"></button>
-          <button class="color-swatch" data-color="スレート＆シアン" style="background: linear-gradient(135deg, #334155, #22d3ee);" title="スレート＆シアン" aria-label="スレート＆シアン" role="radio" aria-checked="false" id="colorPreset9"></button>
-          <button class="color-swatch" data-color="フォレスト＆クリーム" style="background: linear-gradient(135deg, #166534, #fef3c7);" title="フォレスト＆クリーム" aria-label="フォレスト＆クリーム" role="radio" aria-checked="false" id="colorPreset10"></button>
-          <button class="color-swatch" data-color="ワイン＆ローズ" style="background: linear-gradient(135deg, #7f1d1d, #fda4af);" title="ワイン＆ローズ" aria-label="ワイン＆ローズ" role="radio" aria-checked="false" id="colorPreset11"></button>
-          <button class="color-swatch" data-color="インディゴ＆ミント" style="background: linear-gradient(135deg, #4338ca, #5eead4);" title="インディゴ＆ミント" aria-label="インディゴ＆ミント" role="radio" aria-checked="false" id="colorPreset12"></button>
-          <button class="color-swatch" data-color="コーラル＆チャコール" style="background: linear-gradient(135deg, #fb7185, #1f2937);" title="コーラル＆チャコール" aria-label="コーラル＆チャコール" role="radio" aria-checked="false" id="colorPreset13"></button>
-          <button class="color-swatch" data-color="和モダン（藍＆朱）" style="background: linear-gradient(135deg, #1e3a8a, #dc2626);" title="和モダン（藍＆朱）" aria-label="和モダン（藍＆朱）" role="radio" aria-checked="false" id="colorPreset14"></button>
-          <button class="color-swatch" data-color="レモン＆ネイビー" style="background: linear-gradient(135deg, #fde047, #1e3a8a);" title="レモン＆ネイビー" aria-label="レモン＆ネイビー" role="radio" aria-checked="false" id="colorPreset15"></button>
-          <button class="color-swatch" data-color="セージ＆テラコッタ" style="background: linear-gradient(135deg, #84a98c, #c2410c);" title="セージ＆テラコッタ" aria-label="セージ＆テラコッタ" role="radio" aria-checked="false" id="colorPreset16"></button>
-        </div>
-        <div class="color-custom-group">
-          <div class="color-picker-wrapper">
-            <input type="color" class="color-picker-input" id="customColorPicker" value="#3b82f6" aria-label="カスタムカラー選択">
-            <span class="color-picker-label">カスタム</span>
-          </div>
-          <button class="color-auto-btn active" id="colorAutoBtn" type="button" aria-label="配色をお任せ">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-            お任せ
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6. キャラクター画像 -->
+    <!-- 7. キャラクター画像 -->
     <section class="section" id="sectionImages">
       <div class="section__header">
         <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -928,12 +907,68 @@
           <span class="image-gen-divider__text">または</span>
           <span class="image-gen-divider__line"></span>
         </div>
+
+        <!-- 画像を作るAI（モデル）: AIで画像生成する人だけが開く折りたたみ -->
+        <details class="image-model-picker" id="sectionModelSelect">
+          <summary class="image-model-picker__summary">
+            <svg class="image-model-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="image-model-picker__label">画像を作るAIを選ぶ</span>
+            <span class="image-model-picker__current" id="modelBadge">gpt-image-2</span>
+            <button class="ai-settings-btn image-model-picker__gear" id="imageAiSettingsBtn" type="button" aria-label="画像を作るAIのAPIキー設定" title="画像を作るAIのAPIキー設定">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </summary>
+          <p class="section__hint" style="margin:10px 0 12px;opacity:.75;font-size:13px;">アプリ内で<strong>画像まで自動生成する</strong>ときに使うAIです。⚙からAPIキーを設定できます。<strong>プロンプトをコピーして手動で画像を作る方は、ここは触らなくてOK</strong>です。</p>
+          <div class="selection-grid selection-grid--model" role="radiogroup" aria-label="モデル選択">
+            <!-- 公開モデル: OpenAI gpt-image-2 (デフォルト) -->
+            <div class="selection-card active" data-group="model" data-value="gpt-image-2" role="radio" aria-checked="true" tabindex="0" id="modelGptImage2">
+              <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span class="selection-card__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </span>
+              <span class="selection-card__label">gpt-image-2</span>
+              <span class="selection-card__desc">ChatGPTの画像生成（OpenAI）・推奨</span>
+            </div>
+            <!-- 公開モデル: Gemini 2.5 Flash Image -->
+            <div class="selection-card" data-group="model" data-value="gemini-2.5-flash-image-preview" role="radio" aria-checked="false" tabindex="0" id="modelGeminiFlashImage">
+              <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span class="selection-card__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </span>
+              <span class="selection-card__label">Gemini 2.5 Flash Image</span>
+              <span class="selection-card__desc">Geminiの画像生成（Google）</span>
+            </div>
+            <!-- 内部限定 (provider.pickaxe タグ持ちのみ JS 側で表示) -->
+            <div class="selection-card selection-card--internal" data-group="model" data-value="NanoBanana2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelNanoBanana" style="display:none">
+              <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span class="selection-card__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+              </span>
+              <span class="selection-card__label">NanoBanana2</span>
+              <span class="selection-card__desc">Pickaxe (内部)</span>
+            </div>
+            <div class="selection-card selection-card--internal" data-group="model" data-value="GPT Image2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelGPTImage" style="display:none">
+              <div class="selection-card__check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span class="selection-card__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </span>
+              <span class="selection-card__label">GPT Image2</span>
+              <span class="selection-card__desc">Pickaxe (内部)</span>
+            </div>
+          </div>
+        </details>
+
         <button class="generate-btn generate-btn--image" id="imageGenBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
           </svg>
           画像を一括生成する
         </button>
+        <p class="ai-generate-locked-hint" id="imageGenLockedHint" style="display:none">
+          <span id="imageGenLockedHintMsg">🔑 画像の一括生成にはAPIキーが必要です。</span>まず<button type="button" class="ai-generate-locked-hint__link" id="imageGenLockedHintLink">APIキーを設定</button>してください（⚙からいつでも変更できます）
+        </p>
       </section>
 
       <!-- 画像グリッド -->
@@ -988,10 +1023,16 @@
     </div>
     <div class="paste-queue__items" id="pasteQueueItems"></div>
     <div class="paste-queue__footer">
-      <button class="paste-queue__cta" id="pasteQueueCta" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        次をコピー
-      </button>
+      <div class="paste-queue__actions">
+        <button class="paste-queue__back" id="pasteQueueBack" type="button" aria-label="一つ戻る" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          戻る
+        </button>
+        <button class="paste-queue__cta" id="pasteQueueCta" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          次をコピー
+        </button>
+      </div>
       <div class="paste-queue__hint" id="pasteQueueHint">💡 画像生成AIに貼り付けたら次をコピーしてください</div>
     </div>
   </div>
@@ -1029,45 +1070,80 @@
         </button>
       </div>
       <div class="api-key-modal__body">
-        <!-- プロバイダタブ -->
-        <div class="provider-tabs" role="tablist">
-          <button class="provider-tab provider-tab--internal" data-provider="straico" data-internal="straico" role="tab" aria-selected="false" type="button">Straico</button>
-          <button class="provider-tab active" data-provider="gemini" role="tab" aria-selected="true" type="button">Gemini 直接</button>
-          <button class="provider-tab" data-provider="openai" role="tab" aria-selected="false" type="button">OpenAI 直接</button>
-        </div>
-
-        <p class="api-key-modal__desc" id="apiKeyModalDesc">
-          Straico API は複数のAIモデル（Gemini/GPT/Claude）を統一APIで利用できます。<br>
-          キーはお使いのブラウザ内（localStorage）にのみ保存され、Straico以外には送信されません。
+        <p class="api-key-modal__desc">
+          各AIの<strong>APIキー</strong>を設定します。文章用・画像用はそれぞれ別に設定できます。<br>
+          キーはお使いのブラウザ内（localStorage）にのみ保存され、外部には送信されません（画像生成時のみ HTTPS でサーバー経由）。
         </p>
 
-        <div class="form-group">
-          <label class="form-label" for="apiKeyInput">APIキー</label>
-          <div class="api-key-input-wrapper">
-            <input type="password" id="apiKeyInput" class="form-input" placeholder="">
-            <button class="api-key-toggle-btn" id="apiKeyToggleBtn" type="button" aria-label="表示切替">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
+        <!-- 文章を作るAI -->
+        <div class="api-key-section" id="apiKeyTextSection">
+          <div class="api-key-section__head">
+            <span class="api-key-section__icon" aria-hidden="true">📝</span>
+            <span class="api-key-section__title">文章を作るAI</span>
           </div>
-          <small class="api-key-default-note" id="apiKeyDefaultNote" style="display:none">
-            ✓ 内蔵デフォルトキーが利用可能です。独自キーを使う場合のみ入力してください。
-          </small>
+          <div class="form-group">
+            <label class="form-label" for="apiKeyTextProvider">使うAI</label>
+            <select id="apiKeyTextProvider" class="form-input">
+              <option value="straico" data-internal="straico">Straico</option>
+              <option value="gemini">Gemini（Google）</option>
+              <option value="openai">ChatGPT（OpenAI）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="apiKeyTextInput">APIキー</label>
+            <div class="api-key-input-wrapper">
+              <input type="password" id="apiKeyTextInput" class="form-input" placeholder="">
+              <button class="api-key-toggle-btn" data-target="apiKeyTextInput" type="button" aria-label="表示切替">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <small class="api-key-default-note" id="apiKeyTextDefaultNote" style="display:none">
+              ✓ 内蔵デフォルトキーが利用可能です。独自キーを使う場合のみ入力してください。
+            </small>
+          </div>
+          <a class="api-key-modal__help" id="apiKeyTextHelp" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            <span id="apiKeyTextHelpLabel"></span>
+          </a>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="apiModelSelect">モデル</label>
-          <select id="apiModelSelect" class="form-input"></select>
+
+        <!-- 画像を作るAI -->
+        <div class="api-key-section" id="apiKeyImageSection">
+          <div class="api-key-section__head">
+            <span class="api-key-section__icon" aria-hidden="true">🖼️</span>
+            <span class="api-key-section__title">画像を作るAI</span>
+            <span class="api-key-section__model" id="apiKeyImageModelLabel"></span>
+          </div>
+
+          <div id="apiKeyImageFields">
+            <div class="form-group">
+              <label class="form-label" for="apiKeyImageInput">APIキー</label>
+              <div class="api-key-input-wrapper">
+                <input type="password" id="apiKeyImageInput" class="form-input" placeholder="">
+                <button class="api-key-toggle-btn" data-target="apiKeyImageInput" type="button" aria-label="表示切替">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <a class="api-key-modal__help" id="apiKeyImageHelp" href="#" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              <span id="apiKeyImageHelpLabel"></span>
+            </a>
+          </div>
+
+          <p class="api-key-section__note" id="apiKeyImageSameNote" style="display:none"></p>
+          <p class="api-key-section__note" id="apiKeyImageInternalNote" style="display:none">この画像モデルは内部限定です（APIキー不要）。</p>
         </div>
-        <a class="api-key-modal__help" id="apiKeyHelpLink" href="https://platform.straico.com/user-settings" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          <span id="apiKeyHelpLinkLabel">Straico でAPIキーを取得する</span>
-        </a>
       </div>
       <div class="api-key-modal__footer">
-        <button class="action-btn" id="apiKeyDeleteBtn" type="button">削除</button>
         <button class="action-btn" id="apiKeyCancelBtn" type="button">キャンセル</button>
         <button class="generate-btn" id="apiKeySaveBtn" type="button">保存</button>
       </div>
@@ -1098,11 +1174,11 @@
           <div class="regen-modal__models" role="radiogroup" aria-label="再生成モデル選択">
             <button type="button" class="regen-model-btn" data-model="gpt-image-2" id="regenModelGptImage2" role="radio" aria-checked="true">
               <span class="regen-model-btn__label">gpt-image-2</span>
-              <span class="regen-model-btn__desc">OpenAI（推奨）</span>
+              <span class="regen-model-btn__desc">ChatGPTの画像生成（OpenAI）・推奨</span>
             </button>
             <button type="button" class="regen-model-btn" data-model="gemini-2.5-flash-image-preview" id="regenModelGeminiFlashImage" role="radio" aria-checked="false">
               <span class="regen-model-btn__label">Gemini 2.5 Flash Image</span>
-              <span class="regen-model-btn__desc">Google</span>
+              <span class="regen-model-btn__desc">Geminiの画像生成（Google）</span>
             </button>
             <button type="button" class="regen-model-btn regen-model-btn--internal" data-model="NanoBanana2" data-internal="pickaxe" id="regenModelNano" role="radio" aria-checked="false" style="display:none">
               <span class="regen-model-btn__label">NanoBanana2</span>

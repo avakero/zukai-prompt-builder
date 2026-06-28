@@ -299,6 +299,7 @@
     pasteQueueItems: $('#pasteQueueItems'),
     pasteQueueProgress: $('#pasteQueueProgress'),
     pasteQueueCta: $('#pasteQueueCta'),
+    pasteQueueBack: $('#pasteQueueBack'),
     pasteQueueHint: $('#pasteQueueHint'),
     pasteQueueHeader: $('#pasteQueueHeader'),
     pasteQueueClose: $('#pasteQueueClose'),
@@ -311,6 +312,7 @@
     carouselJsonInput: $('#carouselJsonInput'),
     expandCarouselBtn: $('#expandCarouselBtn'),
     copyTemplateBtn: $('#copyTemplateBtn'),
+    aiLaunchLinks: $('#aiLaunchLinks'),
     carouselBadge: $('#carouselBadge'),
     carouselPreviewSection: $('#carouselPreviewSection'),
     carouselSlides: $('#carouselSlides'),
@@ -340,6 +342,9 @@
     imageGenCustomStyle: $('#imageGenCustomStyle'),
     modelBadge: $('#modelBadge'),
     imageGenBtn: $('#imageGenBtn'),
+    imageGenLockedHint: $('#imageGenLockedHint'),
+    imageGenLockedHintMsg: $('#imageGenLockedHintMsg'),
+    imageGenLockedHintLink: $('#imageGenLockedHintLink'),
     imageGridSection: $('#imageGridSection'),
     imageGrid: $('#imageGrid'),
     imageGridBadge: $('#imageGridBadge'),
@@ -369,27 +374,35 @@
     aiTone: $('#aiTone'),
     aiGenerateBtn: $('#aiGenerateBtn'),
     aiGenerateBtnLabel: $('#aiGenerateBtnLabel'),
+    aiGenerateLockedHint: $('#aiGenerateLockedHint'),
+    aiGenerateLockedHintLink: $('#aiGenerateLockedHintLink'),
     aiSettingsBtn: $('#aiSettingsBtn'),
+    imageAiSettingsBtn: $('#imageAiSettingsBtn'),
     aiGenBadge: $('#aiGenBadge'),
-    carouselFlowGenerated: $('#carouselFlowGenerated'),
-    carouselFlowExpanded: $('#carouselFlowExpanded'),
     carouselJsonStatus: $('#carouselJsonStatus'),
     carouselJsonStatusTitle: $('#carouselJsonStatusTitle'),
     carouselJsonEditor: $('#carouselJsonEditor'),
     // APIキー設定モーダル
     apiKeyModalOverlay: $('#apiKeyModalOverlay'),
     apiKeyModalClose: $('#apiKeyModalClose'),
-    apiKeyModalDesc: $('#apiKeyModalDesc'),
-    apiKeyInput: $('#apiKeyInput'),
-    apiKeyToggleBtn: $('#apiKeyToggleBtn'),
-    apiKeyDefaultNote: $('#apiKeyDefaultNote'),
-    apiModelSelect: $('#apiModelSelect'),
-    apiKeyHelpLink: $('#apiKeyHelpLink'),
-    apiKeyHelpLinkLabel: $('#apiKeyHelpLinkLabel'),
+    // 文章を作るAI
+    apiKeyTextProvider: $('#apiKeyTextProvider'),
+    apiKeyTextInput: $('#apiKeyTextInput'),
+    apiKeyTextDefaultNote: $('#apiKeyTextDefaultNote'),
+    apiKeyTextHelp: $('#apiKeyTextHelp'),
+    apiKeyTextHelpLabel: $('#apiKeyTextHelpLabel'),
+    // 画像を作るAI
+    apiKeyImageSection: $('#apiKeyImageSection'),
+    apiKeyImageModelLabel: $('#apiKeyImageModelLabel'),
+    apiKeyImageFields: $('#apiKeyImageFields'),
+    apiKeyImageInput: $('#apiKeyImageInput'),
+    apiKeyImageHelp: $('#apiKeyImageHelp'),
+    apiKeyImageHelpLabel: $('#apiKeyImageHelpLabel'),
+    apiKeyImageSameNote: $('#apiKeyImageSameNote'),
+    apiKeyImageInternalNote: $('#apiKeyImageInternalNote'),
+    apiKeyToggleBtns: $$('.api-key-toggle-btn'),
     apiKeyCancelBtn: $('#apiKeyCancelBtn'),
-    apiKeySaveBtn: $('#apiKeySaveBtn'),
-    apiKeyDeleteBtn: $('#apiKeyDeleteBtn'),
-    providerTabs: $$('.provider-tab')
+    apiKeySaveBtn: $('#apiKeySaveBtn')
   };
 
   // ============================================================
@@ -800,6 +813,7 @@ ${layoutDef.desc}
       els.carouselBadge.classList.remove('section__badge--active', 'section__badge--success');
     }
     setCarouselJsonGuide('empty');
+    if (els.aiLaunchLinks) els.aiLaunchLinks.hidden = true;
     if (els.carouselPreviewSection) els.carouselPreviewSection.style.display = 'none';
     if (els.carouselSlides) els.carouselSlides.innerHTML = '';
     if (els.carouselSlideCount) els.carouselSlideCount.textContent = '';
@@ -1266,6 +1280,19 @@ ${layoutDef.desc}
         els.pasteQueueHint.textContent = '💡 画像生成AIに貼り付けたら次をコピーしてください';
       }
     }
+
+    // 「戻る」ボタン: 1つ以上進んでいるときだけ表示
+    if (els.pasteQueueBack) {
+      els.pasteQueueBack.style.display = pasteQueueIndex > 0 ? '' : 'none';
+    }
+  }
+
+  function goBackInQueue() {
+    if (pasteQueueIndex <= 0) return;
+    pasteQueueIndex--;
+    renderPasteQueue();
+    const item = pasteQueue[pasteQueueIndex];
+    showToast(`↩️ ${item.label} に戻りました。もう一度コピーできます`);
   }
 
   async function copyNextInQueue() {
@@ -1512,6 +1539,8 @@ ${layoutDef.desc}
           if (els.modelBadge) els.modelBadge.textContent = value;
           // 選択を永続化 (リロード後も維持)。zukaiDebug.setModel と同じキーに統一。
           try { localStorage.setItem('zukai-debug-model', value); } catch (_) {}
+          // 画像モデルが変わると必要なキーも変わるので、ロック状態を再評価
+          updateImageGenBtnState();
         }
 
         activateCard(group, value);
@@ -1607,6 +1636,10 @@ ${layoutDef.desc}
     // ===== ペーストキュー =====
     els.pasteQueueCta.addEventListener('click', copyNextInQueue);
 
+    if (els.pasteQueueBack) {
+      els.pasteQueueBack.addEventListener('click', goBackInQueue);
+    }
+
     els.pasteQueueClose.addEventListener('click', closePasteQueue);
 
     if (els.pasteQueueHeader) {
@@ -1686,9 +1719,26 @@ ${layoutDef.desc}
     if (els.aiGenerateBtn) {
       els.aiGenerateBtn.addEventListener('click', generateCarouselJsonWithAi);
     }
+    if (els.aiGenerateLockedHintLink) {
+      els.aiGenerateLockedHintLink.addEventListener('click', openApiKeyModal);
+    }
+    if (els.imageGenLockedHintLink) {
+      els.imageGenLockedHintLink.addEventListener('click', () => openApiKeyModal({ context: 'image' }));
+    }
     if (els.aiSettingsBtn) {
       els.aiSettingsBtn.addEventListener('click', openApiKeyModal);
     }
+    if (els.imageAiSettingsBtn) {
+      els.imageAiSettingsBtn.addEventListener('click', (e) => {
+        // <summary> 内のボタンなので、折りたたみの開閉を起こさずモーダルだけ開く
+        e.preventDefault();
+        e.stopPropagation();
+        openApiKeyModal({ context: 'image' });
+      });
+    }
+    // 初期表示時にAI/画像生成ボタンのロック状態を反映
+    updateAiGenerateBtnState();
+    updateImageGenBtnState();
     if (els.apiKeyModalClose) {
       els.apiKeyModalClose.addEventListener('click', closeApiKeyModal);
     }
@@ -1698,11 +1748,13 @@ ${layoutDef.desc}
     if (els.apiKeySaveBtn) {
       els.apiKeySaveBtn.addEventListener('click', saveApiKeyFromModal);
     }
-    if (els.apiKeyDeleteBtn) {
-      els.apiKeyDeleteBtn.addEventListener('click', deleteApiKeyFromModal);
+    if (els.apiKeyToggleBtns && els.apiKeyToggleBtns.forEach) {
+      els.apiKeyToggleBtns.forEach(btn => {
+        btn.addEventListener('click', toggleApiKeyVisibility);
+      });
     }
-    if (els.apiKeyToggleBtn) {
-      els.apiKeyToggleBtn.addEventListener('click', toggleApiKeyVisibility);
+    if (els.apiKeyTextProvider) {
+      els.apiKeyTextProvider.addEventListener('change', onApiKeyTextProviderChange);
     }
     if (els.apiKeyModalOverlay) {
       els.apiKeyModalOverlay.addEventListener('click', (e) => {
@@ -1720,14 +1772,6 @@ ${layoutDef.desc}
     if (els.aiProvider) {
       els.aiProvider.addEventListener('change', onAiProviderChange);
     }
-    if (els.providerTabs && els.providerTabs.forEach) {
-      els.providerTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          switchApiKeyModalProvider(tab.dataset.provider);
-        });
-      });
-    }
-
     // ===== 画像生成スタイルプリセット =====
     if (els.imageGenPresets) {
       els.imageGenPresets.querySelectorAll('.image-gen-preset').forEach(preset => {
@@ -1856,6 +1900,12 @@ ${layoutDef.desc}
     // ペーストキューをクリア
     closePasteQueue();
 
+    // カルーセルモードに入ったら、AI/画像生成ボタンのロック状態を最新化
+    if (mode === 'carousel') {
+      updateAiGenerateBtnState();
+      updateImageGenBtnState();
+    }
+
     saveState();
   }
 
@@ -1965,9 +2015,10 @@ ${theme}`;
 
   async function copyCarouselTemplate() {
     const template = buildCarouselTemplateForCopy();
+    const guide = '📋 コピー完了！ChatGPTやGeminiに貼り付けて生成 →出てきた結果を④の欄に貼り付けてください';
     try {
       await navigator.clipboard.writeText(template);
-      showToast('📋 手動作成用テンプレートをコピーしました。他のAIに貼り付けてください');
+      showToast(guide);
     } catch (err) {
       const textarea = document.createElement('textarea');
       textarea.value = template;
@@ -1977,8 +2028,63 @@ ${theme}`;
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      showToast('📋 手動作成用テンプレートをコピーしました。他のAIに貼り付けてください');
+      showToast(guide);
     }
+    // ④「構成を確認する」のJSON欄を開いて、貼り付け先をゆっくり光らせて案内
+    highlightJsonEditorForPaste();
+  }
+
+  /**
+   * 手動テンプレをコピーした直後に、貼り付け先（④のJSON編集欄）を
+   * 自動展開＋スクロール＋点滅ハイライトし、プレースホルダーも案内文に強調する。
+   * ユーザーが貼り付け（入力）するか一定時間で解除。
+   */
+  function highlightJsonEditorForPaste() {
+    const editor = els.carouselJsonEditor;
+    const ta = els.carouselJsonInput;
+
+    // 「AIを開く」リンクをこのタイミングでだけ表示（手動テンプレ専用の動線）。
+    // 表示は次の reset / 展開成功まで保持する（20秒タイマーでは消さない）。
+    if (els.aiLaunchLinks) els.aiLaunchLinks.hidden = false;
+
+    if (editor) {
+      editor.open = true;
+      editor.classList.add('carousel-json-editor--highlight');
+    }
+    if (ta) {
+      ta.classList.add('carousel-json-textarea--highlight');
+      if (ta.dataset.originalPlaceholder === undefined) {
+        ta.dataset.originalPlaceholder = ta.getAttribute('placeholder') || '';
+      }
+      ta.setAttribute(
+        'placeholder',
+        'ここに、ChatGPT や Gemini で生成された結果（JSON）を貼り付けてください。\n\n貼り付けたら、下の「スライドに展開する」を押します。'
+      );
+    }
+
+    // 「AIを開く」リンク→貼り付け欄の順で見えるようスクロール。
+    // リンクを起点にすると、その直下の貼り付け欄も一緒に視界へ入る。
+    const scrollTarget = (els.aiLaunchLinks && !els.aiLaunchLinks.hidden)
+      ? els.aiLaunchLinks
+      : editor;
+    if (scrollTarget && typeof scrollTarget.scrollIntoView === 'function') {
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    const stop = () => {
+      if (editor) editor.classList.remove('carousel-json-editor--highlight');
+      if (ta) {
+        ta.classList.remove('carousel-json-textarea--highlight');
+        if (ta.dataset.originalPlaceholder !== undefined) {
+          ta.setAttribute('placeholder', ta.dataset.originalPlaceholder);
+          delete ta.dataset.originalPlaceholder;
+        }
+        ta.removeEventListener('input', stop);
+      }
+      clearTimeout(timer);
+    };
+    const timer = setTimeout(stop, 20000); // 一定時間で自動解除
+    if (ta) ta.addEventListener('input', stop);
   }
 
   // ============================================================
@@ -2082,15 +2188,6 @@ ${theme}`;
 
     status.classList.toggle('carousel-json-status--ready', stateName === 'ready' || stateName === 'expanded');
 
-    if (els.carouselFlowGenerated) {
-      els.carouselFlowGenerated.classList.toggle('carousel-flow__step--done', stateName === 'ready' || stateName === 'expanded');
-      els.carouselFlowGenerated.classList.toggle('carousel-flow__step--active', stateName === 'editing');
-    }
-    if (els.carouselFlowExpanded) {
-      els.carouselFlowExpanded.classList.toggle('carousel-flow__step--done', stateName === 'expanded');
-      els.carouselFlowExpanded.classList.toggle('carousel-flow__step--active', stateName === 'ready');
-    }
-
     if (stateName === 'expanded') {
       const slides = meta.slides || 0;
       els.carouselJsonStatusTitle.textContent = `${slides}枚のスライドに展開しました`;
@@ -2132,129 +2229,214 @@ ${theme}`;
   // APIキー設定モーダル
   // ============================================================
 
-  let apiKeyModalActiveProvider = 'gemini'; // モーダル内で現在編集中のプロバイダ
+  let apiKeyModalContext = 'text'; // 開いた文脈（'image' なら画像セクションへスクロール）
 
-  function openApiKeyModal() {
+  // 文章用・画像用の両方を1画面で設定できるモーダル。
+  // opts.context: 'image' で開くと画像セクションへスクロール（機能上は両方とも編集可能）。
+  // ※ addEventListener から直接呼ばれると opts に Event が来るが、context 未定義→'text' で安全。
+  function openApiKeyModal(opts) {
+    apiKeyModalContext = (opts && opts.context === 'image') ? 'image' : 'text';
     const cfg = loadAiConfig();
-    apiKeyModalActiveProvider = normalizeAiProvider(cfg.provider);
-    renderApiKeyModalForProvider(apiKeyModalActiveProvider, cfg);
+    if (els.apiKeyTextProvider) els.apiKeyTextProvider.value = normalizeAiProvider(cfg.provider);
+    renderApiKeyModal();
     els.apiKeyModalOverlay.classList.add('active');
-    setTimeout(() => els.apiKeyInput.focus(), 100);
+    setTimeout(() => {
+      // 画像文脈で、かつ画像キー入力欄が表示中ならそこへ。なければ文章キーへ。
+      if (apiKeyModalContext === 'image' && els.apiKeyImageInput && els.apiKeyImageFields
+          && els.apiKeyImageFields.style.display !== 'none') {
+        if (els.apiKeyImageSection) els.apiKeyImageSection.scrollIntoView({ block: 'nearest' });
+        els.apiKeyImageInput.focus();
+      } else if (els.apiKeyTextInput) {
+        els.apiKeyTextInput.focus();
+      }
+    }, 100);
   }
 
   function closeApiKeyModal() {
     els.apiKeyModalOverlay.classList.remove('active');
   }
 
-  /**
-   * 指定プロバイダ用にモーダル内のフィールドを再描画
-   */
-  function renderApiKeyModalForProvider(provider, cfg) {
-    const meta = PROVIDER_META[provider];
-    if (!meta) return;
-    const cur = (provider === 'straico') ? cfg.straico
-              : (provider === 'openai') ? cfg.openai
-              : cfg.gemini;
-
-    // タブ active 状態
-    els.providerTabs.forEach(tab => {
-      const isActive = tab.dataset.provider === provider;
-      tab.classList.toggle('active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    // 説明
-    els.apiKeyModalDesc.innerHTML = meta.desc;
-
-    // APIキー入力
-    els.apiKeyInput.value = cur.apiKey || '';
-    els.apiKeyInput.type = 'password';
-    els.apiKeyInput.placeholder = meta.keyPlaceholder;
-
-    // 内蔵デフォルトキー注記
-    const hasBuiltin = provider === 'straico'; // 内蔵キーはサーバープロキシで常時利用可
-    if (els.apiKeyDefaultNote) {
-      els.apiKeyDefaultNote.style.display = hasBuiltin ? '' : 'none';
-    }
-
-    // モデル選択肢を再構築
-    els.apiModelSelect.innerHTML = '';
-    meta.models.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = m.label;
-      els.apiModelSelect.appendChild(opt);
-    });
-    els.apiModelSelect.value = cur.model || meta.defaultModel;
-
-    // ヘルプリンク
-    els.apiKeyHelpLink.href = meta.helpUrl;
-    els.apiKeyHelpLinkLabel.textContent = meta.helpLabel;
+  // モーダル内で選択中の文章プロバイダ（ドロップダウン値。未確定でも反映できるよう保存はしない）
+  function currentModalTextProvider() {
+    const v = els.apiKeyTextProvider ? els.apiKeyTextProvider.value : null;
+    return normalizeAiProvider(v || loadAiConfig().provider);
   }
 
-  function switchApiKeyModalProvider(provider) {
-    if (provider !== 'straico' && provider !== 'gemini' && provider !== 'openai') return;
-    if (provider === 'straico' && !canUseStraicoProvider()) return;
-    apiKeyModalActiveProvider = provider;
-    renderApiKeyModalForProvider(provider, loadAiConfig());
+  // モーダル全体を現在の状態で描画
+  function renderApiKeyModal() {
+    const cfg = loadAiConfig();
+    const textProvider = currentModalTextProvider();
+    renderTextKeyFields(textProvider, cfg);
+    renderImageKeyFields(textProvider, cfg);
+  }
+
+  // 文章を作るAI セクション
+  function renderTextKeyFields(provider, cfg) {
+    const meta = PROVIDER_META[provider];
+    if (!meta) return;
+    const cur = cfg[provider] || {};
+    if (els.apiKeyTextInput) {
+      els.apiKeyTextInput.value = cur.apiKey || '';
+      els.apiKeyTextInput.type = 'password';
+      els.apiKeyTextInput.placeholder = meta.keyPlaceholder;
+    }
+    if (els.apiKeyTextDefaultNote) {
+      els.apiKeyTextDefaultNote.style.display = (provider === 'straico') ? '' : 'none';
+    }
+    if (els.apiKeyTextHelp) els.apiKeyTextHelp.href = meta.helpUrl;
+    if (els.apiKeyTextHelpLabel) els.apiKeyTextHelpLabel.textContent = meta.helpLabel;
+  }
+
+  // 画像を作るAI セクション（選択中の画像モデルのプロバイダに対応）
+  function renderImageKeyFields(textProvider, cfg) {
+    const imageProvider = getProviderForModel(imageGenState.model); // openai / gemini / pickaxe
+    const modelLabel = (IMAGE_GEN_MODEL_REGISTRY[imageGenState.model] || {}).label || imageGenState.model;
+    if (els.apiKeyImageModelLabel) els.apiKeyImageModelLabel.textContent = modelLabel;
+
+    const internal = (imageProvider !== 'openai' && imageProvider !== 'gemini');
+    const sameAsText = !internal && imageProvider === textProvider;
+
+    if (els.apiKeyImageInternalNote) els.apiKeyImageInternalNote.style.display = internal ? '' : 'none';
+
+    if (els.apiKeyImageSameNote) {
+      if (sameAsText) {
+        const label = PROVIDER_META[imageProvider].label;
+        els.apiKeyImageSameNote.textContent = `文章を作るAIと同じ ${label} のキーを使います（上で設定）。`;
+        els.apiKeyImageSameNote.style.display = '';
+      } else {
+        els.apiKeyImageSameNote.style.display = 'none';
+      }
+    }
+
+    if (els.apiKeyImageFields) {
+      els.apiKeyImageFields.style.display = (internal || sameAsText) ? 'none' : '';
+    }
+
+    if (!internal && !sameAsText) {
+      const meta = PROVIDER_META[imageProvider];
+      const cur = cfg[imageProvider] || {};
+      if (els.apiKeyImageInput) {
+        els.apiKeyImageInput.value = cur.apiKey || '';
+        els.apiKeyImageInput.type = 'password';
+        els.apiKeyImageInput.placeholder = meta.keyPlaceholder;
+      }
+      if (els.apiKeyImageHelp) els.apiKeyImageHelp.href = meta.helpUrl;
+      if (els.apiKeyImageHelpLabel) els.apiKeyImageHelpLabel.textContent = meta.helpLabel;
+    }
+  }
+
+  // 文章プロバイダのドロップダウン変更（保存はせず再描画のみ。確定は「保存」で）
+  function onApiKeyTextProviderChange() {
+    if (els.apiKeyTextProvider.value === 'straico' && !canUseStraicoProvider()) {
+      els.apiKeyTextProvider.value = getFallbackAiProvider();
+    }
+    renderApiKeyModal();
   }
 
   function saveApiKeyFromModal() {
-    if (apiKeyModalActiveProvider === 'straico' && !canUseStraicoProvider()) return;
-
-    const apiKey = els.apiKeyInput.value.trim();
-    const model = els.apiModelSelect.value || PROVIDER_META[apiKeyModalActiveProvider].defaultModel;
-
-    // Straicoは内蔵キーがあればAPIキー空でも保存可
-    const hasBuiltin = apiKeyModalActiveProvider === 'straico'; // 内蔵キーはサーバープロキシで常時利用可
-    if (!apiKey && !hasBuiltin) {
-      showToast('⚠️ APIキーを入力してください');
-      els.apiKeyInput.focus();
-      return;
-    }
-
     const cfg = loadAiConfig();
-    if (apiKeyModalActiveProvider === 'straico') {
-      cfg.straico = { apiKey, model };
-    } else if (apiKeyModalActiveProvider === 'openai') {
-      cfg.openai = { apiKey, model };
-    } else {
-      cfg.gemini = { apiKey, model };
+    const textProvider = currentModalTextProvider();
+
+    // ---- 文章用キー ----
+    const textKey = els.apiKeyTextInput ? els.apiKeyTextInput.value.trim() : '';
+    const textModel = (cfg[textProvider] && cfg[textProvider].model) || PROVIDER_META[textProvider].defaultModel;
+    cfg[textProvider] = { apiKey: textKey, model: textModel };
+    cfg.provider = textProvider; // 文章用プロバイダを確定
+
+    // ---- 画像用キー（文章と別プロバイダのときだけ別途保存）----
+    const imageProvider = getProviderForModel(imageGenState.model);
+    const imageEditable = (imageProvider === 'openai' || imageProvider === 'gemini') && imageProvider !== textProvider;
+    if (imageEditable && els.apiKeyImageInput) {
+      const imageKey = els.apiKeyImageInput.value.trim();
+      const imageModel = (cfg[imageProvider] && cfg[imageProvider].model) || PROVIDER_META[imageProvider].defaultModel;
+      cfg[imageProvider] = { apiKey: imageKey, model: imageModel };
     }
-    // 保存したプロバイダをアクティブに切替
-    cfg.provider = apiKeyModalActiveProvider;
+
     saveAiConfig(cfg);
-
-    // メイン画面のプロバイダ選択も同期
     if (els.aiProvider) els.aiProvider.value = cfg.provider;
-
     updateAiBadge();
     closeApiKeyModal();
     showToast('✅ APIキーを保存しました');
   }
 
-  function deleteApiKeyFromModal() {
-    const provider = apiKeyModalActiveProvider;
-    if (!confirm(`${PROVIDER_META[provider].label} の保存済みAPIキーを削除しますか？`)) return;
-    const cfg = loadAiConfig();
-    if (provider === 'straico') {
-      cfg.straico = { apiKey: '', model: STRAICO_DEFAULT_MODEL };
-    } else if (provider === 'openai') {
-      cfg.openai = { apiKey: '', model: OPENAI_DEFAULT_MODEL };
-    } else {
-      cfg.gemini = { apiKey: '', model: GEMINI_DEFAULT_MODEL };
-    }
-    saveAiConfig(cfg);
-    renderApiKeyModalForProvider(provider, cfg);
-    updateAiBadge();
-    showToast('🗑️ APIキーを削除しました');
+  // 目アイコン: data-target で対象 input の表示/非表示を切替
+  function toggleApiKeyVisibility(e) {
+    const btn = e && e.currentTarget;
+    const id = btn && btn.dataset ? btn.dataset.target : null;
+    const input = id ? document.getElementById(id) : null;
+    if (input) input.type = input.type === 'password' ? 'text' : 'password';
   }
 
-  function toggleApiKeyVisibility() {
-    els.apiKeyInput.type = els.apiKeyInput.type === 'password' ? 'text' : 'password';
+  /**
+   * APIキーの有無で「AIで構成を作る」ボタンのロック表示を切り替える。
+   * キー未設定でもボタンは押せる（押すとキー設定モーダルを開く）。
+   */
+  function updateAiGenerateBtnState() {
+    if (!els.aiGenerateBtn) return;
+    const cfg = loadAiConfig();
+    const provider = normalizeAiProvider(cfg.provider);
+    const hasKey = !!getEffectiveApiKey(provider, cfg);
+    els.aiGenerateBtn.classList.toggle('ai-generate-btn--locked', !hasKey);
+    els.aiGenerateBtn.setAttribute('aria-disabled', hasKey ? 'false' : 'true');
+    if (els.aiGenerateLockedHint) {
+      els.aiGenerateLockedHint.style.display = hasKey ? 'none' : '';
+    }
+  }
+
+  /**
+   * 画像の一括生成が使えるか。
+   * 「画像を作るAI（選択中の画像モデル）」のプロバイダに対応するキーが必要。
+   *   - gpt-image-2 等 (OpenAI) → OpenAIキー
+   *   - Gemini系 (Google)       → Geminiキー
+   *   - Pickaxe (内部モデル)     → provider.pickaxe タグ
+   * プラン/内部アクセス (hasFeature('ai.imagegen')) があればキー無しでも可（サーバー内蔵キー）。
+   */
+  function imageGenAvailable() {
+    const hasImageGenFeat = typeof window.hasFeature === 'function' && window.hasFeature('ai.imagegen');
+    const provider = getProviderForModel(imageGenState.model);
+    if (provider === 'pickaxe') {
+      return !!(typeof window.hasFeature === 'function' && window.hasFeature('provider.pickaxe'));
+    }
+    if (provider === 'openai') {
+      return hasOwnOpenAiKey() || hasImageGenFeat;
+    }
+    if (provider === 'gemini') {
+      return hasOwnGeminiKey() || hasImageGenFeat;
+    }
+    return hasOwnAiKey() || hasImageGenFeat;
+  }
+
+  /**
+   * 「画像を一括生成する」ボタンのロック表示を切り替える。
+   * 利用不可（キー未設定かつプラン無し）のときは薄く表示し、案内ヒントを出す。
+   */
+  function updateImageGenBtnState() {
+    if (els.modelBadge) els.modelBadge.textContent = imageGenState.model;
+    if (!els.imageGenBtn) return;
+    const ok = imageGenAvailable();
+    els.imageGenBtn.classList.toggle('generate-btn--locked', !ok);
+    els.imageGenBtn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+    if (els.imageGenLockedHint) {
+      els.imageGenLockedHint.style.display = ok ? 'none' : '';
+    }
+    // どのキーが必要かを、選択中の画像AIに合わせて案内
+    if (els.imageGenLockedHintMsg) {
+      const provider = getProviderForModel(imageGenState.model);
+      let msg = '🔑 画像の一括生成にはAPIキーが必要です。';
+      if (provider === 'openai') {
+        msg = '🔑 画像生成（OpenAI / gpt-image-2）には OpenAI のAPIキーが必要です。';
+      } else if (provider === 'gemini') {
+        msg = '🔑 画像生成（Google / Gemini）には Gemini のAPIキーが必要です。';
+      } else if (provider === 'pickaxe') {
+        msg = '🔑 この画像モデルは内部限定です。';
+      }
+      els.imageGenLockedHintMsg.textContent = msg;
+    }
   }
 
   function updateAiBadge() {
+    updateAiGenerateBtnState();
+    updateImageGenBtnState();
     if (!els.aiGenBadge) return;
     const cfg = loadAiConfig();
     const provider = normalizeAiProvider(cfg.provider);
@@ -2571,6 +2753,15 @@ ${theme}
 
   async function generateCarouselJsonWithAi() {
     if (!gateOrToast('ai.json', 'AIで投稿構成を作成')) return;
+
+    // APIキー未設定（ロック状態）なら、まずキー設定を促す
+    const cfgPre = loadAiConfig();
+    if (!getEffectiveApiKey(normalizeAiProvider(cfgPre.provider), cfgPre)) {
+      showToast('🔑 まずAPIキーを設定してください');
+      openApiKeyModal();
+      return;
+    }
+
     const theme = els.aiThemeInput.value.trim();
     if (!theme) {
       showToast('⚠️ テーマや元文章を入力してください');
@@ -2704,6 +2895,8 @@ ${theme}
     }
 
     carouselData = data;
+    // 展開できたら「AIを開く」動線はもう不要なので隠す
+    if (els.aiLaunchLinks) els.aiLaunchLinks.hidden = true;
     els.carouselBadge.textContent = `${data.slides.length}枚`;
     els.carouselBadge.classList.remove('section__badge--active');
     els.carouselBadge.classList.add('section__badge--success');
@@ -4090,6 +4283,12 @@ ${layoutDef.desc}
   }
 
   async function generateAllImages() {
+    // ロック状態（キー未設定かつプラン無し）なら、まず画像AIのキー設定を促す
+    if (!imageGenAvailable()) {
+      showToast('🔑 画像の一括生成にはAPIキーが必要です');
+      openApiKeyModal({ context: 'image' });
+      return;
+    }
     if (!gateOrToast('ai.imagegen', '画像一括生成')) return;
     // 二重クリックガード: 実行中 (disabled) なら何もしない
     if (els.imageGenBtn && els.imageGenBtn.disabled) return;
@@ -4793,8 +4992,9 @@ ${layoutDef.desc}
     if (els.aiProvider) {
       els.aiProvider.value = normalizeAiProvider(cfg.provider);
     }
-    if (apiKeyModalActiveProvider === 'straico' && !showStraico) {
-      apiKeyModalActiveProvider = getFallbackAiProvider();
+    // モーダルの文章プロバイダ選択が Straico のまま無効化された場合はフォールバック
+    if (els.apiKeyTextProvider && els.apiKeyTextProvider.value === 'straico' && !showStraico) {
+      els.apiKeyTextProvider.value = getFallbackAiProvider();
     }
 
     // メインのモデル選択カード
