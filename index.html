@@ -913,14 +913,14 @@
           <summary class="image-model-picker__summary">
             <svg class="image-model-picker__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span class="image-model-picker__label">画像を作るAIを選ぶ</span>
-            <span class="image-model-picker__current" id="modelBadge">gpt-image-2</span>
+            <span class="image-model-picker__current" id="modelBadge">ChatGPT</span>
             <button class="ai-settings-btn image-model-picker__gear" id="imageAiSettingsBtn" type="button" aria-label="画像を作るAIのAPIキー設定" title="画像を作るAIのAPIキー設定">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </button>
           </summary>
-          <p class="section__hint" style="margin:10px 0 12px;opacity:.75;font-size:13px;">アプリ内で<strong>画像まで自動生成する</strong>ときに使うAIです。⚙からAPIキーを設定できます。<strong>プロンプトをコピーして手動で画像を作る方は、ここは触らなくてOK</strong>です。</p>
+          <p class="section__hint" style="margin:6px 16px 12px;opacity:.75;font-size:13px;">アプリ内で<strong>画像まで自動生成する</strong>ときに使うAIです。⚙からAPIキーを設定できます。<strong>プロンプトをコピーして手動で画像を作る方は、ここは触らなくてOK</strong>です。</p>
           <div class="selection-grid selection-grid--model" role="radiogroup" aria-label="モデル選択">
             <!-- 公開モデル: OpenAI gpt-image-2 (デフォルト) -->
             <div class="selection-card active" data-group="model" data-value="gpt-image-2" role="radio" aria-checked="true" tabindex="0" id="modelGptImage2">
@@ -928,8 +928,8 @@
               <span class="selection-card__icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
               </span>
-              <span class="selection-card__label">gpt-image-2</span>
-              <span class="selection-card__desc">ChatGPTの画像生成（OpenAI）・推奨</span>
+              <span class="selection-card__label">ChatGPT</span>
+              <span class="selection-card__desc">gpt-image-2（OpenAI）・推奨</span>
             </div>
             <!-- 公開モデル: Gemini 2.5 Flash Image -->
             <div class="selection-card" data-group="model" data-value="gemini-2.5-flash-image-preview" role="radio" aria-checked="false" tabindex="0" id="modelGeminiFlashImage">
@@ -937,8 +937,8 @@
               <span class="selection-card__icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
               </span>
-              <span class="selection-card__label">Gemini 2.5 Flash Image</span>
-              <span class="selection-card__desc">Geminiの画像生成（Google）</span>
+              <span class="selection-card__label">Gemini</span>
+              <span class="selection-card__desc">Gemini 2.5 Flash Image（Google）</span>
             </div>
             <!-- 内部限定 (provider.pickaxe タグ持ちのみ JS 側で表示) -->
             <div class="selection-card selection-card--internal" data-group="model" data-value="NanoBanana2" data-internal="pickaxe" role="radio" aria-checked="false" tabindex="0" id="modelNanoBanana" style="display:none">

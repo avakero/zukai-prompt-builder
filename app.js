@@ -1536,7 +1536,7 @@ ${layoutDef.desc}
         else if (group === 'signature') state.styleSignature = value;
         else if (group === 'model') {
           imageGenState.model = value;
-          if (els.modelBadge) els.modelBadge.textContent = value;
+          if (els.modelBadge) els.modelBadge.textContent = modelDisplayName(value);
           // 選択を永続化 (リロード後も維持)。zukaiDebug.setModel と同じキーに統一。
           try { localStorage.setItem('zukai-debug-model', value); } catch (_) {}
           // 画像モデルが変わると必要なキーも変わるので、ロック状態を再評価
@@ -2410,8 +2410,16 @@ ${theme}`;
    * 「画像を一括生成する」ボタンのロック表示を切り替える。
    * 利用不可（キー未設定かつプラン無し）のときは薄く表示し、案内ヒントを出す。
    */
+  // バッジ等に出す画像モデルの表示名。公開モデルは親しみやすい名前に、
+  // 内部モデルは値のまま返す。
+  function modelDisplayName(value) {
+    if (value === 'gpt-image-2') return 'ChatGPT';
+    if (value === 'gemini-2.5-flash-image-preview') return 'Gemini';
+    return value;
+  }
+
   function updateImageGenBtnState() {
-    if (els.modelBadge) els.modelBadge.textContent = imageGenState.model;
+    if (els.modelBadge) els.modelBadge.textContent = modelDisplayName(imageGenState.model);
     if (!els.imageGenBtn) return;
     const ok = imageGenAvailable();
     els.imageGenBtn.classList.toggle('generate-btn--locked', !ok);
