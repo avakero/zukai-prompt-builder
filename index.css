@@ -4715,3 +4715,135 @@ select.form-input:hover {
 [data-theme="dark"] select.form-input:hover {
   background-color: var(--border-color-hover);
 }
+
+/* ============================================================
+   おみくじ当選演出モーダル
+   ============================================================ */
+.omikuji-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-base), visibility var(--transition-base);
+  padding: var(--space-4);
+}
+
+.omikuji-overlay[hidden] { display: none; }
+
+.omikuji-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.omikuji-modal {
+  position: relative;
+  background: var(--surface-elevated);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-7) var(--space-6) var(--space-6);
+  text-align: center;
+  overflow: hidden;
+  transform: scale(0.85) translateY(16px);
+  transition: transform var(--transition-spring);
+}
+
+/* 大当たり（完全版）はゴールドの華やかな縁取りにする */
+.omikuji-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--color-primary-400), var(--color-primary-600));
+}
+.omikuji-modal--jackpot::before {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+}
+
+.omikuji-overlay.active .omikuji-modal {
+  transform: scale(1) translateY(0);
+}
+
+.omikuji-modal__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+}
+.omikuji-modal__close:hover {
+  background: var(--color-neutral-100);
+  color: var(--text-primary);
+}
+.omikuji-modal__close svg { width: 18px; height: 18px; }
+
+.omikuji-modal__burst {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: var(--space-3);
+  animation: omikujiPop 0.5s var(--transition-spring) both;
+}
+
+.omikuji-modal__kicker {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.08em;
+  color: var(--color-primary-600);
+  margin: 0 0 var(--space-1);
+}
+.omikuji-modal--jackpot .omikuji-modal__kicker { color: #d97706; }
+
+.omikuji-modal__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.omikuji-modal__desc {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-5);
+}
+
+.omikuji-modal__cta {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  color: #fff;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.omikuji-modal__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.omikuji-modal--jackpot .omikuji-modal__cta {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+@keyframes omikujiPop {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  70%  { transform: scale(1.2) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}

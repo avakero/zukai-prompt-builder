@@ -232,6 +232,34 @@
             <div class="image-gen-preset__name">黒板チョーク風</div>
             <div class="image-gen-preset__desc">ダーク＆レトロ</div>
           </div>
+          <div class="image-gen-preset" data-preset="sumi" role="radio" aria-checked="false" tabindex="0">
+            <div class="image-gen-preset__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            </div>
+            <div class="image-gen-preset__name">和風水墨画</div>
+            <div class="image-gen-preset__desc">墨のにじみ・余白</div>
+          </div>
+          <div class="image-gen-preset" data-preset="riso" role="radio" aria-checked="false" tabindex="0">
+            <div class="image-gen-preset__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <div class="image-gen-preset__name">レトロ印刷</div>
+            <div class="image-gen-preset__desc">リソグラフ2色刷り</div>
+          </div>
+          <div class="image-gen-preset" data-preset="neon" role="radio" aria-checked="false" tabindex="0">
+            <div class="image-gen-preset__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="image-gen-preset__name">ネオン／サイバー</div>
+            <div class="image-gen-preset__desc">暗背景・発光</div>
+          </div>
+          <div class="image-gen-preset" data-preset="graphreco" role="radio" aria-checked="false" tabindex="0">
+            <div class="image-gen-preset__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="image-gen-preset__name">グラレコ</div>
+            <div class="image-gen-preset__desc">付箋・矢印・吹き出し</div>
+          </div>
           <div class="image-gen-preset" data-preset="custom" role="radio" aria-checked="false" tabindex="0">
             <div class="image-gen-preset__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1204,7 +1232,21 @@
     </div>
   </div>
 
-
+  <!-- おみくじ当選演出モーダル（?omikuji=トークン で起動） -->
+  <div class="omikuji-overlay" id="omikujiOverlay" role="dialog" aria-modal="true" aria-labelledby="omikujiTitle" hidden>
+    <div class="omikuji-modal" id="omikujiModal">
+      <button class="omikuji-modal__close" id="omikujiClose" type="button" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="omikuji-modal__burst" id="omikujiBurst" aria-hidden="true">🎉</div>
+      <p class="omikuji-modal__kicker" id="omikujiKicker">当たり！</p>
+      <h2 class="omikuji-modal__title" id="omikujiTitle">スタイル名</h2>
+      <p class="omikuji-modal__desc" id="omikujiDesc">説明文</p>
+      <div class="omikuji-modal__actions">
+        <button class="omikuji-modal__cta" id="omikujiCta" type="button">このスタイルで作る</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

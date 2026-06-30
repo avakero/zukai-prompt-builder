@@ -135,6 +135,22 @@
       label: '黒板チョーク風',
       prompt: '黒板にチョークで描いた手書き風図解。背景は深いダークグリーンの黒板テクスチャ(縞ムラ・チョーク粉のかすれ)。線と文字はチョーク質感(白・黄・水色・ピンクのパステル系)、ややかすれて粉っぽい。授業ノートのような親しみやすく整理されたレイアウト。日本語テキストはチョーク風の手書き(ハネ・トメ・かすれ)。デジタル感・グラデーション・写実的描写は厳禁。'
     },
+    sumi: {
+      label: '和風水墨画',
+      prompt: '和風の水墨画タッチ。墨一色(濃淡のグラデーション)で描き、にじみ・かすれ・筆の勢いを活かす。余白(間)を大きく取った静かで上品な構図。アクセントに朱色の印(落款)を一点だけ添えてよい。和紙のテクスチャがうっすら透ける。日本語テキストは筆書き(毛筆・行書風)。鮮やかな多色・デジタル感・写実的CG・なめらかなグラデーション塗りは厳禁。墨と余白の静けさを最優先。'
+    },
+    riso: {
+      label: 'レトロ印刷',
+      prompt: 'レトロなリソグラフ／ガリ版印刷風。2〜3色の特色インク(例:蛍光ピンク・青・黄)を重ね刷りした風合いで、版ズレ・かすれ・インクのムラ・粒状ノイズをあえて残す。各色が半透明に重なり掛け合わせで濁らない。70〜80年代のZINEやポスター調のレイアウト。日本語テキストは太めのレトロな書体。なめらかなグラデーション・写実的描写・きれいすぎるベクターは厳禁。アナログ印刷の味を最優先。'
+    },
+    neon: {
+      label: 'ネオン／サイバー',
+      prompt: '暗い背景に発光するネオン／サイバーパンク風。深いネイビーや黒の背景に、シアン・マゼンタ・パープルのネオンラインがグロー(発光)し、わずかにグリッドやスキャンラインが走る。要素は輪郭が光る線画調で、ハイテク・近未来的な印象。日本語テキストはネオンサインのように発光させる。明るい背景・パステル・手描きの素朴さ・紙のテクスチャは厳禁。暗闇と発光のコントラストを最優先。'
+    },
+    graphreco: {
+      label: 'グラレコ',
+      prompt: '手書きのグラフィックレコーディング(グラレコ)風。白いホワイトボードや模造紙に、黒の太マーカーで描いた手書き文字・囲み枠・矢印・吹き出し・人型アイコン・星やビックリマークを散りばめる。アクセントに数色のマーカー(赤・青・黄・緑)で強調。ワークショップの板書のように親しみやすく、情報が矢印でつながって流れる。日本語テキストは手書きマーカー風(太字・囲み)。写実的描写・なめらかなグラデーション・暗い背景は厳禁。手書きの楽しさと流れを最優先。'
+    },
     custom: {
       label: 'カスタム',
       prompt: ''
@@ -5026,13 +5042,155 @@ ${layoutDef.desc}
     console.log('[applyProviderGate] showPickaxe =', showPickaxe, '/ showStraico =', showStraico, '/ active model =', imageGenState.model);
   }
 
+  // ============================================================
+  // おみくじ企画 (note投稿者向けプレゼント)
+  //   コラボ相手のおみくじが抽選し、結果ごとに固定の景品トークンURLを配布する
+  //   (モデルA: 抽選・確率は外部、アプリは ?omikuji=<token> を受け取って景品を解放するだけ)。
+  //   - 当たり   : 画像生成スタイルを1種、公開ページ (/) で解放 (累積保存)
+  //   - 大当たり : 全10スタイルを解放しつつ、完全版 (/pro-max) へ誘導する
+  //   トークンは推測で大当たりに飛べないよう不規則文字列にしている。
+  //   配布表はこのテーブルがそのまま参照元。
+  // ============================================================
+  //   当たり（type:'set'）は2スタイルを1セットで解放する。配布表はこのテーブルが参照元。
+  //   フラット(flat)はどのセットにも入れない＝pro-max専用。
+  const OMIKUJI_PRIZES = {
+    // 当たり（2スタイルセット）
+    'mkj-set1-h3a9': { type: 'set', presets: ['handdrawn', 'sumi'] },
+    'mkj-set2-q7f2': { type: 'set', presets: ['pop', 'riso'] },
+    'mkj-set3-z4k8': { type: 'set', presets: ['minimal', 'neon'] },
+    'mkj-set4-r2m5': { type: 'set', presets: ['infographic', 'chalkboard'] },
+    'mkj-set5-y6s4': { type: 'set', presets: ['graphreco', 'handdrawn'] },
+    // 大当たり（完全版＝/pro-max誘導）
+    'mkj-full-x9q7k2': { type: 'full' }
+  };
+  // 公開ページ(/)で解放しうる全スタイル（flatは除外＝pro-max専用）。大当たりの全解放にも使う。
+  const OMIKUJI_ALL_PRESETS = ['handdrawn','pop','minimal','infographic','chalkboard','sumi','riso','neon','graphreco'];
+  const OMIKUJI_STORAGE_KEY = 'carousel.omikuji.v1';
+  // ?omikuji= で今回解放した景品 (起動時に1回だけ演出を出すための一時保持)
+  let _omikujiJustWon = null;
+  // URL駆動方式: 「今のURLのトークン」が解放内容を決める（積み上げなし）。
+  // applyPublicLimits がこれを見て、当てたセットのスタイルだけ解放する。
+  let _omikujiActive = { presets: [], full: false };
+
+  // 演出を初回だけ出すための既出トークン記録（解放そのものはURLが決めるので、これだけ保存）。
+  function getOmikujiSeen() {
+    try {
+      const o = JSON.parse(localStorage.getItem(OMIKUJI_STORAGE_KEY) || '{}');
+      return Array.isArray(o.seen) ? o.seen : [];
+    } catch (_) { return []; }
+  }
+  function markOmikujiSeen(token) {
+    try {
+      const seen = getOmikujiSeen();
+      if (!seen.includes(token)) seen.push(token);
+      localStorage.setItem(OMIKUJI_STORAGE_KEY, JSON.stringify({ seen }));
+    } catch (_) {}
+  }
+
+  // URL の ?omikuji=<token> を読み、その1トークンの景品を「今回の解放内容」に反映する。
+  // 方式: URL駆動・積み上げなし。各ユニークURLはそのセットだけを独立して解放する。
+  //   パラメータは消さずに残す → 当選リンク自体が「鍵」になり、再訪・別ブラウザでも
+  //   そのリンクから開けば同じセットが復元される（localStorage に依存しない）。
+  //   localStorage は演出を初回だけにする seen 記録にのみ使う。
+  function redeemOmikujiFromUrl() {
+    let token = '';
+    try { token = (new URLSearchParams(location.search).get('omikuji') || '').trim(); } catch (_) {}
+    if (!token) return;
+
+    const prize = OMIKUJI_PRIZES[token];
+    if (!prize) { console.warn('[omikuji] unknown token:', token); return; }
+
+    if (prize.type === 'full') {
+      _omikujiActive = { presets: OMIKUJI_ALL_PRESETS.slice(), full: true };
+    } else if (prize.type === 'set' && Array.isArray(prize.presets)) {
+      _omikujiActive = { presets: prize.presets.filter(p => OMIKUJI_ALL_PRESETS.includes(p)), full: false };
+    } else {
+      return;
+    }
+
+    // 演出はこの端末で初回のみ。リロードでは再表示しない（解放はURLが保つ）。
+    if (!getOmikujiSeen().includes(token)) {
+      _omikujiJustWon = (prize.type === 'full')
+        ? { type: 'full' }
+        : { type: 'set', presets: _omikujiActive.presets };
+      markOmikujiSeen(token);
+    }
+    console.log('[omikuji] redeemed token:', token, '→ active:', _omikujiActive);
+  }
+
+  // 起動直後に景品があれば当選演出モーダルを表示する (公開ページ / localhost 両方で動く)。
+  function showOmikujiRevealIfAny() {
+    if (!_omikujiJustWon) return;
+    const won = _omikujiJustWon;
+    _omikujiJustWon = null;
+
+    const overlay = document.getElementById('omikujiOverlay');
+    const modal   = document.getElementById('omikujiModal');
+    const burst   = document.getElementById('omikujiBurst');
+    const kicker  = document.getElementById('omikujiKicker');
+    const titleEl = document.getElementById('omikujiTitle');
+    const descEl  = document.getElementById('omikujiDesc');
+    const cta     = document.getElementById('omikujiCta');
+    const closeBtn= document.getElementById('omikujiClose');
+    if (!overlay || !modal) return;
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => { overlay.hidden = true; }, 250);
+    };
+
+    if (won.type === 'full') {
+      modal.classList.add('omikuji-modal--jackpot');
+      burst.textContent = '🎊';
+      kicker.textContent = '大当たり！';
+      titleEl.textContent = 'カルーセル版・完全版';
+      descEl.textContent = '完全版（pro-max）が当たりました！全スタイル＆フル機能で作れます。下のボタンから完全版ページへどうぞ。';
+      cta.textContent = '完全版（pro-max）を開く →';
+      cta.onclick = () => { location.href = '/pro-max'; };
+    } else {
+      // セット当たり（スタイル）
+      modal.classList.remove('omikuji-modal--jackpot');
+      burst.textContent = '🎉';
+      kicker.textContent = '当たり！';
+      const presets = (won.presets || []).filter(Boolean);
+      const labels = presets.map(p => (IMAGE_GEN_STYLE_PRESETS[p] && IMAGE_GEN_STYLE_PRESETS[p].label) || p);
+      titleEl.textContent = labels.join(' ＆ ');
+      descEl.textContent = labels.length + 'スタイルが解放されました！';
+      cta.textContent = 'このスタイルで作る';
+      const firstPreset = presets[0];
+      cta.onclick = () => {
+        close();
+        try {
+          switchMode('carousel');
+          if (firstPreset) selectImageGenPreset(firstPreset);
+          const sec = document.getElementById('sectionImageGenStyle');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (_) {}
+      };
+    }
+
+    if (closeBtn) closeBtn.onclick = close;
+    overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+    overlay.hidden = false;
+    // hidden 解除直後に active を付けてトランジションを効かせる
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  }
+
   // 公開ページ (/、localhost 除く) のUI制限。
   // 単体＋手動カルーセルのみ使える状態にし、スタイルは2種、署名・配色は固定、
   // AI機能ボタンは薄暗く押せない (非表示にはしない) 状態にする。
-  const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風
-  const PUBLIC_ALLOWED_IMAGE_GEN_PRESETS = ['infographic', 'chalkboard'];  // カルーセル画像生成スタイルは2種のみ (インフォグラフィック / 黒板チョーク風)
+  const PUBLIC_ALLOWED_STYLES = ['A', 'B'];  // A:手書き風 / B:ビジネス風（単体モード。おみくじ対象外）
+  // カルーセル画像生成スタイルは常設の土台を持たず、おみくじURLで当てたセットのみ解放する
+  // （「ユニークURLのみで分ける」方針）。flat はここに来ない＝pro-max専用。
+  const PUBLIC_ALLOWED_IMAGE_GEN_PRESETS = [];
 
   function isPublicMode() {
+    // 開発用: ?demo=public を付けると localhost でも公開ページの制限(=おみくじ解放挙動)を
+    // 再現できる。明示的に付けたときだけ作動するので本番には影響しない。
+    try {
+      if (new URLSearchParams(location.search).get('demo') === 'public') return true;
+    } catch (_) {}
     // localhost は開発用に全機能のまま (制限をかけない)。
     // 公開ルートでは ?plan= 等の上書きに関わらず常に制限を適用する
     // (公開ページの制限は経路で決まる仕様。デモは localhost / pro-max で行う)。
@@ -5085,13 +5243,17 @@ ${layoutDef.desc}
       saveState();
     }
 
-    // (a2) カルーセルモードの画像生成スタイルも2種のみ選択可。
-    //      許可外を選んでいたら infographic にリセット。
+    // (a2) カルーセルモードの画像生成スタイルは常設の土台を持たず、
+    //      「今のURLの ?omikuji= トークン」が解放するセットのスタイルだけ解放する（URL駆動・積み上げなし）。
+    //      大当たり (full) は全スタイル（flat除く）を解放する。
+    //      許可外を選んでいたら、解放済みの先頭スタイルへ寄せる（無ければそのまま）。
+    const allowedPresets = new Set([...PUBLIC_ALLOWED_IMAGE_GEN_PRESETS, ..._omikujiActive.presets]);
     document.querySelectorAll('#imageGenPresets .image-gen-preset').forEach(card => {
-      if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(card.dataset.preset)) lockCard(card);
+      if (!allowedPresets.has(card.dataset.preset)) lockCard(card);
     });
-    if (!PUBLIC_ALLOWED_IMAGE_GEN_PRESETS.includes(imageGenState.selectedPreset)) {
-      selectImageGenPreset('infographic');
+    if (!allowedPresets.has(imageGenState.selectedPreset)) {
+      const firstAllowed = [...allowedPresets][0];
+      if (firstAllowed) selectImageGenPreset(firstAllowed);
     }
 
     // (b) スタイル署名をデフォルト(none)に固定してロック
@@ -5868,6 +6030,10 @@ ${layoutDef.desc}
 
   // 経路で起動を分岐する本体 (⓪単体 / ①ログイン必須 / ②公開・localhost / ③フォールバック)。
   function routeApp() {
+    // おみくじ景品トークン (?omikuji=) を最初に処理する。
+    // applyPublicLimits より前に解放状態へ反映し、クエリも掃除する (景品は localStorage が保持)。
+    redeemOmikujiFromUrl();
+
     const qs = new URLSearchParams(location.search);
     const overridePlan = qs.get('plan');
     const overrideTags = (qs.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -5921,6 +6087,7 @@ ${layoutDef.desc}
       applyHeaderForProfile();
       applyPublicLimits();   // 公開モード (localhost 以外) のみスタイル/署名/配色/AIを制限
       if (isGodMaxRoute()) applyGodMaxLayout();   // localhost で /god-max を確認できるように
+      showOmikujiRevealIfAny();   // ?omikuji= 当選時の演出 (公開ページ/localhost で動く)
       return;
     }
 
