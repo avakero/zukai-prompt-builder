@@ -5226,28 +5226,34 @@ ${layoutDef.desc}
   function applyPublicLimits() {
     if (!isPublicMode()) return;
 
-    // (a) 単体モードのスタイルは2種のみ選択可。許可外は薄く表示して選択不可。
-    //     許可外を選んでいたら A にリセット。
+    // 大当たり(full)当選時は、通常の pro-max 同等に「作り込み系」を全解放する
+    // （全スタイル＝flat/custom含む・単体スタイル・署名・配色）。
+    // ただしAI自動生成だけは公開ページにサーバー認証が無いため常に無効（AIはpro-maxログイン側）。
+    const full = _omikujiActive.full;
+
+    // (a) 単体モードのスタイル。full なら全解放、通常は A/B のみ。許可外はロック。
     document.querySelectorAll('[data-group="style"]').forEach(card => {
-      const allow = PUBLIC_ALLOWED_STYLES.includes(card.dataset.value);
+      const allow = full || PUBLIC_ALLOWED_STYLES.includes(card.dataset.value);
       if (!allow) {
         lockCard(card);
         card.classList.remove('active');
         card.setAttribute('aria-checked', 'false');
       }
     });
-    if (!PUBLIC_ALLOWED_STYLES.includes(state.style)) {
+    if (!full && !PUBLIC_ALLOWED_STYLES.includes(state.style)) {
       state.style = 'A';
       activateCard('style', 'A');
       updateBadges();
       saveState();
     }
 
-    // (a2) カルーセルモードの画像生成スタイルは常設の土台を持たず、
-    //      「今のURLの ?omikuji= トークン」が解放するセットのスタイルだけ解放する（URL駆動・積み上げなし）。
-    //      大当たり (full) は全スタイル（flat除く）を解放する。
+    // (a2) カルーセルの画像生成スタイル。
+    //      full なら全プリセット(flat/custom含む)を解放。
+    //      通常は「今のURLの ?omikuji= トークン」が解放するセットのみ（URL駆動・積み上げなし）。
     //      許可外を選んでいたら、解放済みの先頭スタイルへ寄せる（無ければそのまま）。
-    const allowedPresets = new Set([...PUBLIC_ALLOWED_IMAGE_GEN_PRESETS, ..._omikujiActive.presets]);
+    const allowedPresets = full
+      ? new Set(Object.keys(IMAGE_GEN_STYLE_PRESETS))   // flat/custom 含む全スタイル
+      : new Set([...PUBLIC_ALLOWED_IMAGE_GEN_PRESETS, ..._omikujiActive.presets]);
     document.querySelectorAll('#imageGenPresets .image-gen-preset').forEach(card => {
       if (!allowedPresets.has(card.dataset.preset)) lockCard(card);
     });
@@ -5256,31 +5262,37 @@ ${layoutDef.desc}
       if (firstAllowed) selectImageGenPreset(firstAllowed);
     }
 
-    // (b) スタイル署名をデフォルト(none)に固定してロック
-    if (state.styleSignature !== 'none') {
-      state.styleSignature = 'none';
-      activateCard('signature', 'none');
-      updateBadges();
-      saveState();
+    // (b) スタイル署名。full なら解放、通常は none 固定でロック。
+    if (!full) {
+      if (state.styleSignature !== 'none') {
+        state.styleSignature = 'none';
+        activateCard('signature', 'none');
+        updateBadges();
+        saveState();
+      }
+      lockSection('#sectionSignature');
     }
-    lockSection('#sectionSignature');
 
-    // (c) 配色を auto に固定してロック
-    if (state.colorMode !== 'auto') {
-      setColorAuto();  // 内部で clearColorSelections + saveState
+    // (c) 配色。full なら解放、通常は auto 固定でロック。
+    if (!full) {
+      if (state.colorMode !== 'auto') {
+        setColorAuto();  // 内部で clearColorSelections + saveState
+      }
+      lockSection('#sectionColor');
     }
-    lockSection('#sectionColor');
 
-    // (d) AI機能ボタンを薄暗く・押せない状態に (非表示にはしない)
-    //     既存CSS .generate-btn:disabled { opacity:.5 } で薄暗くなる
+    // (d) AI機能ボタンは常に無効（公開ページはサーバー認証が無くAI実行不可）。
+    //     full当選でもAI自動生成はpro-max（LINEログイン）側で。
     [els.aiGenerateBtn, els.imageGenBtn].forEach(btn => {
       if (!btn) return;
       btn.disabled = true;
       btn.setAttribute('aria-disabled', 'true');
-      btn.title = '公開ページでは手動作成のみご利用いただけます（全機能はマガジン購入者向けページで）';
+      btn.title = full
+        ? 'AI自動生成は完全版（pro-max・LINEログイン）でご利用いただけます'
+        : '公開ページでは手動作成のみご利用いただけます（全機能はマガジン購入者向けページで）';
     });
 
-    console.log('[applyPublicLimits] public mode: styles limited, signature/color locked, AI disabled');
+    console.log('[applyPublicLimits] public mode. full=' + full);
   }
 
   // 単体専用ページ (/solo) のレイアウト調整。
