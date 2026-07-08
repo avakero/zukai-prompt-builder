@@ -21,10 +21,12 @@
     { "source": "/god-max/", "destination": "/index.html" },
     { "source": "/solo", "destination": "/index.html" },
     { "source": "/solo/", "destination": "/index.html" },
-    { "source": "/line-menu", "destination": "/line-menu.html" },
-    { "source": "/line-menu/", "destination": "/line-menu.html" },
     { "source": "/god", "destination": "/god.html" },
     { "source": "/god/", "destination": "/god.html" }
+  ],
+  "redirects": [
+    { "source": "/line-menu", "destination": "https://line-menu-builder.vercel.app/", "permanent": false },
+    { "source": "/line-menu/", "destination": "https://line-menu-builder.vercel.app/", "permanent": false }
   ],
   "headers": [
     {

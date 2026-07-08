@@ -5356,10 +5356,9 @@ ${layoutDef.desc}
 
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
   // ※ このLIFFアプリのエンドポイントURLを ルート https://zukai-builder.vercel.app/ に
-  //   設定することで、配下の全サブパス (/pro-max, /line-menu 等) を1つのLIFFアプリでカバーする。
+  //   設定することで、配下の全サブパス (/pro-max 等) を1つのLIFFアプリでカバーする。
   //   LIFFはトークンを LIFF IDごと に保存するため、IDを1本化することで
   //   1度のLINEログインで全ページがログイン済みになる。
-  //   line-menu.html の LINE_MENU_LIFF_ID も同じIDに揃えること。
   const LIFF_ID = '2009850086-K3TrYsDF';
 
   // LINE公式アカウントのID（友だち追加URLに使用）
