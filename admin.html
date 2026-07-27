@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>管理ダッシュボード — 図解プロンプトビルダー</title>
+<!-- テーマを描画前に確定させる (FOUC防止)。localStorage → OS設定 の順 -->
+<script>
+(function () {
+  try {
+    // 優先順: URL ?theme= (確認用) → localStorage → OS 設定
+    var q = new URLSearchParams(location.search).get('theme');
+    var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('zukai-admin-theme');
+    if (t !== 'light' && t !== 'dark') {
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+})();
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+   デザイントークン (index.css のサブセット + チャート専用トークン)
+   チャート色は dataviz バリデータ検証済み:
+     単色バー   light #35569b / dark #4f74c2 (band/chroma/3:1 PASS)
+     段階ramp   light #8aa3cd→#1f3568 / dark #4a70bd→#bccff0 (--ordinal PASS)
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --primary-500: #2f4d8a;
+  --primary-600: #26407a;
+  --accent-500:  #10b981;
+
+  --surface-page:  #eef1f8;
+  --surface-card:  #ffffff;
+  --surface-sub:   #f4f6fb;
+
+  --text-primary:   #10182b;
+  --text-secondary: #475569;
+  --text-tertiary:  #6b7689;
+
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(16,24,43,.07), 0 1px 2px rgba(16,24,43,.05);
+
+  /* chart */
+  --viz-bar:       #35569b;
+  --viz-bar-soft:  rgba(53,86,155,.10);
+  --viz-ord-1: #8aa3cd;  /* free */
+  --viz-ord-2: #5a78ad;  /* standard */
+  --viz-ord-3: #35569b;  /* pro */
+  --viz-ord-4: #1f3568;  /* lifetime */
+  --viz-grid:      #e8ecf3;
+  --viz-axisline:  #cbd5e1;
+  --viz-axis-text: #6b7689;
+  --viz-up:   #047857;
+  --viz-down: #b91c1c;
+
+  /* status (アプリ共通セマンティック。必ずラベルと併記し色単独にしない) */
+  --c-ok:      #10b981;
+  --c-warn:    #f59e0b;
+  --c-err:     #ef4444;
+  --c-info:    #3b82f6;
+  --c-neutral: #94a3b8;
+
+  --meter-ok-track:   #d1fae5;
+  --meter-warn-track: #fef3c7;
+  --meter-err-track:  #fee2e2;
+
+  --radius: 14px;
+  --font: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", Meiryo, sans-serif;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-page: #0f172a;
+  --surface-card: #1e293b;
+  --surface-sub:  #253349;
+
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary:  #94a3b8;
+
+  --border: #334155;
+  --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+
+  --viz-bar:      #4f74c2;
+  --viz-bar-soft: rgba(79,116,194,.16);
+  --viz-ord-1: #4a70bd;
+  --viz-ord-2: #6a8fd3;
+  --viz-ord-3: #93b0e3;
+  --viz-ord-4: #bccff0;
+  --viz-grid:      #2b3a52;
+  --viz-axisline:  #475569;
+  --viz-axis-text: #94a3b8;
+  --viz-up:   #34d399;
+  --viz-down: #f87171;
+
+  --meter-ok-track:   #064e3b;
+  --meter-warn-track: #78350f;
+  --meter-err-track:  #7f1d1d;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--surface-page);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 20px 16px 48px;
+}
+button { font-family: inherit; }
+
+.wrap { max-width: 1100px; margin: 0 auto; }
+
+/* ===== 状態切り替え ===== */
+.state { display: none; }
+.state.active { display: block; }
+
+.center-card {
+  max-width: 460px; margin: 12vh auto 0; background: var(--surface-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 32px 28px; text-align: center;
+}
+.center-card h1 { font-size: 1.1rem; margin-bottom: 10px; }
+.center-card p { font-size: .88rem; color: var(--text-secondary); margin-bottom: 8px; }
+.spinner {
+  width: 26px; height: 26px; margin: 8px auto 14px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--primary-500);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  border: none; cursor: pointer; border-radius: 10px; padding: 11px 20px;
+  font-size: .92rem; font-weight: 600; color: #fff; background: var(--primary-500);
+  transition: background .15s;
+}
+.btn:hover { background: var(--primary-600); }
+.btn--ghost {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border); font-weight: 500;
+}
+.btn--ghost:hover { background: var(--surface-sub); color: var(--text-primary); }
+.code-box {
+  font-family: 'JetBrains Mono', Consolas, monospace; font-size: .8rem;
+  background: var(--surface-sub); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin: 10px 0 14px; word-break: break-all; user-select: all;
+}
+.steps { text-align: left; font-size: .82rem; color: var(--text-secondary); margin: 12px 0 16px; padding-left: 1.4em; }
+.steps li { margin-bottom: 4px; }
+
+/* ===== ヘッダー ===== */
+.head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.head h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .01em; }
+.head .sub { font-size: .78rem; color: var(--text-tertiary); }
+.head .grow { flex: 1; }
+.badge-demo {
+  font-size: .72rem; font-weight: 700; color: #92400e; background: #fef3c7;
+  border: 1px solid #fcd34d; border-radius: 999px; padding: 2px 10px;
+}
+[data-theme="dark"] .badge-demo { color: #fcd34d; background: #78350f; border-color: #b45309; }
+.icon-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--surface-card); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 10px; padding: 7px 12px; font-size: .8rem; font-weight: 600;
+}
+.icon-btn:hover { color: var(--text-primary); background: var(--surface-sub); }
+.icon-btn svg { width: 15px; height: 15px; }
+
+/* ===== KPI ===== */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.kpi {
+  background: var(--surface-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 12px;
+}
+.kpi__label { font-size: .74rem; font-weight: 600; color: var(--text-tertiary); letter-spacing: .02em; }
+.kpi__value { font-size: 1.75rem; font-weight: 700; line-height: 1.25; margin-top: 2px; }
+.kpi__value .unit { font-size: .8rem; font-weight: 600; color: var(--text-tertiary); margin-left: 2px; }
+.kpi__delta { font-size: .74rem; font-weight: 600; margin-top: 2px; color: var(--text-tertiary); }
+.kpi__delta.up   { color: var(--viz-up); }
+.kpi__delta.down { color: var(--viz-down); }
+
+/* ===== セクション ===== */
+.section { margin-bottom: 26px; }
+.section__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.section__title { white-space: nowrap; }
+.section__no {
+  width: 26px; height: 26px; border-radius: 8px; background: var(--primary-500); color: #fff;
+  font-size: .72rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+.section__title { font-size: .98rem; font-weight: 700; }
+.section__note { font-size: .74rem; color: var(--text-tertiary); }
+
+.card {
+  background: var(--surface-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px;
+}
+.card + .card { margin-top: 12px; }
+.card h3 { font-size: .86rem; font-weight: 700; margin-bottom: 2px; }
+.card .cap { font-size: .74rem; color: var(--text-tertiary); margin-bottom: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* フィルタ行 (この行の下のチャートだけをスコープする) */
+.range-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.range-row .lbl { font-size: .78rem; color: var(--text-tertiary); font-weight: 600; }
+.chip {
+  cursor: pointer; border: 1px solid var(--border); background: var(--surface-card);
+  color: var(--text-secondary); border-radius: 999px; padding: 4px 14px;
+  font-size: .78rem; font-weight: 600;
+}
+.chip[aria-pressed="true"] { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
+.chip:not([aria-pressed="true"]):hover { background: var(--surface-sub); }
+
+/* ===== チャート ===== */
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; }
+.bar-hit { fill: transparent; cursor: pointer; }
+.bar-hit:focus { outline: none; }
+.bar-hit:focus-visible { outline: 2px solid var(--viz-bar); outline-offset: -2px; }
+.bar-hit:focus-visible + .bar-mark, .bar-hit.hover + .bar-mark { opacity: .72; }
+.bar-mark { transition: opacity .1s; }
+details.tbl { margin-top: 8px; }
+details.tbl summary {
+  cursor: pointer; font-size: .74rem; color: var(--text-tertiary); font-weight: 600;
+  list-style-position: inside;
+}
+details.tbl summary:hover { color: var(--text-primary); }
+.tbl-scroll { overflow-x: auto; margin-top: 6px; }
+table.data {
+  width: 100%; border-collapse: collapse; font-size: .78rem;
+}
+table.data th {
+  text-align: left; font-weight: 600; color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border); padding: 5px 8px; white-space: nowrap;
+}
+table.data td { border-bottom: 1px solid var(--viz-grid); padding: 5px 8px; white-space: nowrap; }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ツールチップ (値が主役、ラベルは従。textContentのみで構築) */
+.tt {
+  position: fixed; z-index: 50; pointer-events: none; display: none;
+  background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(16,24,43,.18); padding: 8px 12px; font-size: .78rem;
+  min-width: 130px;
+}
+.tt.show { display: block; }
+.tt__date { color: var(--text-tertiary); font-weight: 600; font-size: .72rem; margin-bottom: 3px; }
+.tt__row { display: flex; align-items: center; gap: 7px; }
+.tt__key { width: 10px; height: 3px; border-radius: 2px; flex: none; }
+.tt__val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tt__lab { color: var(--text-secondary); }
+
+/* ===== 横棒 (カテゴリ) ===== */
+.hbars { display: flex; flex-direction: column; gap: 7px; }
+.hbar { display: grid; grid-template-columns: 128px 1fr 52px; align-items: center; gap: 10px; }
+@media (max-width: 420px) { .hbar { grid-template-columns: 104px 1fr 46px; } }
+.hbar__label { font-size: .78rem; color: var(--text-secondary); font-weight: 500; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar__track { height: 14px; position: relative; }
+.hbar__fill {
+  position: absolute; left: 0; top: 0; bottom: 0; min-width: 2px;
+  border-radius: 0 4px 4px 0; background: var(--viz-bar);
+}
+.hbar__val { font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.hbar--zero .hbar__fill { display: none; }
+.hbar--zero .hbar__val { color: var(--text-tertiary); }
+
+/* ===== ステータスチップ ===== */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.schip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600;
+  color: var(--text-secondary); background: var(--surface-sub);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px;
+}
+.schip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.schip b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+/* ===== メーター ===== */
+.meter { display: flex; align-items: center; gap: 10px; }
+.meter__track { flex: 1; height: 10px; border-radius: 999px; overflow: hidden; background: var(--meter-ok-track); }
+.meter__fill { height: 100%; border-radius: 999px; background: var(--c-ok); }
+.meter__pct { font-size: .86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.substats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .78rem; color: var(--text-secondary); margin-top: 10px; }
+.substats b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+.empty { font-size: .8rem; color: var(--text-tertiary); padding: 8px 0; }
+
+.foot { margin-top: 26px; font-size: .74rem; color: var(--text-tertiary); }
+.foot a { color: var(--primary-500); text-decoration: none; }
+[data-theme="dark"] .foot a { color: var(--viz-ord-3); }
+.dash.loading { opacity: .55; transition: opacity .2s; }
+</style>
+</head>
+<body>
+
+<!-- 読み込み中 -->
+<div class="state active" id="stLoading">
+  <div class="center-card">
+    <div class="spinner" aria-hidden="true"></div>
+    <h1>管理ダッシュボード</h1>
+    <p>読み込み中…</p>
+  </div>
+</div>
+
+<!-- 未ログイン -->
+<div class="state" id="stLogin">
+  <div class="center-card">
+    <h1>管理ダッシュボード</h1>
+    <p id="loginNote">利用状況の閲覧には LINE ログインが必要です。</p>
+    <button class="btn" id="loginBtn" type="button">LINEでログイン</button>
+  </div>
+</div>
+
+<!-- 権限なし / 未設定 -->
+<div class="state" id="stDenied">
+  <div class="center-card">
+    <h1 id="deniedTitle">閲覧権限がありません</h1>
+    <p id="deniedMsg">このページは管理者専用です。</p>
+    <div class="code-box" id="deniedUid" style="display:none"></div>
+    <ol class="steps">
+      <li>Vercel → Settings → Environment Variables を開く</li>
+      <li><b>ADMIN_LINE_USER_IDS</b> に上の ID を追加（複数はカンマ区切り）</li>
+      <li>Redeploy 後にこのページを再読み込み</li>
+    </ol>
+    <button class="btn--ghost btn" id="copyUidBtn" type="button" style="display:none">IDをコピー</button>
+    <button class="btn--ghost btn" id="deniedRetryBtn" type="button">再読み込み</button>
+  </div>
+</div>
+
+<!-- エラー -->
+<div class="state" id="stError">
+  <div class="center-card">
+    <h1>エラー</h1>
+    <p id="errorMsg">読み込みに失敗しました。</p>
+    <button class="btn" id="retryBtn" type="button">再試行</button>
+  </div>
+</div>
+
+<!-- ダッシュボード本体 -->
+<div class="state" id="stDash">
+  <div class="wrap dash" id="dashRoot">
+
+    <div class="head">
+      <h1>管理ダッシュボード</h1>
+      <span class="badge-demo" id="demoBadge" style="display:none">デモデータ</span>
+      <span class="grow"></span>
+      <span class="sub" id="updatedAt"></span>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="テーマ切り替え">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.66 1.41"/></svg>
+        <span id="themeBtnLabel">テーマ</span>
+      </button>
+      <button class="icon-btn" id="refreshBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        更新
+      </button>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpis" id="kpiRow"></div>
+
+    <!-- 01 利用動向 -->
+    <section class="section">
+      <div class="section__head">
+        <span class="section__no">01</span>
+        <h2 class="section__title">利用動向</h2>
+        <span class="section__note">アクティブ = ログイン済みでアプリを開いたユーザー（JST暦日 / ログ保持90日）</span>
+      </div>
+
+      <div class="range-row" role="group" aria-label="集計期間">
+        <span class="lbl">期間</span>
+        <button class="chip" type="button" data-range="7">7日</button>
+        <button class="chip" type="button" data-range="30" aria-pressed="true">30日</button>
+        <button class="chip" type="button" data-range="90">90日</button>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>日別アクティブユーザー</h3>
+          <p class="cap" id="activeChartCap"></p>
+          <div class="chart-box" id="activeChart"></div>
+          <details class="tbl"><summary>データを表で見る</summary>
+            <div class="tbl-scroll" id="activeTable"></div>
+          </details>
+        </div>
+        <div class="card">
+          <h3>日別新規ユーザー</h3>
+          <p class="cap" id="newChartCap"></p>
+          <div class="chart-box" id="newChart"></div>
+          <details class="tbl"><summary>データを表で見る</summary>
+            <div class="tbl-scroll" id="newTable"></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 ユーザー構成 -->
+    <section class="section">
+      <div class="section__head">
+        <span class="section__no">02</span>
+        <h2 class="section__title">ユーザー構成</h2>
+        <span class="section__note">現在のスナップショット</span>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>プラン内訳</h3>
+          <p class="cap">色の階調 = プラン段階（free → lifetime）</p>
+          <div class="hbars" id="planBars"></div>
+        </div>
+        <div class="card">
+          <h3>タグ内訳</h3>
+          <p class="cap">1ユーザーが複数タグを持つ場合あり</p>
+          <div class="hbars" id="tagBars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 生成ジョブ -->
+    <section class="section">
+      <div class="section__head">
+        <span class="section__no">03</span>
+        <h2 class="section__title">画像生成ジョブ</h2>
+        <span class="section__note">ジョブは24時間で自動削除されるため直近24時間分のみ</span>
+      </div>
+
+      <div class="card">
+        <h3>スライド成功率</h3>
+        <p class="cap" id="slideRateCap"></p>
+        <div class="meter" id="slideMeter" style="display:none">
+          <div class="meter__track"><div class="meter__fill" id="slideMeterFill"></div></div>
+          <span class="meter__pct" id="slideMeterPct"></span>
+        </div>
+        <div class="chips" id="slideChips" style="margin-top:10px"></div>
+        <div class="substats" id="jobSubstats"></div>
+      </div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div class="card">
+          <h3>モデル別ジョブ数</h3>
+          <p class="cap">直近24時間</p>
+          <div class="hbars" id="modelBars"></div>
+        </div>
+        <div class="card">
+          <h3>プリセット別ジョブ数</h3>
+          <p class="cap">直近24時間</p>
+          <div class="hbars" id="presetBars"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h3>直近のジョブ</h3>
+        <p class="cap">最新20件（ユーザーIDは末尾6文字のみ表示）</p>
+        <div class="tbl-scroll" id="recentJobsTable"></div>
+      </div>
+    </section>
+
+    <p class="foot">
+      データソース: entitlements / user_tags / auth_audit_log (90日保持) / generation_jobs (24時間保持)。
+      <a href="/pro-max">← アプリへ戻る</a>
+    </p>
+  </div>
+</div>
+
+<!-- 共有ツールチップ (aria-label が同内容を担うため支援技術からは隠す) -->
+<div class="tt" id="tt" aria-hidden="true"></div>
+
+<script charset="utf-8" async src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // app.js と同一の単一 LIFF アプリ
+  const LIFF_ID = '2009850086-K3TrYsDF';
+  const SELF_PATH = '/admin';
+
+  const el = id => document.getElementById(id);
+
+  // ===== 状態切り替え =====
+  function setState(s) {
+    ['stLoading', 'stLogin', 'stDenied', 'stError', 'stDash'].forEach(id => {
+      const e = el(id); if (e) e.classList.remove('active');
+    });
+    const e = el(s); if (e) e.classList.add('active');
+  }
+  function showError(msg) {
+    if (msg) el('errorMsg').textContent = msg;
+    setState('stError');
+  }
+
+  function isLocalDev() {
+    const h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0';
+  }
+  const DEMO = isLocalDev() || new URLSearchParams(location.search).get('demo') === '1';
+
+  // ===== テーマ =====
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('zukai-admin-theme', t); } catch (e) {}
+    el('themeBtnLabel').textContent = t === 'dark' ? 'ダーク' : 'ライト';
+  }
+  el('themeBtn').addEventListener('click', () => {
+    applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+  });
+  el('themeBtnLabel').textContent = currentTheme() === 'dark' ? 'ダーク' : 'ライト';
+
+  // ===== ユーティリティ =====
+  const fmt = n => (n == null ? '—' : Number(n).toLocaleString('ja-JP'));
+  function mdLabel(iso) {           // 'YYYY-MM-DD' → 'M/D' (Date() を介さずTZ事故を避ける)
+    const p = String(iso).split('-');
+    return p.length === 3 ? `${Number(p[1])}/${Number(p[2])}` : String(iso);
+  }
+  function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  // ===== ツールチップ (すべて textContent で構築) =====
+  const tt = el('tt');
+  function ttShow(title, rows, x, y) {
+    clearNode(tt);
+    const d = document.createElement('div');
+    d.className = 'tt__date'; d.textContent = title; tt.appendChild(d);
+    rows.forEach(r => {
+      const row = document.createElement('div'); row.className = 'tt__row';
+      const key = document.createElement('span'); key.className = 'tt__key';
+      key.style.background = r.color || 'var(--viz-bar)';
+      const val = document.createElement('span'); val.className = 'tt__val'; val.textContent = r.value;
+      const lab = document.createElement('span'); lab.className = 'tt__lab'; lab.textContent = r.label;
+      row.appendChild(key); row.appendChild(val); row.appendChild(lab);
+      tt.appendChild(row);
+    });
+    tt.classList.add('show');
+    ttMove(x, y);
+  }
+  function ttMove(x, y) {
+    const pad = 14;
+    const w = tt.offsetWidth, h = tt.offsetHeight;
+    let left = x + pad, top = y + pad;
+    if (left + w > window.innerWidth - 8) left = x - w - pad;
+    if (top + h > window.innerHeight - 8) top = y - h - pad;
+    tt.style.left = left + 'px';
+    tt.style.top = top + 'px';
+  }
+  function ttHide() { tt.classList.remove('show'); }
+
+  // ===== SVG カラムチャート =====
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs) {
+    const e = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function niceStep(maxV) {          // 目盛りは 1/2/5×10^k の切りの良い数 (人数=整数なので最小1)
+    const target = Math.max(1, maxV) / 4;
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    for (const m of [1, 2, 5, 10]) {
+      if (m * pow >= target) return Math.max(1, m * pow);
+    }
+    return Math.max(1, 10 * pow);
+  }
+  function barTopPath(x, y, w, h, r) {   // データ端(上)のみ4px丸、ベースラインは直角
+    if (h <= 0) return '';
+    const rr = Math.min(r, w / 2, h);
+    return `M${x},${y + h} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + w - rr} Q${x + w},${y} ${x + w},${y + rr} V${y + h} Z`;
+  }
+
+  // series: [{date, value, extra:[{value,label,color}]}] / 単一系列 (凡例不要、タイトルが系列名)
+  function renderColumns(container, series, opts) {
+    clearNode(container);
+    const W = Math.max(280, container.clientWidth || 560);
+    const H = 220;
+    const m = { top: 20, right: 18, bottom: 26, left: 42 };   // 右余白は末尾X軸ラベルの見切れ防止
+    const plotW = W - m.left - m.right;
+    const plotH = H - m.top - m.bottom;
+    const baseline = m.top + plotH;
+
+    const maxV = Math.max(1, ...series.map(d => d.value));
+    const step = niceStep(maxV);
+    const maxTick = Math.ceil(maxV / step) * step;
+
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img' });
+    svg.setAttribute('aria-label', opts.ariaLabel || '');
+
+    // グリッド (実線ヘアライン、控えめ) + Y目盛り
+    for (let v = 0; v <= maxTick; v += step) {
+      const y = baseline - (v / maxTick) * plotH;
+      svg.appendChild(svgEl('line', {
+        x1: m.left, x2: W - m.right, y1: y, y2: y,
+        style: `stroke:${v === 0 ? 'var(--viz-axisline)' : 'var(--viz-grid)'};stroke-width:1`
+      }));
+      const t = svgEl('text', {
+        x: m.left - 7, y: y + 3.5, 'text-anchor': 'end',
+        style: 'fill:var(--viz-axis-text);font-size:10px;font-variant-numeric:tabular-nums'
+      });
+      t.textContent = v.toLocaleString('ja-JP');
+      svg.appendChild(t);
+    }
+
+    const n = series.length;
+    const slot = plotW / n;
+    const barW = Math.max(1.5, Math.min(24, slot - 2));   // 2px サーフェスギャップ、太さ上限24px
+    const xStep = Math.max(1, Math.ceil(n / 6));          // X軸ラベルは間引き (末尾は必ず表示)
+
+    const hits = svgEl('g', {});
+
+    series.forEach((d, i) => {
+      const cx = m.left + slot * i + slot / 2;
+      const h = (d.value / maxTick) * plotH;
+      const x = cx - barW / 2;
+
+      // ヒット領域はマークより大きく (スロット全幅×プロット全高)
+      const hit = svgEl('rect', {
+        x: m.left + slot * i, y: m.top, width: slot, height: plotH,
+        class: 'bar-hit', tabindex: '0',
+        'aria-label': `${mdLabel(d.date)}: ${opts.tooltipRows(d).map(r => `${r.label} ${r.value}`).join(', ')}`
+      });
+      const mark = svgEl('path', {
+        d: barTopPath(x, baseline - h, barW, h, 4),
+        class: 'bar-mark', style: 'fill:var(--viz-bar)'
+      });
+
+      const show = ev => {
+        hit.classList.add('hover');
+        const rect = hit.getBoundingClientRect();
+        const px = ev && ev.clientX != null ? ev.clientX : rect.left + rect.width / 2;
+        const py = ev && ev.clientY != null ? ev.clientY : rect.top;
+        ttShow(opts.tooltipTitle(d), opts.tooltipRows(d), px, py);
+      };
+      hit.addEventListener('pointerenter', show);
+      hit.addEventListener('pointermove', ev => ttMove(ev.clientX, ev.clientY));
+      hit.addEventListener('pointerleave', () => { hit.classList.remove('hover'); ttHide(); });
+      hit.addEventListener('focus', () => show(null));
+      hit.addEventListener('blur', () => { hit.classList.remove('hover'); ttHide(); });
+
+      hits.appendChild(hit);
+      hits.appendChild(mark);   // .bar-hit + .bar-mark の兄弟セレクタでホバー時に沈める
+
+      // X軸ラベル (間引き、末尾基準)
+      if ((n - 1 - i) % xStep === 0) {
+        const t = svgEl('text', {
+          x: cx, y: H - 8, 'text-anchor': 'middle',
+          style: 'fill:var(--viz-axis-text);font-size:10px'
+        });
+        t.textContent = mdLabel(d.date);
+        svg.appendChild(t);
+      }
+
+      // 直接ラベルは末尾 (今日) のみ — 他はツールチップと表が担う
+      if (i === n - 1 && d.value > 0) {
+        const t = svgEl('text', {
+          x: cx, y: Math.max(m.top - 6, baseline - h - 6) + 2, 'text-anchor': 'middle',
+          style: 'fill:var(--text-primary);font-size:11px;font-weight:600;font-variant-numeric:tabular-nums'
+        });
+        t.textContent = d.value.toLocaleString('ja-JP');
+        svg.appendChild(t);
+      }
+    });
+
+    svg.appendChild(hits);
+    container.appendChild(svg);
+  }
+
+  // ===== テーブルビュー (チャートの双子。全値へ非ホバーで到達可能) =====
+  function renderTable(container, headers, rows) {
+    clearNode(container);
+    const table = document.createElement('table');
+    table.className = 'data';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      if (h.num) th.className = 'num';
+      th.textContent = h.label;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      r.forEach((cell, i) => {
+        const td = document.createElement('td');
+        if (headers[i] && headers[i].num) td.className = 'num';
+        if (cell && cell.nodeType) td.appendChild(cell); else td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  // ===== 横棒 (カテゴリ別件数。値は右列に常時表示 = 表ビュー兼用) =====
+  function renderHBars(container, entries, opts) {
+    clearNode(container);
+    opts = opts || {};
+    if (!entries.length) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = opts.emptyText || 'データがありません';
+      container.appendChild(p);
+      return;
+    }
+    const maxV = Math.max(1, ...entries.map(e => e.value));
+    entries.forEach((e, i) => {
+      const row = document.createElement('div');
+      row.className = 'hbar' + (e.value === 0 ? ' hbar--zero' : '');
+      const lab = document.createElement('span');
+      lab.className = 'hbar__label';
+      lab.textContent = e.label;
+      lab.title = e.label;
+      const track = document.createElement('span');
+      track.className = 'hbar__track';
+      const fill = document.createElement('span');
+      fill.className = 'hbar__fill';
+      fill.style.width = (e.value / maxV * 100).toFixed(2) + '%';
+      if (e.color) fill.style.background = e.color;
+      track.appendChild(fill);
+      const val = document.createElement('span');
+      val.className = 'hbar__val';
+      val.textContent = fmt(e.value);
+      row.appendChild(lab); row.appendChild(track); row.appendChild(val);
+      container.appendChild(row);
+    });
+  }
+
+  // オブジェクト {key:count} → 降順配列、9件以上は「その他」に畳む (色相は増やさない)
+  function toEntriesFolded(obj, topN) {
+    const arr = Object.keys(obj || {}).map(k => ({ label: k, value: Number(obj[k]) || 0 }))
+      .sort((a, b) => b.value - a.value);
+    if (arr.length <= topN) return arr;
+    const head = arr.slice(0, topN);
+    const rest = arr.slice(topN);
+    head.push({ label: `その他 (${rest.length}種)`, value: rest.reduce((s, e) => s + e.value, 0) });
+    return head;
+  }
+
+  // ===== KPI =====
+  function kpiTile(label, valueText, unit, delta) {
+    const box = document.createElement('div'); box.className = 'kpi';
+    const l = document.createElement('div'); l.className = 'kpi__label'; l.textContent = label;
+    const v = document.createElement('div'); v.className = 'kpi__value'; v.textContent = valueText;
+    if (unit) { const u = document.createElement('span'); u.className = 'unit'; u.textContent = unit; v.appendChild(u); }
+    box.appendChild(l); box.appendChild(v);
+    if (delta) {
+      const d = document.createElement('div');
+      d.className = 'kpi__delta ' + (delta.dir || '');
+      d.textContent = delta.text;
+      box.appendChild(d);
+    }
+    return box;
+  }
+
+  // ===== ステータス定義 (色は必ずラベルと併記) =====
+  const STATUS_DEF = {
+    success: { label: '成功',   color: 'var(--c-ok)' },
+    partial: { label: '一部成功', color: 'var(--c-warn)' },
+    failed:  { label: '失敗',   color: 'var(--c-err)' },
+    running: { label: '実行中', color: 'var(--c-info)' },
+    pending: { label: '待機',   color: 'var(--c-neutral)' }
+  };
+  function statusInfo(s) { return STATUS_DEF[s] || { label: s, color: 'var(--c-neutral)' }; }
+
+  function statusChip(status, count) {   // count=null ならラベルのみのチップ
+    const info = statusInfo(status);
+    const chip = document.createElement('span'); chip.className = 'schip';
+    const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = info.color;
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode(info.label + (count != null ? ' ' : '')));
+    if (count != null) {
+      const b = document.createElement('b'); b.textContent = fmt(count);
+      chip.appendChild(b);
+    }
+    return chip;
+  }
+
+  // ===== レンダリング =====
+  const PLAN_ORDER = ['free', 'standard', 'pro', 'lifetime'];
+  const PLAN_COLORS = ['var(--viz-ord-1)', 'var(--viz-ord-2)', 'var(--viz-ord-3)', 'var(--viz-ord-4)'];
+
+  let lastStats = null;
+  let currentRange = 30;
+
+  function renderDash(stats) {
+    lastStats = stats;
+    // 先に表示状態へ切り替える (非表示のままだと clientWidth=0 でチャート幅を測れない)
+    setState('stDash');
+    const daily = stats.daily || [];
+    const users = stats.users || {};
+    const activity = stats.activity || {};
+    const jobs = stats.jobs || {};
+    const slides = stats.slides || {};
+
+    // 更新時刻
+    el('updatedAt').textContent = '更新: ' + new Date().toLocaleString('ja-JP', { hour12: false });
+
+    // --- KPI ---
+    const row = el('kpiRow');
+    clearNode(row);
+
+    const todayD = daily[daily.length - 1];
+    const prevD = daily[daily.length - 2];
+    let actDelta = null;
+    if (todayD && prevD) {
+      const diff = todayD.activeUsers - prevD.activeUsers;
+      actDelta = {
+        dir: diff > 0 ? 'up' : diff < 0 ? 'down' : '',
+        text: (diff > 0 ? '+' : '') + fmt(diff) + ' 前日比'
+      };
+    }
+    const new7 = users.newLast7d || 0;
+    row.appendChild(kpiTile('総ユーザー数', fmt(users.total), '人',
+      { dir: new7 > 0 ? 'up' : '', text: '+' + fmt(new7) + ' 直近7日' }));
+    row.appendChild(kpiTile('今日のアクティブ', todayD ? fmt(todayD.activeUsers) : '—', '人', actDelta));
+    row.appendChild(kpiTile('直近7日アクティブ', fmt(activity.wau), '人', null));
+    row.appendChild(kpiTile('直近30日アクティブ', fmt(activity.mau), '人', null));
+    const slideStats = slides.byStatus || {};
+    const okAll = Number(slideStats.success) || 0;
+    const failAll = Number(slideStats.failed) || 0;
+    row.appendChild(kpiTile('生成ジョブ (24h)', fmt(jobs.total), '件',
+      (okAll + failAll) > 0 ? { dir: '', text: `スライド成功 ${Math.round(okAll / (okAll + failAll) * 100)}%` } : null));
+
+    // --- 01 利用動向 ---
+    renderTrendCharts();
+
+    // --- 02 ユーザー構成 ---
+    const byPlan = stats.byPlan || {};
+    const planEntries = [];
+    PLAN_ORDER.forEach((p, i) => {
+      if (byPlan[p] != null) planEntries.push({ label: p, value: Number(byPlan[p]) || 0, color: PLAN_COLORS[i] });
+    });
+    Object.keys(byPlan).forEach(p => {           // CHECK制約外の未知プランも落とさず表示
+      if (PLAN_ORDER.indexOf(p) === -1) planEntries.push({ label: p, value: Number(byPlan[p]) || 0, color: 'var(--viz-bar)' });
+    });
+    renderHBars(el('planBars'), planEntries, { emptyText: 'プランデータがありません' });
+    renderHBars(el('tagBars'), toEntriesFolded(stats.byTag, 8), { emptyText: 'タグ付きユーザーはいません' });
+
+    // --- 03 生成ジョブ ---
+    const total = Number(slides.total) || 0;
+    const done = okAll + failAll;
+    el('slideRateCap').textContent = total
+      ? `直近24時間のスライド ${fmt(total)} 枚（完了 ${fmt(done)} 枚に対する成功率）`
+      : '直近24時間の生成スライドはありません';
+    if (done > 0) {
+      const rate = okAll / done * 100;
+      el('slideMeter').style.display = '';
+      const fill = el('slideMeterFill');
+      fill.style.width = rate.toFixed(1) + '%';
+      // メーターは重要度で色が変わる (同系の淡色トラック)。90%以上=OK / 70%以上=注意 / 未満=危険
+      const track = el('slideMeter').querySelector('.meter__track');
+      if (rate >= 90)      { fill.style.background = 'var(--c-ok)';   track.style.background = 'var(--meter-ok-track)'; }
+      else if (rate >= 70) { fill.style.background = 'var(--c-warn)'; track.style.background = 'var(--meter-warn-track)'; }
+      else                 { fill.style.background = 'var(--c-err)';  track.style.background = 'var(--meter-err-track)'; }
+      el('slideMeterPct').textContent = rate.toFixed(1) + '%';
+    } else {
+      el('slideMeter').style.display = 'none';
+    }
+
+    const chips = el('slideChips');
+    clearNode(chips);
+    ['success', 'failed', 'running', 'pending'].forEach(s => {
+      if (slideStats[s] != null) chips.appendChild(statusChip(s, slideStats[s]));
+    });
+
+    const sub = el('jobSubstats');
+    clearNode(sub);
+    const subPairs = [
+      ['実行ユーザー', fmt(jobs.activeUsers) + '人'],
+      ['キャラ参照付き', fmt(jobs.withCharacterRefs) + '件'],
+      ['平均生成時間', slides.avgElapsedMs != null ? (slides.avgElapsedMs / 1000).toFixed(1) + '秒/枚' : '—']
+    ];
+    subPairs.forEach(([k, v]) => {
+      const span = document.createElement('span');
+      const b = document.createElement('b'); b.textContent = v;
+      span.appendChild(document.createTextNode(k + ' '));
+      span.appendChild(b);
+      sub.appendChild(span);
+    });
+
+    renderHBars(el('modelBars'), toEntriesFolded(jobs.byModel, 8), { emptyText: '直近24時間のジョブはありません' });
+    renderHBars(el('presetBars'), toEntriesFolded(jobs.byPreset, 8), { emptyText: '直近24時間のジョブはありません' });
+
+    // 直近ジョブテーブル
+    const recent = Array.isArray(stats.recentJobs) ? stats.recentJobs : [];
+    if (!recent.length) {
+      clearNode(el('recentJobsTable'));
+      const p = document.createElement('p'); p.className = 'empty';
+      p.textContent = '直近24時間のジョブはありません';
+      el('recentJobsTable').appendChild(p);
+    } else {
+      renderTable(el('recentJobsTable'),
+        [{ label: '時刻(JST)' }, { label: 'ユーザー' }, { label: 'プリセット' }, { label: 'モデル' },
+         { label: '枚数', num: true }, { label: '状態' }],
+        recent.map(j => [
+          j.at || '—',
+          j.userMask || '—',
+          j.preset || '—',
+          j.model || '—',
+          `${fmt(j.okSlides)}/${fmt(j.slides)}`,
+          statusChip(j.status, null)
+        ]));
+    }
+  }
+
+  // 期間フィルタは「利用動向」の2チャート (とその表) だけをスコープする
+  function renderTrendCharts() {
+    if (!lastStats) return;
+    const daily = lastStats.daily || [];
+    const slice = daily.slice(-currentRange);
+
+    el('activeChartCap').textContent = `直近${currentRange}日 / ホバーまたはフォーカスで詳細`;
+    el('newChartCap').textContent = `直近${currentRange}日 / 初回ログイン日ベース`;
+
+    renderColumns(el('activeChart'), slice.map(d => ({ date: d.date, value: d.activeUsers, calls: d.calls })), {
+      ariaLabel: `日別アクティブユーザー (直近${currentRange}日)`,
+      tooltipTitle: d => mdLabel(d.date),
+      tooltipRows: d => [
+        { value: fmt(d.value) + '人', label: 'アクティブ', color: 'var(--viz-bar)' },
+        { value: fmt(d.calls) + '回', label: 'アプリ起動', color: 'var(--viz-ord-1)' }
+      ]
+    });
+    renderColumns(el('newChart'), slice.map(d => ({ date: d.date, value: d.newUsers })), {
+      ariaLabel: `日別新規ユーザー (直近${currentRange}日)`,
+      tooltipTitle: d => mdLabel(d.date),
+      tooltipRows: d => [{ value: fmt(d.value) + '人', label: '新規ユーザー', color: 'var(--viz-bar)' }]
+    });
+
+    renderTable(el('activeTable'),
+      [{ label: '日付' }, { label: 'アクティブ', num: true }, { label: 'アプリ起動', num: true }],
+      slice.map(d => [d.date, fmt(d.activeUsers), fmt(d.calls)]).reverse());
+    renderTable(el('newTable'),
+      [{ label: '日付' }, { label: '新規ユーザー', num: true }],
+      slice.map(d => [d.date, fmt(d.newUsers)]).reverse());
+  }
+
+  document.querySelectorAll('.chip[data-range]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-range]').forEach(c => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      currentRange = Number(chip.dataset.range) || 30;
+      renderTrendCharts();
+    });
+  });
+
+  // コンテナ幅の変化でチャートを再描画 (ウィンドウリサイズだけでなく、
+  // スクロールバー出現などレイアウト起因の幅変化にも追従する)
+  let resizeTimer = null;
+  let lastChartW = 0;
+  function scheduleChartRerender() {
+    if (!lastStats || !el('stDash').classList.contains('active')) return;
+    const w = el('activeChart').clientWidth;
+    if (w === lastChartW) return;          // 幅が同じなら再描画しない (ループ防止)
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { lastChartW = el('activeChart').clientWidth; renderTrendCharts(); }, 120);
+  }
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(scheduleChartRerender);
+    ro.observe(el('activeChart'));
+    ro.observe(el('newChart'));
+  } else {
+    window.addEventListener('resize', scheduleChartRerender);
+  }
+
+  // ===== データ取得 =====
+  function getToken() {
+    try { const idt = liff.getIDToken && liff.getIDToken(); if (idt) return idt; } catch (e) {}
+    try { return (liff.getAccessToken && liff.getAccessToken()) || null; } catch (e) {}
+    return null;
+  }
+
+  async function fetchStats() {
+    const dashActive = el('stDash').classList.contains('active');
+    if (dashActive) el('dashRoot').classList.add('loading');   // 前の描画を薄く保持 (スケルトンは出さない)
+    else setState('stLoading');
+
+    try {
+      const token = getToken();
+      if (!token) { setState('stLogin'); return; }
+
+      const res = await fetch('/api/admin-stats', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const body = await res.json().catch(() => null);
+
+      if (res.status === 200 && body && body.ok) {
+        renderDash(body.stats || {});
+        return;
+      }
+      if (res.status === 401) {
+        // 期限切れIDトークンは logout しないと liff.login() が no-op になる (既知の罠)
+        try { liff.logout(); } catch (e) {}
+        el('loginNote').textContent = '認証の有効期限が切れました。再度ログインしてください。';
+        setState('stLogin');
+        return;
+      }
+      if (res.status === 403) {
+        el('deniedTitle').textContent = '閲覧権限がありません';
+        el('deniedMsg').textContent = 'このページは管理者専用です。あなたの LINE ユーザー ID:';
+        showDeniedUid(body && body.lineUserId);
+        setState('stDenied');
+        return;
+      }
+      if (res.status === 503) {
+        el('deniedTitle').textContent = '未設定です';
+        el('deniedMsg').textContent = 'ADMIN_LINE_USER_IDS が未設定のため閉じています。あなたの LINE ユーザー ID:';
+        showDeniedUid(decodedUserId());
+        setState('stDenied');
+        return;
+      }
+      if (body && body.error === 'rpc_missing') {
+        showError('集計関数が見つかりません。supabase/migrations/0008_admin_dashboard_stats.sql を Supabase Studio の SQL Editor で実行してください。');
+        return;
+      }
+      showError('読み込みに失敗しました。時間をおいて再度お試しください。');
+    } catch (e) {
+      console.error('[admin] fetch failed:', e && e.message);
+      showError('通信エラーが発生しました。');
+    } finally {
+      el('dashRoot').classList.remove('loading');
+    }
+  }
+
+  function decodedUserId() {
+    try {
+      const d = liff.getDecodedIDToken && liff.getDecodedIDToken();
+      return d && d.sub ? d.sub : null;
+    } catch (e) { return null; }
+  }
+  function showDeniedUid(uid) {
+    const box = el('deniedUid');
+    const btn = el('copyUidBtn');
+    if (uid) {
+      box.textContent = uid;
+      box.style.display = '';
+      btn.style.display = '';
+      btn.onclick = () => {
+        navigator.clipboard.writeText(uid).then(() => { btn.textContent = 'コピーしました'; })
+          .catch(() => { btn.textContent = 'コピー失敗 (手動で選択してください)'; });
+      };
+    } else {
+      box.style.display = 'none';
+      btn.style.display = 'none';
+    }
+  }
+
+  // ===== デモデータ (localhost / ?demo=1) =====
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function buildDemoStats() {
+    const rnd = mulberry32(20260727);
+    const daily = [];
+    const today = new Date();
+    for (let i = 89; i >= 0; i--) {
+      const d = new Date(today.getTime() - i * 86400000);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const grow = (89 - i) * 0.13;
+      const weekend = (d.getDay() === 0 || d.getDay() === 6) ? -2.4 : 0;
+      const act = Math.max(0, Math.round(5 + grow + weekend + Math.sin((89 - i) / 3.3) * 2.2 + rnd() * 3.5));
+      daily.push({
+        date: iso,
+        activeUsers: act,
+        calls: act === 0 ? 0 : Math.round(act * (2 + rnd() * 1.4)),
+        newUsers: Math.max(0, Math.round(rnd() * 3.4 - 1))
+      });
+    }
+    const sum30 = daily.slice(-30);
+    return {
+      users: { total: 137, newLast7d: 9, newLast30d: 31 },
+      byPlan: { standard: 96, pro: 23, lifetime: 11, free: 7 },
+      byTag: { omikuji: 31, agent: 9, beta: 5, vip: 4, internal: 2, pickaxe_internal: 2 },
+      activity: {
+        dau: daily[daily.length - 1].activeUsers,
+        wau: Math.round(sum30.slice(-7).reduce((s, d) => s + d.activeUsers, 0) * 0.52),
+        mau: Math.round(sum30.reduce((s, d) => s + d.activeUsers, 0) * 0.31)
+      },
+      daily,
+      jobs: {
+        total: 14, activeUsers: 6, withCharacterRefs: 9,
+        byStatus: { success: 9, partial: 2, failed: 1, running: 2 },
+        byModel: { 'gpt-image-2': 8, 'gemini-2.5-flash-image': 5, '(未記録)': 1 },
+        byPreset: { 'ゆるふわ図解': 6, 'ビジネス図解': 4, '手書き風': 2, 'ミニマル': 1, '(未記録)': 1 }
+      },
+      slides: {
+        total: 96,
+        byStatus: { success: 78, failed: 6, running: 4, pending: 8 },
+        avgElapsedMs: 23400
+      },
+      recentJobs: [
+        { at: '07/27 21:42', userMask: '…f3a9c1', preset: 'ゆるふわ図解', model: 'gpt-image-2', slides: 8, okSlides: 8, status: 'success' },
+        { at: '07/27 21:18', userMask: '…08d2be', preset: 'ビジネス図解', model: 'gemini-2.5-flash-image', slides: 6, okSlides: 4, status: 'running' },
+        { at: '07/27 20:55', userMask: '…77aa10', preset: '手書き風', model: 'gpt-image-2', slides: 10, okSlides: 9, status: 'partial' },
+        { at: '07/27 19:31', userMask: '…c2e884', preset: 'ゆるふわ図解', model: 'gpt-image-2', slides: 8, okSlides: 8, status: 'success' },
+        { at: '07/27 18:04', userMask: '…19b0f7', preset: 'ミニマル', model: 'gemini-2.5-flash-image', slides: 5, okSlides: 0, status: 'failed' },
+        { at: '07/27 16:47', userMask: '…f3a9c1', preset: 'ゆるふわ図解', model: 'gpt-image-2', slides: 8, okSlides: 8, status: 'success' }
+      ]
+    };
+  }
+
+  // ===== イベント =====
+  el('loginBtn').addEventListener('click', () => {
+    try {
+      if (typeof liff !== 'undefined' && liff.login) {
+        liff.login({ redirectUri: location.origin + SELF_PATH });
+      }
+    } catch (e) { showError(e && e.message); }
+  });
+  el('refreshBtn').addEventListener('click', () => {
+    if (DEMO) { renderDash(buildDemoStats()); return; }
+    fetchStats();
+  });
+  el('retryBtn').addEventListener('click', () => location.reload());
+  el('deniedRetryBtn').addEventListener('click', () => location.reload());
+
+  // ===== 起動 =====
+  function waitForLiff(timeoutMs) {
+    return new Promise((resolve, reject) => {
+      if (typeof liff !== 'undefined') return resolve();
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        if (typeof liff !== 'undefined') { clearInterval(iv); resolve(); }
+        else if (Date.now() - t0 > timeoutMs) { clearInterval(iv); reject(new Error('LIFF SDKの読み込みに失敗しました')); }
+      }, 100);
+    });
+  }
+
+  if (DEMO) {
+    el('demoBadge').style.display = '';
+    renderDash(buildDemoStats());
+    return;
+  }
+
+  setState('stLoading');
+  waitForLiff(8000)
+    .then(() => liff.init({ liffId: LIFF_ID }))
+    .then(() => {
+      if (liff.isLoggedIn()) fetchStats();
+      else setState('stLogin');   // ログインボタンは init 完了後にのみ出す (押下無効の罠を回避)
+    })
+    .catch(e => {
+      console.error('[admin LIFF] init failed:', e && e.message);
+      showError('認証の初期化に失敗しました。' + (e && e.message ? ' (' + e.message + ')' : ''));
+    });
+})();
+</script>
+</body>
+</html>

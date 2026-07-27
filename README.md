@@ -120,6 +120,7 @@ npm run build:wp   # = node build-wp.js
 | `GEMINI_API_KEY` | Google AI Studio で発行した Imagen / Gemini 用キー |
 | `STRAICO_API_KEY` | Straico 内蔵キー（`/api/straico` プロキシが使用。ユーザーが独自キー未設定のときの既定経路） |
 | `ENABLE_TEMP_PRO_MAX_ACCESS` | `1` のときだけ `/pro-max` の一時開放（認証バイパス）が有効。**未設定なら常に無効**（オプトイン） |
+| `ADMIN_LINE_USER_IDS` | `/admin`（管理者ダッシュボード）を閲覧できる LINE ユーザーIDをカンマ区切り。**未設定なら常に閉鎖**（オプトイン） |
 | `PICKAXE_API_KEY_1` 〜 `_7` | Pickaxe ワークスペース別デプロイメントキー（内部限定） |
 | `PICKAXE_MODEL_INPUT_ID_{N}` / `PICKAXE_PROMPT_INPUT_ID_{N}` | Pickaxe form-chat の入力UUIDを上書き（通常不要） |
 | `LOG_LEVEL` | `info` / `debug` |
@@ -137,8 +138,19 @@ Supabase でプロジェクト作成（リージョン: `ap-northeast-1` 推奨�
 | `0005_generated_images_storage.sql` | Storage バケット `generated-images`（AI 生成画像本体、24h 自動削除） |
 | `0006_auth_audit_log_cleanup.sql` | `auth_audit_log` の90日クリーンアップ関数（無限成長防止） |
 | `0007_rename_god_tag_to_agent.sql` | `user_tags` の旧 `god` タグを `agent` へ移行（AGENT ティア改名に伴うデータ移行） |
+| `0008_admin_dashboard_stats.sql` | `/admin` 用の集計 RPC `admin_dashboard_stats()`（service_role 限定・DB側で全集計） |
 
 Service Role キーを `SUPABASE_SERVICE_ROLE_KEY` に設定。
+
+### 管理者ダッシュボード（/admin）
+
+利用状況のインサイトを閲覧できる管理者専用ページ。LINE ログイン後、`ADMIN_LINE_USER_IDS` に含まれるユーザーだけが `/api/admin-stats` 経由で以下を確認できる:
+
+- KPI: 総ユーザー数 / 今日のアクティブ（前日比） / 直近7日・30日アクティブ / 24hジョブ数
+- 日別アクティブ・新規ユーザー（7/30/90日切替、JST暦日、`auth_audit_log` 90日保持）
+- プラン・タグ内訳、モデル別・プリセット別ジョブ数、スライド成功率、直近ジョブ一覧（24h保持）
+
+セットアップ: ① `0008` を SQL Editor で実行 → ② `/admin` にログインすると表示される自分の LINE ユーザーID を `ADMIN_LINE_USER_IDS` に設定 → ③ Redeploy。`localhost` またはクエリ `?demo=1` ではデモデータで UI を確認できる（API 不要）。
 
 ### クリーンアップ自動化（2系統に分かれる）
 

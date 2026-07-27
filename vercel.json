@@ -22,7 +22,9 @@
     { "source": "/solo", "destination": "/index.html" },
     { "source": "/solo/", "destination": "/index.html" },
     { "source": "/pro-agent-unlock", "destination": "/pro-agent-unlock.html" },
-    { "source": "/pro-agent-unlock/", "destination": "/pro-agent-unlock.html" }
+    { "source": "/pro-agent-unlock/", "destination": "/pro-agent-unlock.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin/", "destination": "/admin.html" }
   ],
   "redirects": [
     { "source": "/god-max", "destination": "/pro-agent", "permanent": false },
