@@ -339,7 +339,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
     <i class="crest-frog"></i>
   </div>
   <h1>覚醒の間</h1>
-  <p class="sub">GOD への扉</p>
+  <p class="sub">AGENT への扉</p>
 
   <!-- 象形文字の帯（上） -->
   <div class="glyph-row" aria-hidden="true">
@@ -376,7 +376,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
       覚醒する
     </button>
     <p class="error" id="codeError"></p>
-    <p class="note">正しい合言葉を刻むと <b style="color:var(--gold)">GOD</b> へと覚醒し、一括プロンプト機能 (god-max) が解放されます。</p>
+    <p class="note">正しい合言葉を刻むと <b style="color:var(--gold)">AGENT</b> へと覚醒し、一括プロンプト機能 (一括モード) が解放されます。</p>
   </div>
 
   <!-- エラー -->
@@ -409,7 +409,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
   <div class="ascension__chroma" aria-hidden="true"></div>
   <div class="ascension__text">
     <div class="ascension__word"><span class="ascension__char">覚</span><span class="ascension__char">醒</span></div>
-    <div class="ascension__tag">GOD MODE</div>
+    <div class="ascension__tag">AGENT MODE</div>
   </div>
   <div class="ascension__redir" id="ascensionRedir">PRO MAX へ移行します…</div>
 </div>
@@ -424,6 +424,9 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
   // pro-max が起動時に再取得するようプロフィールキャッシュをクリアするキー
   var PROFILE_CACHE_KEY = "zukai-profile-v1";
   var REDIRECT_TO = "/pro-max";
+  // LINE ログイン後の着地先。旧 /god は /pro-agent-unlock への redirect なので、
+  // 余計な 1 ホップを挟まないよう新パスを直接指定する。
+  var SELF_PATH = "/pro-agent-unlock";
 
   function el(id) { return document.getElementById(id); }
   function setState(s) {
@@ -521,7 +524,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
 
   // ===== 覚醒演出 → pro-max へ遷移 =====
   function ascendAndRedirect() {
-    // pro-max が新しい god タグを反映できるよう、プロフィールキャッシュを破棄
+    // pro-max が新しい agent タグを反映できるよう、プロフィールキャッシュを破棄
     try { localStorage.removeItem(PROFILE_CACHE_KEY); } catch (_) {}
     crackThenAscend(function () { location.replace(location.origin + REDIRECT_TO); });
   }
@@ -552,7 +555,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
 
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;margin:0;border-width:2px"></span> 照合中…'; }
 
-    fetch('/api/grant-god', {
+    fetch('/api/grant-agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ code: code })
@@ -580,7 +583,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
     }).catch(function (e) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> 覚醒する'; }
       if (errEl) errEl.textContent = '通信エラーが発生しました。';
-      console.error('[god] grant failed:', e && e.message);
+      console.error('[pro-agent] grant failed:', e && e.message);
     });
   }
 
@@ -589,7 +592,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
   if (loginBtn) loginBtn.addEventListener('click', function () {
     try {
       if (typeof liff !== 'undefined' && liff.login) {
-        liff.login({ redirectUri: location.origin + '/god' });
+        liff.login({ redirectUri: location.origin + SELF_PATH });
       }
     } catch (e) { showError(e && e.message); }
   });
@@ -621,7 +624,7 @@ h1{margin:0 0 4px;font-size:1.5rem;font-weight:900;letter-spacing:.16em;
       }
     })
     .catch(function (e) {
-      console.error('[god LIFF] init failed:', e && e.message);
+      console.error('[pro-agent LIFF] init failed:', e && e.message);
       showError('認証の初期化に失敗しました。' + (e && e.message ? ' (' + e.message + ')' : ''));
     });
 })();

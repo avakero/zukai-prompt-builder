@@ -136,6 +136,7 @@ Supabase でプロジェクト作成（リージョン: `ap-northeast-1` 推奨�
 | `0004_generation_jobs.sql` | `generation_jobs` / `generation_slides`（生成ジョブのテレメトリ + 復元用、24h 自動削除） |
 | `0005_generated_images_storage.sql` | Storage バケット `generated-images`（AI 生成画像本体、24h 自動削除） |
 | `0006_auth_audit_log_cleanup.sql` | `auth_audit_log` の90日クリーンアップ関数（無限成長防止） |
+| `0007_rename_god_tag_to_agent.sql` | `user_tags` の旧 `god` タグを `agent` へ移行（AGENT ティア改名に伴うデータ移行） |
 
 Service Role キーを `SUPABASE_SERVICE_ROLE_KEY` に設定。
 

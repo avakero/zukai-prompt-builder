@@ -364,10 +364,10 @@
     imageGridSection: $('#imageGridSection'),
     imageGrid: $('#imageGrid'),
     imageGridBadge: $('#imageGridBadge'),
-    // god-max（一括プロンプト束ね）
-    godMaxGenerateBtn: $('#godMaxGenerateBtn'),
-    godMaxOutput: $('#godMaxOutput'),
-    godMaxCopyBtn: $('#godMaxCopyBtn'),
+    // pro-agent（一括プロンプト束ね）
+    proAgentGenerateBtn: $('#proAgentGenerateBtn'),
+    proAgentOutput: $('#proAgentOutput'),
+    proAgentCopyBtn: $('#proAgentCopyBtn'),
     // 再生成モーダル
     regenModalOverlay: $('#regenModalOverlay'),
     regenModalTitle: $('#regenModalTitle'),
@@ -474,9 +474,12 @@
     standard: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     pro: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
     lifetime: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen'],
-    // 最上位ティア。pro 全機能に加え、全スライドを1つの「一括プロンプト」に束ねて
-    // codex / antigravity 等のエージェントに丸ごと渡す god-max 専用機能 (mode.godBatch) を解放。
-    god: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'mode.godBatch']
+    // 最上位ティア (AGENT プラン)。pro 全機能に加え、全スライドを1つの「一括プロンプト」に
+    // 束ねて codex / antigravity 等のエージェントに丸ごと渡す pro-agent 専用機能
+    // (mode.agentBatch) を解放。
+    agent: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'mode.agentBatch'],
+    // 旧称 'god' の後方互換 (DB に god プランが残っていても解放を切らさない)
+    god: ['core.single', 'mode.carousel', 'ai.json', 'ai.imagegen', 'mode.agentBatch']
   };
 
   // タグによる個別解放 (プランより強い、上書き専用)
@@ -487,8 +490,11 @@
     internal: ['ai.json', 'ai.imagegen', 'mode.carousel'],
     vip: ['ai.json', 'ai.imagegen', 'mode.carousel'],
     pickaxe_internal: ['provider.pickaxe', 'provider.straico'],
-    // god タグ単体でも god-max の一括プロンプト機能を解放 (検証・個別付与用)
-    god: ['ai.json', 'ai.imagegen', 'mode.carousel', 'mode.godBatch']
+    // agent タグ単体でも pro-agent の一括プロンプト機能を解放 (検証・個別付与用)
+    agent: ['ai.json', 'ai.imagegen', 'mode.carousel', 'mode.agentBatch'],
+    // 旧称 'god' タグの後方互換。/api/grant-agent は今後 'agent' を付与するが、
+    // 改名前に付与済みのユーザーが user_tags に 'god' を持ったままなので解放を維持する。
+    god: ['ai.json', 'ai.imagegen', 'mode.carousel', 'mode.agentBatch']
   };
 
   // feature key → ユーザー向けに案内する必要プラン
@@ -496,7 +502,7 @@
     'mode.carousel': 'STANDARD',
     'ai.json': 'PRO',
     'ai.imagegen': 'PRO',
-    'mode.godBatch': 'GOD'
+    'mode.agentBatch': 'AGENT'
   };
 
   function applyTheme(theme) {
@@ -1685,11 +1691,11 @@ ${layoutDef.desc}
     if (els.carouselGenerateBtn) {
       els.carouselGenerateBtn.addEventListener('click', generateCarouselPrompts);
     }
-    if (els.godMaxGenerateBtn) {
-      els.godMaxGenerateBtn.addEventListener('click', generateGodMaxBatch);
+    if (els.proAgentGenerateBtn) {
+      els.proAgentGenerateBtn.addEventListener('click', generateProAgentBatch);
     }
-    if (els.godMaxCopyBtn) {
-      els.godMaxCopyBtn.addEventListener('click', copyGodMaxOutput);
+    if (els.proAgentCopyBtn) {
+      els.proAgentCopyBtn.addEventListener('click', copyProAgentOutput);
     }
     if (els.carouselPageNumberToggle) {
       els.carouselPageNumberToggle.addEventListener('change', () => {
@@ -3499,13 +3505,13 @@ ${layoutDef.desc}
   }
 
   // ============================================================
-  // god-max：全スライドを1つの「一括プロンプト」に束ねて出力
+  // pro-agent：全スライドを1つの「一括プロンプト」に束ねて出力
   // ============================================================
-  // pro-max は1枚ずつ完結したプロンプトを生成するが、god-max は共通ルール＋共通
+  // pro-max は1枚ずつ完結したプロンプトを生成するが、pro-agent は共通ルール＋共通
   // スタイルを冒頭で1度だけ宣言し、その下に各スライドの内容を列挙する。丸ごとコピー
   // して codex / antigravity などのエージェントに貼ると、全画像を自律生成できる。
 
-  function buildGodBatchPrompt() {
+  function buildAgentBatchPrompt() {
     if (!carouselData || !carouselData.slides || !carouselData.slides.length) {
       showToast('先にカルーセル構成（JSON）を展開してください');
       return null;
@@ -3553,16 +3559,16 @@ ${layoutDef.desc}
     return lines.join('\n');
   }
 
-  function generateGodMaxBatch() {
-    if (!gateOrToast('mode.godBatch', 'God 一括プロンプト')) return;
-    const prompt = buildGodBatchPrompt();
+  function generateProAgentBatch() {
+    if (!gateOrToast('mode.agentBatch', 'AGENT 一括プロンプト')) return;
+    const prompt = buildAgentBatchPrompt();
     if (prompt == null) return;
 
-    if (els.godMaxOutput) els.godMaxOutput.value = prompt;
-    const wrap = document.getElementById('godMaxOutputWrap');
+    if (els.proAgentOutput) els.proAgentOutput.value = prompt;
+    const wrap = document.getElementById('proAgentOutputWrap');
     if (wrap) wrap.style.display = '';
 
-    renderGodMaxImages();
+    renderProAgentImages();
 
     showToast(`✨ ${carouselData.slides.length}枚分を1つの一括プロンプトに束ねました`);
     setTimeout(() => {
@@ -3570,8 +3576,8 @@ ${layoutDef.desc}
     }, 100);
   }
 
-  function copyGodMaxOutput() {
-    const text = els.godMaxOutput ? els.godMaxOutput.value : '';
+  function copyProAgentOutput() {
+    const text = els.proAgentOutput ? els.proAgentOutput.value : '';
     if (!text) {
       showToast('先に一括プロンプトを生成してください');
       return;
@@ -3581,12 +3587,12 @@ ${layoutDef.desc}
     }).catch(() => showToast('コピーに失敗しました'));
   }
 
-  // god-max: 添付したキャラクター画像を「1枚ずつコピー」できるサムネ列を描画する。
+  // pro-agent: 添付したキャラクター画像を「1枚ずつコピー」できるサムネ列を描画する。
   // テキスト(一括プロンプト)はクリップボードのテキスト枠、画像は画像枠と別物のため、
   // ユーザーが個別にコピー→貼り付けできるようにする。
-  function renderGodMaxImages() {
-    const box = document.getElementById('godMaxImages');
-    const grid = document.getElementById('godMaxImagesGrid');
+  function renderProAgentImages() {
+    const box = document.getElementById('proAgentImages');
+    const grid = document.getElementById('proAgentImagesGrid');
     if (!box || !grid) return;
 
     if (!characterImages.length) {
@@ -3599,15 +3605,15 @@ ${layoutDef.desc}
     grid.innerHTML = '';
     characterImages.forEach((img, i) => {
       const cell = document.createElement('div');
-      cell.className = 'god-max-image';
+      cell.className = 'pro-agent-image';
       cell.innerHTML = `
         <img src="${img.dataUrl}" alt="${escapeHtml(String(img.name || ''))}">
-        <button class="god-max-image__copy" type="button" data-index="${i}">
+        <button class="pro-agent-image__copy" type="button" data-index="${i}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           画像${i + 1}をコピー
         </button>
       `;
-      cell.querySelector('.god-max-image__copy').addEventListener('click', () => copyCharacterImage(i));
+      cell.querySelector('.pro-agent-image__copy').addEventListener('click', () => copyCharacterImage(i));
       grid.appendChild(cell);
     });
   }
@@ -5320,38 +5326,38 @@ ${layoutDef.desc}
     console.log('[applySoloLayout] solo mode: carousel UI hidden, single mode full features');
   }
 
-  // god-max ページ (/god-max) のレイアウト調整。
+  // pro-agent ページ (/pro-agent) のレイアウト調整。
   // カルーセル構成を土台に「一括プロンプト」を束ねて出力することに専念する。
   // 単体タブ・自前画像生成 (imageGenBtn / imageGrid)・1枚ずつのプロンプト出力は隠す。
-  function applyGodMaxLayout() {
+  function applyProAgentLayout() {
     // カルーセルモードへ固定 (構成 → JSON → スライドを土台にする)
     switchMode('carousel');
 
-    // (a) 単体タブと、god-max では使わない出力系セクションを隠す
+    // (a) 単体タブと、pro-agent では使わない出力系セクションを隠す
     ['modeTabs', 'carouselGenerateSection', 'carouselOutputSection',
      'imageGenBtnSection', 'imageGridSection'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
 
-    // (b) god-max 専用の一括プロンプトセクションを表示
-    const batch = document.getElementById('godMaxBatchSection');
+    // (b) pro-agent 専用の一括プロンプトセクションを表示
+    const batch = document.getElementById('proAgentBatchSection');
     if (batch) batch.style.display = '';
 
-    // (c) 機能ゲート: god ティア (mode.godBatch) 未保有ならボタンをロックして案内
-    const allowed = !!(window.hasFeature && window.hasFeature('mode.godBatch'));
-    if (els.godMaxGenerateBtn) {
-      els.godMaxGenerateBtn.disabled = !allowed;
-      els.godMaxGenerateBtn.setAttribute('aria-disabled', allowed ? 'false' : 'true');
-      if (!allowed) els.godMaxGenerateBtn.title = 'God プラン以上でご利用いただけます';
+    // (c) 機能ゲート: AGENT ティア (mode.agentBatch) 未保有ならボタンをロックして案内
+    const allowed = !!(window.hasFeature && window.hasFeature('mode.agentBatch'));
+    if (els.proAgentGenerateBtn) {
+      els.proAgentGenerateBtn.disabled = !allowed;
+      els.proAgentGenerateBtn.setAttribute('aria-disabled', allowed ? 'false' : 'true');
+      if (!allowed) els.proAgentGenerateBtn.title = 'AGENT プラン以上でご利用いただけます';
     }
-    const lock = document.getElementById('godMaxLockNotice');
+    const lock = document.getElementById('proAgentLockNotice');
     if (lock) lock.style.display = allowed ? 'none' : '';
 
     // 着地直後から「通常モードに戻る」導線を出す（プロフィール取得を待たない）
     applyModeSwitch();
 
-    console.log('[applyGodMaxLayout] god-max mode: batch-prompt only, godBatch feature =', allowed);
+    console.log('[applyProAgentLayout] pro-agent mode: batch-prompt only, agentBatch feature =', allowed);
   }
 
   // 全ページ共通の単一LIFFアプリ (B案: ログインを1度で全ページ共有)
@@ -5485,19 +5491,19 @@ ${layoutDef.desc}
     applyModeSwitch();
   }
 
-  // 通常(PRO MAX) ⇄ GOD一括 の2方向モードスイッチを制御する。
-  //  - 表示条件: god ティア (mode.godBatch) 保有、または現在 god-max ルート上にいる
-  //    （god-max では「戻る導線」を必ず出したいのでルートだけでも表示する）。
+  // 通常(PRO MAX) ⇄ AGENT一括 の2方向モードスイッチを制御する。
+  //  - 表示条件: AGENT ティア (mode.agentBatch) 保有、または現在 一括モード (/pro-agent) 上にいる
+  //    （一括モードでは「戻る導線」を必ず出したいのでルートだけでも表示する）。
   //  - 現在のモードをハイライトし、クリック不可にする（もう片方だけ遷移できる）。
   function applyModeSwitch() {
     const sw = document.getElementById('modeSwitch');
     if (!sw) return;
-    const onGodMax = isGodMaxRoute();
-    const show = onGodMax || !!(window.hasFeature && window.hasFeature('mode.godBatch'));
+    const onProAgent = isProAgentRoute();
+    const show = onProAgent || !!(window.hasFeature && window.hasFeature('mode.agentBatch'));
     sw.style.display = show ? '' : 'none';
     if (!show) return;
-    _setSwitchActive(document.getElementById('modeSwitchPro'), !onGodMax);
-    _setSwitchActive(document.getElementById('modeSwitchGod'), onGodMax);
+    _setSwitchActive(document.getElementById('modeSwitchPro'), !onProAgent);
+    _setSwitchActive(document.getElementById('modeSwitchAgent'), onProAgent);
   }
   function _setSwitchActive(opt, active) {
     if (!opt) return;
@@ -5974,19 +5980,21 @@ ${layoutDef.desc}
     return path === '/solo' || path === '/solo/' || path.indexOf('/solo') === 0;
   }
 
-  // god-max ページか (/god-max)。pro-max の上位版。ログイン必須 (下の判定に含む)。
-  function isGodMaxRoute() {
+  // 一括モードのページか (/pro-agent)。pro-max の上位版。ログイン必須 (下の判定に含む)。
+  // ※ 旧URL /god-max は vercel.json の redirects で /pro-agent へ寄せている。
+  //   localhost には rewrites/redirects が効かないので、旧パスもここで受けておく。
+  function isProAgentRoute() {
     const path = location.pathname || '';
-    return path === '/god-max' || path === '/god-max/' || path.indexOf('/god-max') === 0;
+    return path.indexOf('/pro-agent') === 0 || path.indexOf('/god-max') === 0;
   }
 
-  // ログイン必須ルートか (/pro-max・/god-max。/ は公開)
+  // ログイン必須ルートか (/pro-max・/pro-agent。/ は公開)
   // ※ localhost は開発用にゲートをスキップする
   function isLoginRequiredRoute() {
     if (isLocalDev()) return false;
     const path = location.pathname || '';
     return path === '/pro-max' || path === '/pro-max/' || path.indexOf('/pro-max') === 0
-        || isGodMaxRoute();
+        || isProAgentRoute();
   }
 
   // アプリ起動。経路で2つに分岐:
@@ -6097,7 +6105,7 @@ ${layoutDef.desc}
       applyProviderGate();
       applyHeaderForProfile();
       applyPublicLimits();   // 公開モード (localhost 以外) のみスタイル/署名/配色/AIを制限
-      if (isGodMaxRoute()) applyGodMaxLayout();   // localhost で /god-max を確認できるように
+      if (isProAgentRoute()) applyProAgentLayout();   // localhost で /pro-agent を確認できるように
       showOmikujiRevealIfAny();   // ?omikuji= 当選時の演出 (公開ページ/localhost で動く)
       return;
     }
@@ -6130,7 +6138,7 @@ ${layoutDef.desc}
       console.log('[startup] fast path via profile cache');
       hideLoginGate();
       init();
-      if (isGodMaxRoute()) applyGodMaxLayout();
+      if (isProAgentRoute()) applyProAgentLayout();
       // 裏で LIFF init + /api/me を回し、差分があれば applyProviderGate が再走する。
       // ここで失敗してもキャッシュで起動済みなので体験はブロックしない。
       (async () => {
@@ -6191,7 +6199,7 @@ ${layoutDef.desc}
     hideLoginGate();
     init();
     applyHeaderForProfile();
-    if (isGodMaxRoute()) applyGodMaxLayout();
+    if (isProAgentRoute()) applyProAgentLayout();
     restoreLastJob().catch(e => console.warn('[restoreLastJob] swallowed error:', e && e.message));
   }
 

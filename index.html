@@ -142,8 +142,8 @@
     </div>
   </header>
 
-  <!-- ===== モード切り替え (GOD ティア保有時のみ表示) =====
-       通常(PRO MAX) ⇄ GOD一括 を行き来する2方向スイッチ。初心者でも「今どっちにいるか」
+  <!-- ===== モード切り替え (AGENT ティア保有時のみ表示) =====
+       通常(PRO MAX) ⇄ AGENT一括 を行き来する2方向スイッチ。初心者でも「今どっちにいるか」
        が一目で分かるよう現在のモードをハイライトし、もう片方をワンタップで開ける。 -->
   <nav class="mode-switch" id="modeSwitch" style="display:none" aria-label="モード切り替え">
     <a class="mode-switch__opt" id="modeSwitchPro" href="/pro-max">
@@ -156,7 +156,7 @@
       </span>
       <span class="mode-switch__now" aria-hidden="true">表示中</span>
     </a>
-    <a class="mode-switch__opt mode-switch__opt--god" id="modeSwitchGod" href="/god-max">
+    <a class="mode-switch__opt mode-switch__opt--agent" id="modeSwitchAgent" href="/pro-agent">
       <span class="mode-switch__ico" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       </span>
@@ -890,36 +890,36 @@
     <!-- ===== カルーセルモード: 生成ボタン＋出力 ===== -->
     <div class="mode-content" id="modeContentCarouselOutput" style="display: none;">
 
-      <!-- god-max: 一括プロンプト束ね出力 (通常は非表示。/god-max ルートでのみ表示) -->
-      <section class="section" id="godMaxBatchSection" style="display:none">
+      <!-- pro-agent: 一括プロンプト束ね出力 (通常は非表示。/pro-agent ルートでのみ表示) -->
+      <section class="section" id="proAgentBatchSection" style="display:none">
         <div class="section__header">
           <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
           </svg>
           <h2 class="section__title">一括プロンプト生成</h2>
         </div>
-        <p class="god-max-desc">全スライドを<strong>1つのプロンプト</strong>に束ねて出力します。丸ごとコピーして codex / antigravity などのエージェントに貼り付けると、全画像を自律的に生成できます。</p>
-        <p class="god-max-lock-notice" id="godMaxLockNotice" style="display:none">🔒 この機能は God プラン以上でご利用いただけます。</p>
-        <button class="generate-btn" id="godMaxGenerateBtn" type="button">
+        <p class="pro-agent-desc">全スライドを<strong>1つのプロンプト</strong>に束ねて出力します。丸ごとコピーして codex / antigravity などのエージェントに貼り付けると、全画像を自律的に生成できます。</p>
+        <p class="pro-agent-lock-notice" id="proAgentLockNotice" style="display:none">🔒 この機能は AGENT プラン以上でご利用いただけます。</p>
+        <button class="generate-btn" id="proAgentGenerateBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
           </svg>
           一括プロンプトを生成する
         </button>
-        <div class="god-max-output-wrap" id="godMaxOutputWrap" style="display:none">
-          <div class="god-max-output-header">
-            <span class="god-max-output-title">一括プロンプト</span>
-            <button class="action-btn action-btn--copy" id="godMaxCopyBtn" type="button">
+        <div class="pro-agent-output-wrap" id="proAgentOutputWrap" style="display:none">
+          <div class="pro-agent-output-header">
+            <span class="pro-agent-output-title">一括プロンプト</span>
+            <button class="action-btn action-btn--copy" id="proAgentCopyBtn" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               全文コピー
             </button>
           </div>
-          <textarea id="godMaxOutput" class="form-textarea god-max-output" rows="18" readonly></textarea>
+          <textarea id="proAgentOutput" class="form-textarea pro-agent-output" rows="18" readonly></textarea>
 
           <!-- 添付キャラクター画像: テキストとは別に1枚ずつクリップボードへコピーできる -->
-          <div class="god-max-images" id="godMaxImages" style="display:none">
-            <p class="god-max-images__hint">添付したキャラクター画像です。テキスト（一括プロンプト）とは別に、下のボタンで<strong>1枚ずつコピー</strong>してエージェントに貼り付けてください。</p>
-            <div class="god-max-images__grid" id="godMaxImagesGrid"></div>
+          <div class="pro-agent-images" id="proAgentImages" style="display:none">
+            <p class="pro-agent-images__hint">添付したキャラクター画像です。テキスト（一括プロンプト）とは別に、下のボタンで<strong>1枚ずつコピー</strong>してエージェントに貼り付けてください。</p>
+            <div class="pro-agent-images__grid" id="proAgentImagesGrid"></div>
           </div>
         </div>
       </section>

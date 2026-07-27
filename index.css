@@ -2886,7 +2886,7 @@ img {
   transform: translateY(-2px);
 }
 
-/* ===== モード切り替え (通常 PRO MAX ⇄ GOD一括) =====
+/* ===== モード切り替え (通常 PRO MAX ⇄ AGENT一括) =====
    初心者でも現在地が分かるセグメント型スイッチ。現在モードは塗りつぶし＋
    「表示中」ラベルでハイライトし、もう片方だけが押せる。 */
 .mode-switch {
@@ -2923,7 +2923,7 @@ img {
   cursor: default;
   pointer-events: none;
 }
-.mode-switch__opt--god.is-active { border-color: #f5c542; }
+.mode-switch__opt--agent.is-active { border-color: #f5c542; }
 
 .mode-switch__ico {
   flex: none;
@@ -2937,12 +2937,12 @@ img {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .mode-switch__ico svg { width: 19px; height: 19px; }
-.mode-switch__opt--god .mode-switch__ico { color: #b8860b; }
+.mode-switch__opt--agent .mode-switch__ico { color: #b8860b; }
 .mode-switch__opt.is-active .mode-switch__ico {
   background: rgba(47, 77, 138, 0.16);
   color: var(--color-primary-400);
 }
-.mode-switch__opt--god.is-active .mode-switch__ico {
+.mode-switch__opt--agent.is-active .mode-switch__ico {
   background: rgba(245, 197, 66, 0.18);
   color: #b8860b;
 }
@@ -2966,27 +2966,27 @@ img {
   color: #fff;
 }
 .mode-switch__opt.is-active .mode-switch__now { display: inline-block; }
-.mode-switch__opt--god.is-active .mode-switch__now { background: #b8860b; }
+.mode-switch__opt--agent.is-active .mode-switch__now { background: #b8860b; }
 
 @media (max-width: 380px) {
   .mode-switch__desc { display: none; }
 }
 
-.god-max-images {
+.pro-agent-images {
   margin-top: var(--space-4);
 }
-.god-max-images__hint {
+.pro-agent-images__hint {
   font-size: var(--text-xs, 0.75rem);
   color: var(--text-secondary);
   line-height: 1.7;
   margin: 0 0 var(--space-3);
 }
-.god-max-images__grid {
+.pro-agent-images__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: var(--space-3);
 }
-.god-max-image {
+.pro-agent-image {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -2995,14 +2995,14 @@ img {
   padding: var(--space-2);
   background: var(--color-bg-subtle, rgba(0, 0, 0, 0.03));
 }
-.god-max-image img {
+.pro-agent-image img {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: contain;
   border-radius: var(--radius-sm, 6px);
   background: var(--color-bg-muted, rgba(0, 0, 0, 0.05));
 }
-.god-max-image__copy {
+.pro-agent-image__copy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3018,17 +3018,17 @@ img {
   border-radius: var(--radius-sm, 6px);
   transition: background 0.15s ease;
 }
-.god-max-image__copy:hover { background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04)); }
-.god-max-image__copy svg { width: 14px; height: 14px; flex: none; }
+.pro-agent-image__copy:hover { background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04)); }
+.pro-agent-image__copy svg { width: 14px; height: 14px; flex: none; }
 
-.god-max-desc {
+.pro-agent-desc {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.7;
   margin: 0 0 var(--space-4);
 }
 
-.god-max-lock-notice {
+.pro-agent-lock-notice {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
@@ -3038,11 +3038,11 @@ img {
   margin: 0 0 var(--space-4);
 }
 
-.god-max-output-wrap {
+.pro-agent-output-wrap {
   margin-top: var(--space-5);
 }
 
-.god-max-output-header {
+.pro-agent-output-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3050,13 +3050,13 @@ img {
   margin-bottom: var(--space-2);
 }
 
-.god-max-output-title {
+.pro-agent-output-title {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
 }
 
-.god-max-output {
+.pro-agent-output {
   width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--text-sm);

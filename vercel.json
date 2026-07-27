@@ -17,14 +17,18 @@
   "rewrites": [
     { "source": "/pro-max", "destination": "/index.html" },
     { "source": "/pro-max/", "destination": "/index.html" },
-    { "source": "/god-max", "destination": "/index.html" },
-    { "source": "/god-max/", "destination": "/index.html" },
+    { "source": "/pro-agent", "destination": "/index.html" },
+    { "source": "/pro-agent/", "destination": "/index.html" },
     { "source": "/solo", "destination": "/index.html" },
     { "source": "/solo/", "destination": "/index.html" },
-    { "source": "/god", "destination": "/god.html" },
-    { "source": "/god/", "destination": "/god.html" }
+    { "source": "/pro-agent-unlock", "destination": "/pro-agent-unlock.html" },
+    { "source": "/pro-agent-unlock/", "destination": "/pro-agent-unlock.html" }
   ],
   "redirects": [
+    { "source": "/god-max", "destination": "/pro-agent", "permanent": false },
+    { "source": "/god-max/", "destination": "/pro-agent", "permanent": false },
+    { "source": "/god", "destination": "/pro-agent-unlock", "permanent": false },
+    { "source": "/god/", "destination": "/pro-agent-unlock", "permanent": false },
     { "source": "/line-menu", "destination": "https://line-menu-builder.vercel.app/", "permanent": false },
     { "source": "/line-menu/", "destination": "https://line-menu-builder.vercel.app/", "permanent": false }
   ],
