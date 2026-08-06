@@ -121,7 +121,10 @@
     },
     pop: {
       label: 'ポップ＆カラフル',
-      prompt: '鮮やかな原色のポップ＆コミック調イラスト。太く力強い黒の主線(マンガのインク線)、明るく彩度の高い色(赤・黄・青・緑)のフラット塗り。スクリーントーン・効果線・吹き出し・「ボン」などのオノマトペ演出を多用。元気で勢いのある躍動的な構図。日本語テキストはマンガ風(太字・縁取り・斜体)で目立たせる。落ち着いた配色・暗いトーン・写実的タッチは厳禁。'
+      // 配色UI改善仕様書 8章: 原色の直接指定 (「鮮やかな原色」「彩度の高い色(赤・黄・青・緑)」
+      // 「落ち着いた配色は厳禁」) を削除。色はテーマカラー側に委ね、ポップさは主線・効果線・
+      // 構図・文字表現で担保する。原色自体は禁止せず「量と場所」を制御する方針。
+      prompt: '親しみやすいポップ＆コミック調のイラスト。太く力強い黒の主線を使用し、スクリーントーン、効果線、吹き出し、オノマトペによって元気で勢いのあるコミック表現にする。配色は別途指定されたテーマカラーを基調とする。背景、帯、見出し、図形、装飾にはテーマカラーを優先して使用し、全体の色数を増やしすぎないこと。明るく活気のある印象を保つこと。高彩度の色は使用してよいが、画面全体に均等に多用せず、重要箇所やアクセントを中心に使用すること。ポップさは色の鮮やかさだけに頼らず、太い主線、表情、構図、効果線、吹き出し、文字表現によっても演出すること。キャラクターの肌、髪、服などには必要な固有色を使用してよい。写実的、写真風、暗く沈んだ仕上がりは避ける。'
     },
     minimal: {
       label: 'ミニマルモノクロ',
@@ -167,8 +170,9 @@
       desc: '直線的で整ったベクター調。信頼感のある寒色系やモノトーン。無駄な装飾を省き、情報の視認性を最優先する。'
     },
     C: {
+      // 画像生成スタイル pop と同方針: 原色の直接指定を外し、色はテーマカラーに委ねる。
       label: 'ポップ',
-      desc: '太い主線、鮮やかな原色使い。アメコミや元気な印象。'
+      desc: '太い主線とコミック調の演出で元気な印象。高彩度色は重要箇所を中心に使い、画面全体へ均等に多用しない。'
     },
     D: {
       label: 'ミニマル',
@@ -212,23 +216,78 @@
     G: { label: '【複合・お任せ】', desc: '文章の内容を解析し、A〜Fを組み合わせたり、最適なオリジナル構成を自動で組むモード。' }
   };
 
-  const COLOR_PRESET_LABELS = {
-    'パステルピンク＆水色': 'パステルピンク＆水色',
-    'ネイビー＆ゴールド': 'ネイビー＆ゴールド',
-    'グリーン＆ナチュラル': 'グリーン＆ナチュラル',
-    'モノトーン': 'モノトーン',
-    'サンセットオレンジ': 'サンセットオレンジ',
-    'ラベンダー＆パープル': 'ラベンダー＆パープル',
-    'アクアブルー': 'アクアブルー',
-    'アースカラー': 'アースカラー',
-    'スレート＆シアン': 'スレート＆シアン',
-    'フォレスト＆クリーム': 'フォレスト＆クリーム',
-    'ワイン＆ローズ': 'ワイン＆ローズ',
-    'インディゴ＆ミント': 'インディゴ＆ミント',
-    'コーラル＆チャコール': 'コーラル＆チャコール',
-    '和モダン（藍＆朱）': '和モダン（藍＆朱）',
-    'レモン＆ネイビー': 'レモン＆ネイビー',
-    'セージ＆テラコッタ': 'セージ＆テラコッタ'
+  // ============================================================
+  // テーマカラー定義（配色UI改善仕様書 5章）
+  // ============================================================
+  // 旧実装は「2色の組み合わせ」16プリセットだったが、色名がツールチップ依存で
+  // スマホから読めず、プロンプトにも日本語名しか渡らず色がぶれていた。
+  // 新方式は「色の系統を1つ選ぶ」= ベース70% / メイン25% / アクセント5% の
+  // 3トーンを HEX でプロンプトに渡す。ID・表示名・HEX はこの1か所で管理し、
+  // チップUI・buildColorInstruction()・バッジ表示がすべてここを参照する。
+  const COLOR_THEMES = [
+    { id: 'red',        name: 'レッド',   base: '#F8EEEE', main: '#C98282', accent: '#8F4545' },
+    { id: 'orange',     name: 'オレンジ', base: '#FAF1E8', main: '#D69A64', accent: '#995C32' },
+    { id: 'yellow',     name: 'イエロー', base: '#FAF6E8', main: '#D3B866', accent: '#856F2E' },
+    { id: 'green',      name: 'グリーン', base: '#EDF4EF', main: '#79A88A', accent: '#3F7054' },
+    { id: 'blue',       name: 'ブルー',   base: '#EDF3F7', main: '#759BB6', accent: '#3D627D' },
+    { id: 'navy',       name: 'ネイビー', base: '#EEF0F5', main: '#66748F', accent: '#29364F' },
+    { id: 'purple',     name: 'パープル', base: '#F3EFF6', main: '#9A82AC', accent: '#624D73' },
+    { id: 'pink',       name: 'ピンク',   base: '#F8EFF2', main: '#C98D9D', accent: '#8F5262' },
+    { id: 'brown',      name: 'ブラウン', base: '#F4EFEA', main: '#A98468', accent: '#684B39' },
+    { id: 'monochrome', name: 'モノクロ', base: '#F5F5F3', main: '#92928E', accent: '#333432' }
+  ];
+
+  const COLOR_THEME_MAP = COLOR_THEMES.reduce((acc, t) => {
+    acc[t.id] = t;
+    return acc;
+  }, {});
+
+  // 旧16プリセットの日本語名 → 新 colorId。
+  // localStorage の復元と共有データのインポートで、旧データを最も近い系統へ寄せる。
+  // 対応の無い値は「おまかせ」へフォールバックする。
+  const LEGACY_COLOR_ID_MAP = {
+    'パステルピンク＆水色': 'pink',
+    'ネイビー＆ゴールド': 'navy',
+    'グリーン＆ナチュラル': 'green',
+    'モノトーン': 'monochrome',
+    'サンセットオレンジ': 'orange',
+    'ラベンダー＆パープル': 'purple',
+    'アクアブルー': 'blue',
+    'アースカラー': 'brown',
+    'スレート＆シアン': 'navy',
+    'フォレスト＆クリーム': 'green',
+    'ワイン＆ローズ': 'red',
+    'インディゴ＆ミント': 'purple',
+    'コーラル＆チャコール': 'pink',
+    '和モダン（藍＆朱）': 'navy',
+    'レモン＆ネイビー': 'yellow',
+    'セージ＆テラコッタ': 'green'
+  };
+
+  // 画像生成スタイル別の適用方法（仕様書 7章）。
+  // 各画風はプロンプト内で独自の色指定を持つため、テーマカラーを選んだときに
+  // 「どこへ適用するか」「画風既定の色とどちらを優先するか」を明示して衝突を防ぐ。
+  const COLOR_STYLE_LINKAGE = {
+    handdrawn:   'テーマカラーを背景・服・小物・装飾に適用すること。',
+    flat:        'テーマカラーを背景・帯・図形・アイコンに適用し、画風既定の寒色指定より優先すること。',
+    pop:         '画風既定の原色より、指定されたテーマカラーを優先すること。',
+    minimal:     'モノクロ基調は維持し、テーマカラーは差し色に限定すること。',
+    infographic: '使用色は3〜4色に制限し、同系色の明度差も活用すること。画風既定のアクセント色より優先すること。',
+    chalkboard:  '黒板の地色は維持し、テーマカラーはチョークの差し色として使うこと。',
+    sumi:        '墨色と余白は維持し、テーマカラーは薄い差し色に限定すること。',
+    riso:        'テーマカラーをもとに2〜3色刷りの特色インクへ置き換えること。',
+    neon:        '暗い背景は維持し、テーマカラー系統の蛍光色を限定的に使用すること。',
+    graphreco:   'テーマカラーを見出し・付箋・矢印・囲みに適用すること。',
+    custom:      ''
+  };
+
+  // 単体モードのスタイル(A〜D) → 画像生成スタイルID。
+  // 単体モードでも同じ連携文を使えるようにするための対応表。
+  const SINGLE_STYLE_TO_PRESET = {
+    A: 'handdrawn',
+    B: 'flat',
+    C: 'pop',
+    D: 'minimal'
   };
 
   // ============================================================
@@ -298,8 +357,11 @@
     themeSelector: $('#themeSelector'),
     toast: $('#toast'),
     toastMessage: $('#toastMessage'),
-    customColorPicker: $('#customColorPicker'),
-    colorAutoBtn: $('#colorAutoBtn'),
+    // テーマカラーチップの入れ物。中身は renderColorChips() が COLOR_THEMES から生成する。
+    // customColorPicker / colorChipCustom はそのとき差し込まれる。
+    colorChips: $('#colorChips'),
+    customColorPicker: null,
+    colorChipCustom: null,
     resetAllBtn: $('#resetAllBtn'),
     styleBadge: $('#styleBadge'),
     layoutBadge: $('#layoutBadge'),
@@ -439,9 +501,26 @@
       if (saved) {
         const parsed = JSON.parse(saved);
         state = Object.assign({}, state, parsed);
+        migrateLegacyColor();
       }
     } catch (e) {
       // パースエラーは無視
+    }
+  }
+
+  // 旧16プリセット（日本語名を colorValue に保存）→ 新 colorId へ移行する。
+  // 既存ユーザーの保存値をそのまま読むと preset が一致せず配色が消えるため、
+  // 復元前に一度だけ寄せておく。対応の無い値は「おまかせ」へ落とす。
+  function migrateLegacyColor() {
+    if (state.colorMode !== 'preset') return;
+    const v = state.colorValue;
+    if (COLOR_THEME_MAP[v]) return;            // 既に新形式
+    const mapped = LEGACY_COLOR_ID_MAP[v];
+    if (mapped) {
+      state.colorValue = mapped;
+    } else {
+      state.colorMode = 'auto';
+      state.colorValue = '';
     }
   }
 
@@ -553,56 +632,267 @@
     if (els.formatBadge) els.formatBadge.textContent = state.format;
 
     if (els.colorBadge) {
+      // colorId をそのまま出さず、必ず COLOR_THEMES から表示名を解決する。
       if (state.colorMode === 'auto') {
-        els.colorBadge.textContent = 'お任せ';
+        els.colorBadge.textContent = 'おまかせ';
       } else if (state.colorMode === 'custom') {
         els.colorBadge.textContent = `カスタム (${state.customColor})`;
       } else {
-        els.colorBadge.textContent = state.colorValue;
+        const theme = COLOR_THEME_MAP[state.colorValue];
+        els.colorBadge.textContent = theme ? theme.name : 'おまかせ';
       }
     }
   }
 
   // ============================================================
-  // 配色制御
+  // 配色制御（テーマカラーチップ）
   // ============================================================
 
-  function clearColorSelections() {
-    $$('.color-swatch').forEach(sw => {
-      sw.classList.remove('active');
-      sw.setAttribute('aria-checked', 'false');
+  // 「おまかせ」「カスタム」チップの識別子。COLOR_THEMES の id と衝突しない値。
+  const COLOR_CHIP_AUTO = '__auto';
+  const COLOR_CHIP_CUSTOM = '__custom';
+
+  // 3トーンを斜めに並べたスウォッチ（濃 → 中 → 淡）。淡色でも輪郭が出るよう
+  // チップ側で半透明ボーダーを付けている。
+  function colorSwatchGradient(theme) {
+    return `linear-gradient(135deg, ${theme.accent} 0 34%, ${theme.main} 34% 67%, ${theme.base} 67% 100%)`;
+  }
+
+  // COLOR_THEMES からチップ列を生成する。先頭が「おまかせ」、末尾が「カスタム」。
+  // 定義テーブルを唯一の情報源にするため HTML は空のコンテナだけを持ち、
+  // 中身はここで組み立てる（init() で applyUIState / applyPublicLimits より先に呼ぶ）。
+  function renderColorChips() {
+    const wrap = els.colorChips;
+    if (!wrap || wrap.dataset.rendered === '1') return;
+
+    const frag = document.createDocumentFragment();
+
+    const makeChip = (id, label) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'color-chip';
+      btn.dataset.colorId = id;
+      btn.setAttribute('role', 'radio');
+      btn.setAttribute('aria-checked', 'false');
+      btn.setAttribute('aria-label', label);
+      const sw = document.createElement('span');
+      sw.className = 'color-chip__swatch';
+      const lb = document.createElement('span');
+      lb.className = 'color-chip__label';
+      lb.textContent = label;
+      btn.append(sw, lb);
+      return btn;
+    };
+
+    // おまかせ（既定値）
+    const auto = makeChip(COLOR_CHIP_AUTO, 'おまかせ');
+    auto.classList.add('color-chip--auto');
+    auto.querySelector('.color-chip__swatch').textContent = '✨';
+    frag.appendChild(auto);
+
+    // 10色
+    COLOR_THEMES.forEach(theme => {
+      const chip = makeChip(theme.id, theme.name);
+      chip.querySelector('.color-chip__swatch').style.background = colorSwatchGradient(theme);
+      chip.title = `${theme.name}（${theme.base} / ${theme.main} / ${theme.accent}）`;
+      frag.appendChild(chip);
     });
-    els.customColorPicker.classList.remove('active');
-    els.colorAutoBtn.classList.remove('active');
+
+    // カスタム（既存のHEXピッカーをチップに統合）。
+    // <button> に <input> は入れられないため label でラップし、ラベル全体の
+    // クリックでピッカーが開くようにする。
+    const custom = document.createElement('label');
+    custom.className = 'color-chip color-chip--custom';
+    custom.dataset.colorId = COLOR_CHIP_CUSTOM;
+    custom.setAttribute('role', 'radio');
+    custom.setAttribute('aria-checked', 'false');
+    custom.setAttribute('aria-label', 'カスタムカラー');
+    const customSw = document.createElement('span');
+    customSw.className = 'color-chip__swatch';
+    customSw.style.background = state.customColor || '#3b82f6';
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.id = 'customColorPicker';
+    picker.className = 'color-chip__picker';
+    picker.value = state.customColor || '#3b82f6';
+    picker.setAttribute('aria-label', 'カスタムカラー選択');
+    customSw.appendChild(picker);
+    const customLb = document.createElement('span');
+    customLb.className = 'color-chip__label';
+    customLb.textContent = 'カスタム';
+    custom.append(customSw, customLb);
+    frag.appendChild(custom);
+
+    wrap.appendChild(frag);
+    wrap.dataset.rendered = '1';
+
+    // ピッカーは動的生成なので els を張り替える（HTML 側に静的な要素は無い）
+    els.customColorPicker = picker;
+    els.colorChipCustom = custom;
+  }
+
+  function clearColorSelections() {
+    $$('.color-chip').forEach(chip => {
+      chip.classList.remove('active');
+      chip.setAttribute('aria-checked', 'false');
+    });
+  }
+
+  function markColorChip(colorId) {
+    clearColorSelections();
+    const chip = els.colorChips
+      ? els.colorChips.querySelector(`.color-chip[data-color-id="${colorId}"]`)
+      : null;
+    if (chip) {
+      chip.classList.add('active');
+      chip.setAttribute('aria-checked', 'true');
+    }
+    return chip;
   }
 
   function setColorAuto() {
-    clearColorSelections();
-    els.colorAutoBtn.classList.add('active');
+    markColorChip(COLOR_CHIP_AUTO);
     state.colorMode = 'auto';
     state.colorValue = '';
     updateBadges();
     saveState();
   }
 
-  function setColorPreset(swatch, colorName) {
-    clearColorSelections();
-    swatch.classList.add('active');
-    swatch.setAttribute('aria-checked', 'true');
+  // colorId は COLOR_THEMES の id。未知の値は「おまかせ」へフォールバックする。
+  function setColorTheme(colorId) {
+    if (!COLOR_THEME_MAP[colorId]) {
+      setColorAuto();
+      return;
+    }
+    markColorChip(colorId);
     state.colorMode = 'preset';
-    state.colorValue = colorName;
+    state.colorValue = colorId;
     updateBadges();
     saveState();
   }
 
   function setColorCustom(hex) {
-    clearColorSelections();
-    els.customColorPicker.classList.add('active');
+    markColorChip(COLOR_CHIP_CUSTOM);
+    if (els.colorChipCustom) {
+      const sw = els.colorChipCustom.querySelector('.color-chip__swatch');
+      if (sw) sw.style.background = hex;
+    }
     state.colorMode = 'custom';
     state.customColor = hex;
     state.colorValue = hex;
     updateBadges();
     saveState();
+  }
+
+  // ============================================================
+  // 配色プロンプト生成（仕様書 6章）
+  // ============================================================
+
+  function hexToHsl(hex) {
+    const n = parseInt(String(hex).replace('#', ''), 16);
+    const r = ((n >> 16) & 255) / 255;
+    const g = ((n >> 8) & 255) / 255;
+    const b = (n & 255) / 255;
+    const mx = Math.max(r, g, b);
+    const mn = Math.min(r, g, b);
+    const l = (mx + mn) / 2;
+    if (mx === mn) return [0, 0, l];
+    const d = mx - mn;
+    const s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    let h;
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return [h / 6, s, l];
+  }
+
+  function hslToHex(h, s, l) {
+    const hue = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue(p, q, h + 1 / 3);
+      g = hue(p, q, h);
+      b = hue(p, q, h - 1 / 3);
+    }
+    const to = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${to(r)}${to(g)}${to(b)}`.toUpperCase();
+  }
+
+  // カスタム1色から ベース(明) / メイン(指定色) / アクセント(濃) の3トーンを派生する（仕様書 6.3）
+  function deriveCustomTheme(hex) {
+    const safe = /^#[0-9a-fA-F]{6}$/.test(String(hex)) ? hex : '#3b82f6';
+    const [h, s, l] = hexToHsl(safe);
+    return {
+      id: COLOR_CHIP_CUSTOM,
+      name: 'カスタム',
+      base: hslToHex(h, Math.min(s, 0.40), 0.94),
+      main: safe.toUpperCase(),
+      accent: hslToHex(h, Math.min(s + 0.05, 1), Math.max(l - 0.25, 0.16))
+    };
+  }
+
+  // 単体モード / カルーセルのスライド別プロンプト / 画像生成スタイル の3箇所が
+  // 同じ配色指示を使うための共通関数。
+  //   colorMode: 'auto' | 'preset' | 'custom'
+  //   colorValue: preset なら colorId、custom なら HEX
+  //   styleId: 画像生成スタイルID（COLOR_STYLE_LINKAGE のキー）。無ければ連携文なし。
+  function buildColorInstruction(colorMode, colorValue, styleId) {
+    const linkage = styleId ? (COLOR_STYLE_LINKAGE[styleId] || '') : '';
+    const linkageLine = linkage ? `\n【画風との連携】${linkage}` : '';
+
+    let theme = null;
+    if (colorMode === 'preset') {
+      theme = COLOR_THEME_MAP[colorValue] || null;
+    } else if (colorMode === 'custom') {
+      theme = deriveCustomTheme(colorValue || state.customColor);
+    }
+
+    // おまかせ（未選択・不明な colorId のフォールバック含む）
+    if (!theme) {
+      return [
+        '【テーマカラー：おまかせ】',
+        '記事内容、対象読者、選択された画像生成スタイルに適した3色パレットを選ぶこと。',
+        'ベース、メイン、アクセントの役割を意識し、70：25：5を参考にバランスよく構成すること。',
+        '背景、帯、見出し、図形、装飾は3色パレットを中心にまとめること。',
+        '高彩度色は使用してよいが、画面全体へ均等に多用せず、重要箇所を中心に使用すること。',
+        '明るく活気のある印象を保つこと。',
+        '毎回同じ色に固定せず、記事内容が変われば配色も変えること。'
+      ].join('\n');
+    }
+
+    const isCustom = theme.id === COLOR_CHIP_CUSTOM;
+    const head = isCustom
+      ? [
+          `【テーマカラー：カスタム ${theme.main}】`,
+          '指定色をメインカラーとし、明るいベースカラーと濃いアクセントカラーを組み合わせた配色にする。'
+        ]
+      : [
+          `【テーマカラー：${theme.name}】`,
+          `落ち着いた${theme.name}系の配色にする。`
+        ];
+
+    return head.concat([
+      `ベースカラー：${theme.base}（約70%）`,
+      `メインカラー：${theme.main}（約25%）`,
+      `アクセントカラー：${theme.accent}（約5%）`,
+      isCustom ? '70：25：5は厳密な制約ではなく、配色バランスの目安として扱うこと。' : null,
+      '指定色を背景、帯、見出し、図形、装飾に使用すること。',
+      'パレット外の色をむやみに追加しないこと。',
+      '高彩度色は使用してよいが、画面全体へ均等に多用せず、重要箇所を中心に使用すること。',
+      '文字と背景には十分な明度差を確保すること。',
+      'キャラクターの固有色と識別性は維持し、必要に応じて彩度・明度をわずかに調整して全体と調和させること。'
+    ].filter(Boolean)).join('\n') + linkageLine;
   }
 
   // ============================================================
@@ -629,12 +919,14 @@
     const styleDef = STYLE_DEFS[state.style];
     const layoutDef = LAYOUT_DEFS[state.layout];
 
-    let colorInstruction = 'お任せ（内容に合った最適な配色を選んでください）';
-    if (state.colorMode === 'preset') {
-      colorInstruction = state.colorValue;
-    } else if (state.colorMode === 'custom') {
-      colorInstruction = `テーマカラー: ${state.customColor}`;
-    }
+    // 配色は3箇所（単体 / カルーセルのスライド別 / 画像生成スタイル）で
+    // 同じ buildColorInstruction を通す。単体のスタイル(A〜D)は対応する
+    // 画像生成スタイルIDへ読み替えて、画風別の連携文も同じものを使う。
+    const colorInstruction = buildColorInstruction(
+      state.colorMode,
+      state.colorValue,
+      SINGLE_STYLE_TO_PRESET[state.style]
+    );
 
     const hasImages = characterImages.length > 0;
     const imageNote = hasImages
@@ -691,7 +983,8 @@ ${layoutDef.desc}
 
 ### フォーマット: ${state.format}
 
-### 配色: ${colorInstruction}${signatureBlock}${imageNote}`;
+### 配色
+${colorInstruction}${signatureBlock}${imageNote}`;
 
     els.promptText.textContent = prompt;
     els.outputSection.classList.add('visible');
@@ -819,7 +1112,12 @@ ${layoutDef.desc}
     els.contentText.value = '';
     els.outputSection.classList.remove('visible');
     els.promptText.textContent = '';
-    els.customColorPicker.value = '#3b82f6';
+    if (els.customColorPicker) els.customColorPicker.value = '#3b82f6';
+    if (els.colorChipCustom) {
+      const sw = els.colorChipCustom.querySelector('.color-chip__swatch');
+      if (sw) sw.style.background = '#3b82f6';
+    }
+    // チップの選択状態は末尾の applyUIState() が state から復元する
 
     // ===== 画像 / ペーストキュー =====
     characterImages = [];
@@ -1471,23 +1769,21 @@ ${layoutDef.desc}
     activateCard('format', state.format);
     activateCard('signature', state.styleSignature || 'none');
 
-    // 配色
-    clearColorSelections();
-    if (state.colorMode === 'auto') {
-      els.colorAutoBtn.classList.add('active');
-    } else if (state.colorMode === 'preset') {
-      const swatch = $(`.color-swatch[data-color="${state.colorValue}"]`);
-      if (swatch) {
-        swatch.classList.add('active');
-        swatch.setAttribute('aria-checked', 'true');
-      } else {
-        state.colorMode = 'auto';
-        state.colorValue = '';
-        els.colorAutoBtn.classList.add('active');
-      }
+    // 配色（旧データは loadState() で colorId へ移行済み）
+    if (state.colorMode === 'preset' && COLOR_THEME_MAP[state.colorValue]) {
+      markColorChip(state.colorValue);
     } else if (state.colorMode === 'custom') {
-      els.customColorPicker.classList.add('active');
-      els.customColorPicker.value = state.customColor;
+      markColorChip(COLOR_CHIP_CUSTOM);
+      if (els.customColorPicker) els.customColorPicker.value = state.customColor;
+      if (els.colorChipCustom) {
+        const sw = els.colorChipCustom.querySelector('.color-chip__swatch');
+        if (sw) sw.style.background = state.customColor;
+      }
+    } else {
+      // 未知の colorId / 旧形式の残骸は「おまかせ」へフォールバック
+      state.colorMode = 'auto';
+      state.colorValue = '';
+      markColorChip(COLOR_CHIP_AUTO);
     }
 
     // バッジ更新
@@ -1578,26 +1874,31 @@ ${layoutDef.desc}
       });
     });
 
-    // 配色プリセット
-    $$('.color-swatch').forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        setColorPreset(swatch, swatch.dataset.color);
+    // テーマカラーチップ（動的生成なのでコンテナへの委譲で受ける）
+    if (els.colorChips) {
+      els.colorChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.color-chip');
+        if (!chip || chip.getAttribute('aria-disabled') === 'true') return;
+        const id = chip.dataset.colorId;
+        // カスタムは内側の <input type="color"> 側で処理する
+        if (id === COLOR_CHIP_CUSTOM) return;
+        if (id === COLOR_CHIP_AUTO) setColorAuto();
+        else setColorTheme(id);
       });
-    });
+    }
 
     // カスタムカラーピッカー
-    els.customColorPicker.addEventListener('input', (e) => {
-      setColorCustom(e.target.value);
-    });
+    if (els.customColorPicker) {
+      els.customColorPicker.addEventListener('input', (e) => {
+        setColorCustom(e.target.value);
+      });
 
-    els.customColorPicker.addEventListener('click', () => {
-      if (state.colorMode !== 'custom') {
-        setColorCustom(els.customColorPicker.value);
-      }
-    });
-
-    // お任せボタン
-    els.colorAutoBtn.addEventListener('click', setColorAuto);
+      els.customColorPicker.addEventListener('click', () => {
+        if (state.colorMode !== 'custom') {
+          setColorCustom(els.customColorPicker.value);
+        }
+      });
+    }
 
     // 生成ボタン
     els.generateBtn.addEventListener('click', generatePrompt);
@@ -1978,7 +2279,7 @@ ${layoutDef.desc}
 ## フィールド説明
 - **style**: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル)
 - **format**: "1:1"(正方形), "3:4"(縦長), "16:9"(横長)
-- **color**: "auto" or プリセット名(例:"パステルピンク＆水色") or 色コード(例:"#3b82f6")
+- **color**: "auto" or テーマカラーID(${COLOR_THEMES.map(t => t.id).join('/')}) or 色コード(例:"#3b82f6")
 - **slides[].layout**: A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ)
 
 ## 依頼内容
@@ -2025,7 +2326,7 @@ ${theme}`;
 ## フィールド説明
 - **style**: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル)
 - **format**: "1:1"(正方形), "3:4"(縦長), "16:9"(横長)
-- **color**: "auto" or プリセット名(例:"パステルピンク＆水色") or 色コード(例:"#3b82f6")
+- **color**: "auto" or テーマカラーID(${COLOR_THEMES.map(t => t.id).join('/')}) or 色コード(例:"#3b82f6")
 - **slides[].role**: "cover"(表紙), "body"(本文), "cta"(まとめ・CTA)
 - **slides[].layout**: A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ)
 
@@ -2542,7 +2843,7 @@ ${slideCountDesc}
   "hashtags": ["#タグ1", "#タグ2", "..."],
   "style": "A" | "B" | "C" | "D",
   "format": "1:1" | "3:4" | "16:9",
-  "color": "auto" or プリセット名,
+  "color": "auto" or テーマカラーID,
   "slides": [
     { "page": 1, "role": "cover", "content": "表紙テキスト" },
     { "page": 2, "role": "body", "layout": "A"|"B"|"C"|"D"|"E"|"F"|"G", "content": "本文" },
@@ -2557,7 +2858,7 @@ ${slideCountDesc}
 - hashtags: 投稿で使うハッシュタグの配列。10〜15個、重複なし、"#" 必須
 - style: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル) — テーマに最適なものを選択
 - format: "1:1"(正方形), "3:4"(縦長), "16:9"(横長) — 通常はInstagram向けに"1:1"推奨
-- color: "auto"(おまかせ) 推奨
+- color: "auto"(おまかせ) 推奨。指定する場合はテーマカラーID(${COLOR_THEMES.map(t => t.id).join('/')})のいずれか
 - slides[].layout (bodyのみ): A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ) — 各スライドの内容に最適なものを選択
 
 # テーマ／元文章
@@ -2594,7 +2895,7 @@ ${toneDesc}
   "hashtags": ["#タグ1", "#タグ2", "..."],
   "style": "A" | "B" | "C" | "D",
   "format": "1:1" | "3:4" | "16:9",
-  "color": "auto" or プリセット名,
+  "color": "auto" or テーマカラーID,
   "slides": [
     { "page": 1, "role": "body", "layout": "A"|"B"|"C"|"D"|"E"|"F"|"G", "content": "見出し＋図解本文" }
   ]
@@ -2606,7 +2907,7 @@ ${toneDesc}
 - hashtags: 投稿で使うハッシュタグの配列。10〜15個、重複なし、"#" 必須
 - style: A(手書き風), B(ビジネス風), C(ポップ), D(ミニマル) — テーマに最適なものを選択
 - format: "1:1"(正方形), "3:4"(縦長), "16:9"(横長) — 通常はInstagram向けに"1:1"推奨
-- color: "auto"(おまかせ) 推奨
+- color: "auto"(おまかせ) 推奨。指定する場合はテーマカラーID(${COLOR_THEMES.map(t => t.id).join('/')})のいずれか
 - slides[].layout: A(並列リスト), B(比較図), C(ステップ), D(4象限), E(サイクル), F(ピラミッド), G(お任せ) — 図解の内容に最適なものを選択
 
 # テーマ／元文章
@@ -2962,29 +3263,20 @@ ${theme}
     }
 
     // 配色
+    // data.color は 'auto' / '#HEX'(カスタム) / 新colorId / 旧日本語名 の4形式を受け付ける。
+    // 旧共有リンクを開いても壊れないよう、旧名は LEGACY_COLOR_ID_MAP で読み替える。
     if (data.color) {
-      clearColorSelections();
       if (data.color === 'auto') {
-        state.colorMode = 'auto';
-        state.colorValue = '';
-        els.colorAutoBtn.classList.add('active');
+        setColorAuto();
       } else if (data.color.startsWith('#')) {
-        state.colorMode = 'custom';
-        state.customColor = data.color;
-        els.customColorPicker.value = data.color;
-        els.customColorPicker.classList.add('active');
+        if (els.customColorPicker) els.customColorPicker.value = data.color;
+        setColorCustom(data.color);
       } else {
-        const swatch = $(`.color-swatch[data-color="${data.color}"]`);
-        if (swatch) {
-          state.colorMode = 'preset';
-          state.colorValue = data.color;
-          swatch.classList.add('active');
-          swatch.setAttribute('aria-checked', 'true');
-        } else {
-          state.colorMode = 'auto';
-          state.colorValue = '';
-          els.colorAutoBtn.classList.add('active');
-        }
+        const colorId = COLOR_THEME_MAP[data.color]
+          ? data.color
+          : LEGACY_COLOR_ID_MAP[data.color];
+        if (colorId) setColorTheme(colorId);
+        else setColorAuto();
       }
     }
 
@@ -3314,13 +3606,8 @@ ${theme}
       ? '* ページ番号や「1/5」のような枚数表記は入れないでください'
       : `* ページ番号「${page}/${totalSlides}」を右下に小さく入れてください`;
 
-    // 配色はUIの設定を使用
-    let colorInstruction = 'お任せ（内容に合った最適な配色を選んでください）';
-    if (state.colorMode === 'preset' && state.colorValue) {
-      colorInstruction = state.colorValue;
-    } else if (state.colorMode === 'custom') {
-      colorInstruction = `テーマカラー: ${state.customColor}`;
-    }
+    // 配色はUIの設定を使用（画風別の連携文まで含めて共通関数で組み立てる）
+    const colorInstruction = buildColorInstruction(state.colorMode, state.colorValue, globalStyle);
 
     // ① スタイル署名（あなたの個性）。単体モードの generatePrompt と同形式で上乗せ。
     // 公開ページ (/) では applyPublicLimits が署名を none に固定するため
@@ -3391,7 +3678,8 @@ ${layoutDef.desc}
 
 ### フォーマット: ${globalFormat}
 
-### 配色: ${colorInstruction}${signatureBlock}${charImageNote}`;
+### 配色
+${colorInstruction}${signatureBlock}${charImageNote}`;
   }
 
   function buildImageSlideContent(slide, index, totalSlides) {
@@ -3692,18 +3980,12 @@ ${layoutDef.desc}
     if (sig && base.trim()) {
       base += `\n\n【スタイル署名（あなたの個性）】上記の画風を最優先し、それを損なわない範囲で次の個性を加える：${sig}`;
     }
-    // ② 配色（UIの設定）を上乗せ。カルーセル全スライドで色調を統一するため、
-    // お任せ以外（プリセット / カスタム）を指定したときだけ明示的に指示する。
+    // ② 配色（UIの設定）を上乗せ。カルーセル全スライドで色調を統一する。
+    // おまかせでも 70:25:5 の組み立て方と「重要箇所中心に高彩度を使う」方針を
+    // 渡したいので、3箇所すべてで同じ buildColorInstruction を通す。
+    // (この関数は pro-agent の一括プロンプトからも呼ばれる)
     if (base.trim()) {
-      let colorInstruction = '';
-      if (state.colorMode === 'preset' && state.colorValue) {
-        colorInstruction = state.colorValue;
-      } else if (state.colorMode === 'custom') {
-        colorInstruction = `テーマカラー: ${state.customColor}`;
-      }
-      if (colorInstruction) {
-        base += `\n\n【配色】全スライドで次の配色に統一する：${colorInstruction}`;
-      }
+      base += `\n\n${buildColorInstruction(state.colorMode, state.colorValue, presetId)}\n全スライドでこの配色を統一すること。`;
     }
     return base;
   }
@@ -4971,6 +5253,10 @@ ${layoutDef.desc}
       state.theme = 'light';
     }
 
+    // テーマカラーチップを先に生成する。applyUIState() の選択復元、
+    // initEvents() のピッカー購読、applyPublicLimits() のロックが
+    // すべて生成済みのチップを前提にしているため順序を変えないこと。
+    renderColorChips();
     applyUIState();
     initEvents();
     // 端末ローカルに保存済みのキャラ画像ライブラリを読み込んで描画
@@ -5207,7 +5493,7 @@ ${layoutDef.desc}
     const sec = document.querySelector(selector);
     if (!sec) return;
     sec.classList.add('section--locked');
-    sec.querySelectorAll('.selection-card, .color-swatch, .color-auto-btn, button, input').forEach(el => {
+    sec.querySelectorAll('.selection-card, .color-chip, button, input').forEach(el => {
       // div ベースのカード/スウォッチは disabled 属性を無視するので pointer-events で止める。
       // ネイティブ button/input には disabled も付ける。
       // tabindex=-1 でキーボードフォーカスも外す (Enter/Space での発火を防ぐ。

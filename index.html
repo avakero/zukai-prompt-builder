@@ -595,45 +595,17 @@
       </div>
     </section>
 
-    <!-- 3. 配色 -->
+    <!-- 3. テーマカラー -->
     <section class="section" id="sectionColor">
       <div class="section__header">
         <svg class="section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
         </svg>
-        <h2 class="section__title">配色</h2>
+        <h2 class="section__title">テーマカラー（任意）</h2>
       </div>
-      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">図解全体の<strong>色味</strong>です。プリセットから選ぶか、迷ったら「お任せ」でAIにまかせられます。</p>
-      <div class="color-section">
-        <div class="color-presets" role="radiogroup" aria-label="配色選択">
-          <button class="color-swatch" data-color="パステルピンク＆水色" style="background: linear-gradient(135deg, #f9a8d4, #67e8f9);" title="パステルピンク＆水色" aria-label="パステルピンク＆水色" role="radio" aria-checked="false" id="colorPreset1"></button>
-          <button class="color-swatch" data-color="ネイビー＆ゴールド" style="background: linear-gradient(135deg, #1e3a5f, #d4a853);" title="ネイビー＆ゴールド" aria-label="ネイビー＆ゴールド" role="radio" aria-checked="false" id="colorPreset2"></button>
-          <button class="color-swatch" data-color="グリーン＆ナチュラル" style="background: linear-gradient(135deg, #86efac, #fde68a);" title="グリーン＆ナチュラル" aria-label="グリーン＆ナチュラル" role="radio" aria-checked="false" id="colorPreset3"></button>
-          <button class="color-swatch" data-color="モノトーン" style="background: linear-gradient(135deg, #e5e7eb, #374151);" title="モノトーン" aria-label="モノトーン" role="radio" aria-checked="false" id="colorPreset4"></button>
-          <button class="color-swatch" data-color="サンセットオレンジ" style="background: linear-gradient(135deg, #fb923c, #f43f5e);" title="サンセットオレンジ" aria-label="サンセットオレンジ" role="radio" aria-checked="false" id="colorPreset5"></button>
-          <button class="color-swatch" data-color="ラベンダー＆パープル" style="background: linear-gradient(135deg, #c4b5fd, #7c3aed);" title="ラベンダー＆パープル" aria-label="ラベンダー＆パープル" role="radio" aria-checked="false" id="colorPreset6"></button>
-          <button class="color-swatch" data-color="アクアブルー" style="background: linear-gradient(135deg, #38bdf8, #2563eb);" title="アクアブルー" aria-label="アクアブルー" role="radio" aria-checked="false" id="colorPreset7"></button>
-          <button class="color-swatch" data-color="アースカラー" style="background: linear-gradient(135deg, #a3a380, #6b5b3e);" title="アースカラー" aria-label="アースカラー" role="radio" aria-checked="false" id="colorPreset8"></button>
-          <button class="color-swatch" data-color="スレート＆シアン" style="background: linear-gradient(135deg, #334155, #22d3ee);" title="スレート＆シアン" aria-label="スレート＆シアン" role="radio" aria-checked="false" id="colorPreset9"></button>
-          <button class="color-swatch" data-color="フォレスト＆クリーム" style="background: linear-gradient(135deg, #166534, #fef3c7);" title="フォレスト＆クリーム" aria-label="フォレスト＆クリーム" role="radio" aria-checked="false" id="colorPreset10"></button>
-          <button class="color-swatch" data-color="ワイン＆ローズ" style="background: linear-gradient(135deg, #7f1d1d, #fda4af);" title="ワイン＆ローズ" aria-label="ワイン＆ローズ" role="radio" aria-checked="false" id="colorPreset11"></button>
-          <button class="color-swatch" data-color="インディゴ＆ミント" style="background: linear-gradient(135deg, #4338ca, #5eead4);" title="インディゴ＆ミント" aria-label="インディゴ＆ミント" role="radio" aria-checked="false" id="colorPreset12"></button>
-          <button class="color-swatch" data-color="コーラル＆チャコール" style="background: linear-gradient(135deg, #fb7185, #1f2937);" title="コーラル＆チャコール" aria-label="コーラル＆チャコール" role="radio" aria-checked="false" id="colorPreset13"></button>
-          <button class="color-swatch" data-color="和モダン（藍＆朱）" style="background: linear-gradient(135deg, #1e3a8a, #dc2626);" title="和モダン（藍＆朱）" aria-label="和モダン（藍＆朱）" role="radio" aria-checked="false" id="colorPreset14"></button>
-          <button class="color-swatch" data-color="レモン＆ネイビー" style="background: linear-gradient(135deg, #fde047, #1e3a8a);" title="レモン＆ネイビー" aria-label="レモン＆ネイビー" role="radio" aria-checked="false" id="colorPreset15"></button>
-          <button class="color-swatch" data-color="セージ＆テラコッタ" style="background: linear-gradient(135deg, #84a98c, #c2410c);" title="セージ＆テラコッタ" aria-label="セージ＆テラコッタ" role="radio" aria-checked="false" id="colorPreset16"></button>
-        </div>
-        <div class="color-custom-group">
-          <div class="color-picker-wrapper">
-            <input type="color" class="color-picker-input" id="customColorPicker" value="#3b82f6" aria-label="カスタムカラー選択">
-            <span class="color-picker-label">カスタム</span>
-          </div>
-          <button class="color-auto-btn active" id="colorAutoBtn" type="button" aria-label="配色をお任せ">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-            お任せ
-          </button>
-        </div>
-      </div>
+      <p class="section__hint" style="margin:-4px 0 12px;opacity:.75;font-size:13px;">迷ったら「おまかせ」のままでOK。色を選ぶと、背景・帯・見出し・図形などを選択色に合わせてまとめます。<strong>キャラクターの固有色は基本的に維持されます。</strong></p>
+      <!-- チップは app.js の renderColorChips() が COLOR_THEMES から生成する -->
+      <div class="color-chips" id="colorChips" role="radiogroup" aria-label="テーマカラー選択"></div>
     </section>
 
     <!-- 4. 画像全体の雰囲気（あなたらしさ） -->
